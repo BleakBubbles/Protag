@@ -66,4 +66,25 @@ Two things to confirm on a real device the first time it runs:
 - Metadata extraction is unverified end to end; the resolver is verified, the extraction path
   is not.
 
-Running it needs a dev build, not Expo Go: `npx expo run:android` (JDK 17 + Android Studio).
+## Running on a device
+
+This machine has no JDK and no Android SDK, and doesn't need them: builds go through EAS
+(cloud). An emulator would be useless here anyway, since the app scans your real music library.
+
+One-time:
+
+```bash
+npx eas login
+npx eas init
+npx eas build --profile development --platform android
+```
+
+Then install the resulting APK on the phone. Day to day:
+
+```bash
+npx expo start --dev-client
+```
+
+Only rebuild the APK when native config changes — a new native dependency, or an `app.json`
+plugin/permission edit. Pure JS and TS changes reload over Wi-Fi. Add `--tunnel` to
+`expo start` if the phone and PC aren't on the same network.
