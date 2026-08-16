@@ -1,0 +1,17 @@
+{
+  // Tests run on Node via `--experimental-strip-types`, which requires explicit
+  // `.ts` import extensions — the opposite of what the Metro/app build wants.
+  // Keeping them in a separate project lets both be strict on their own terms.
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"],
+    "lib": ["ES2023"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["tests/**/*.ts", "src/**/*.ts"]
+}
