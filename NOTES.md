@@ -71,12 +71,13 @@ Two things to confirm on a real device the first time it runs:
 This machine has no JDK and no Android SDK, and doesn't need them: builds go through EAS
 (cloud). An emulator would be useless here anyway, since the app scans your real music library.
 
-One-time:
+One-time. Note the package is `eas-cli`, not `eas` — `npx eas ...` fails with
+"could not determine executable to run":
 
 ```bash
-npx eas login
-npx eas init
-npx eas build --profile development --platform android
+npx eas-cli@latest login
+npx eas-cli@latest init
+npx eas-cli@latest build --profile development --platform android
 ```
 
 Then install the resulting APK on the phone. Day to day:
