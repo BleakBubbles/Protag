@@ -39,6 +39,9 @@ yarn-error.*
 # local, machine-specific Claude Code settings
 .claude/settings.local.json
 
+# local working notes, not part of the project
+NOTES.md
+
 # generated native folders
 /ios
 /android
