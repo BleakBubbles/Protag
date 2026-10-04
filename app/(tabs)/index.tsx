@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { countSongs } from '@/db/songs';
 import { listTagsWithCounts } from '@/db/tags';
@@ -18,7 +18,7 @@ import type { QueueState } from '@/player/queue';
 import { MATCH_ALL } from '@/query/types';
 import { Button } from '@/ui/Button';
 import { formatCount, plural } from '@/ui/format';
-import { Artwork } from '@/ui/player/Artwork';
+import { ArtworkSlot } from '@/ui/player/ArtworkSlot';
 import { SeekBar } from '@/ui/player/SeekBar';
 import { TrackInfo } from '@/ui/player/TrackInfo';
 import { TransportControls } from '@/ui/player/TransportControls';
@@ -37,16 +37,14 @@ export default function PlayerScreen() {
 function NowPlayingView({ song, queue }: { song: SongRow; queue: QueueState }) {
   const status = usePlaybackStatus();
   const actions = usePlayerActions();
-  const { width, height } = useWindowDimensions();
-
-  // Big on a phone, but never so big the controls get pushed off a short screen.
-  const artSize = Math.min(width - spacing.xl * 2, height * 0.42);
   // Until the engine reports a duration, MediaStore's is close enough.
   const durationSec = status.durationSec > 0 ? status.durationSec : song.duration_ms / 1000;
   const sourceLabel = queue.source?.label ?? 'Songs';
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.nowPlaying}>
+    // Not a ScrollView: everything but the artwork has a fixed height, and the
+    // artwork takes the rest, so the screen always fits exactly.
+    <View style={[styles.screen, styles.nowPlaying]}>
       <Text style={styles.source} numberOfLines={1}>
         {queue.shuffled ? 'Shuffling' : 'Playing'} · {sourceLabel}
         <Text style={styles.position}>
@@ -55,7 +53,7 @@ function NowPlayingView({ song, queue }: { song: SongRow; queue: QueueState }) {
         </Text>
       </Text>
 
-      <Artwork uri={albumArtUri(song.album_id)} size={artSize} />
+      <ArtworkSlot uri={albumArtUri(song.album_id)} />
       <TrackInfo title={song.title} artist={song.artist} album={song.album} />
 
       <SeekBar positionSec={status.positionSec} durationSec={durationSec} onSeek={actions.seekTo} />
@@ -71,7 +69,7 @@ function NowPlayingView({ song, queue }: { song: SongRow; queue: QueueState }) {
       />
 
       {status.error && <Text style={styles.error}>Couldn't play this song: {status.error}</Text>}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -148,9 +146,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   nowPlaying: {
-    flexGrow: 1,
     alignItems: 'center',
-    justifyContent: 'space-evenly',
     padding: spacing.xl,
     gap: spacing.lg,
   },
