@@ -18,6 +18,7 @@ export interface TestDatabase {
     source: string,
     ...params: unknown[]
   ): Promise<{ lastInsertRowId: number; changes: number }>;
+  withExclusiveTransactionAsync(task: (txn: TestDatabase) => Promise<void>): Promise<void>;
   close(): void;
 }
 
@@ -35,7 +36,7 @@ function plain<T>(row: unknown): T {
 export function createTestDatabase(): TestDatabase {
   const db = new DatabaseSync(':memory:');
 
-  return {
+  const api: TestDatabase = {
     async execAsync(source) {
       db.exec(source);
     },
@@ -54,32 +55,43 @@ export function createTestDatabase(): TestDatabase {
         changes: Number(result.changes),
       };
     },
+    // Same contract as expo-sqlite: commit if the task resolves, roll back if it throws.
+    async withExclusiveTransactionAsync(task) {
+      db.exec('BEGIN EXCLUSIVE');
+      try {
+        await task(api);
+        db.exec('COMMIT');
+      } catch (error) {
+        db.exec('ROLLBACK');
+        throw error;
+      }
+    },
     close() {
       db.close();
     },
   };
+  return api;
 }
 
 /** A migrated, empty database. */
 export async function freshDatabase(): Promise<TestDatabase> {
   const db = createTestDatabase();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await migrate(db as any);
+  await migrate(db as never);
   return db;
 }
 
 export async function insertSong(
   db: TestDatabase,
   title: string,
-  extra: { artist?: string; missing?: boolean; durationMs?: number } = {}
+  extra: { artist?: string; missing?: boolean; durationMs?: number; filename?: string } = {}
 ): Promise<number> {
   const now = Date.now();
   const result = await db.runAsync(
-    `INSERT INTO songs (media_id, uri, filename, title, artist, duration_ms, added_at, last_seen_at, metadata_state, is_missing)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'done', ?)`,
+    `INSERT INTO songs (media_id, uri, filename, title, artist, duration_ms, added_at, last_seen_at, is_missing)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     `media-${title}`,
-    `file:///music/${title}.mp3`,
-    `${title}.mp3`,
+    `content://media/external/audio/media/${title}`,
+    extra.filename ?? `${title}.mp3`,
     title,
     extra.artist ?? null,
     extra.durationMs ?? 180000,

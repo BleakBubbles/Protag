@@ -2,34 +2,33 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { SongRow } from './types';
 
+/** One audio file as discovered by a library scan, already mapped from MediaStore. */
 export interface ScannedSong {
   mediaId: string;
   uri: string;
   filename: string;
+  title: string;
+  artist: string | null;
+  album: string | null;
+  albumId: string | null;
+  genre: string | null;
+  trackNo: number | null;
   durationMs: number;
 }
 
-export interface SongMetadata {
-  title?: string;
-  artist?: string;
-  album?: string;
-  year?: number;
-  trackNo?: number;
-  artworkPath?: string;
-}
-
-/** "03 - Ditto.mp3" -> "Ditto", used until real metadata arrives. */
+/** "03 - Ditto.mp3" -> "Ditto", for files with no title tag. */
 export function titleFromFilename(filename: string): string {
   const withoutExt = filename.replace(/\.[^.]+$/, '');
   return withoutExt.replace(/^\d+\s*[-._]\s*/, '').trim() || withoutExt;
 }
 
 /**
- * Insert a newly discovered file, or refresh the fields that can change on disk.
+ * Insert a newly discovered file, or refresh an existing one.
  *
- * Deliberately leaves `title`/`artist`/`album` and `metadata_state` alone on
- * update: those are owned by the enrichment phase, and clobbering them would
- * throw away work every single re-scan.
+ * Metadata is overwritten on every scan: MediaStore is the source of truth, and
+ * ProTag never edits metadata itself, so refreshing picks up tag fixes made in
+ * other apps without losing anything. Tags live in `song_tags` and are keyed on
+ * the row id, so they survive any number of refreshes.
  */
 export async function upsertScannedSong(
   db: SQLiteDatabase,
@@ -37,18 +36,30 @@ export async function upsertScannedSong(
   seenAt: number
 ): Promise<void> {
   await db.runAsync(
-    `INSERT INTO songs (media_id, uri, filename, title, duration_ms, added_at, last_seen_at, metadata_state, is_missing)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0)
+    `INSERT INTO songs (media_id, uri, filename, title, artist, album, album_id, genre,
+                        track_no, duration_ms, added_at, last_seen_at, is_missing)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
      ON CONFLICT(media_id) DO UPDATE SET
        uri          = excluded.uri,
        filename     = excluded.filename,
+       title        = excluded.title,
+       artist       = excluded.artist,
+       album        = excluded.album,
+       album_id     = excluded.album_id,
+       genre        = excluded.genre,
+       track_no     = excluded.track_no,
        duration_ms  = excluded.duration_ms,
        last_seen_at = excluded.last_seen_at,
        is_missing   = 0`,
     song.mediaId,
     song.uri,
     song.filename,
-    titleFromFilename(song.filename),
+    song.title,
+    song.artist,
+    song.album,
+    song.albumId,
+    song.genre,
+    song.trackNo,
     song.durationMs,
     seenAt,
     seenAt
@@ -70,54 +81,6 @@ export async function flagMissingAfterScan(
     scanStartedAt
   );
   return result.changes;
-}
-
-export async function getPendingMetadata(
-  db: SQLiteDatabase,
-  limit: number
-): Promise<SongRow[]> {
-  return db.getAllAsync<SongRow>(
-    "SELECT * FROM songs WHERE metadata_state = 'pending' AND is_missing = 0 ORDER BY id LIMIT ?",
-    limit
-  );
-}
-
-export async function countPendingMetadata(db: SQLiteDatabase): Promise<number> {
-  const row = await db.getFirstAsync<{ n: number }>(
-    "SELECT COUNT(*) AS n FROM songs WHERE metadata_state = 'pending' AND is_missing = 0"
-  );
-  return row?.n ?? 0;
-}
-
-export async function applyMetadata(
-  db: SQLiteDatabase,
-  songId: number,
-  meta: SongMetadata
-): Promise<void> {
-  // COALESCE so a file missing an artist tag keeps the filename-derived title
-  // instead of being blanked out.
-  await db.runAsync(
-    `UPDATE songs SET
-       title          = COALESCE(?, title),
-       artist         = COALESCE(?, artist),
-       album          = COALESCE(?, album),
-       year           = COALESCE(?, year),
-       track_no       = COALESCE(?, track_no),
-       artwork_path   = COALESCE(?, artwork_path),
-       metadata_state = 'done'
-     WHERE id = ?`,
-    meta.title ?? null,
-    meta.artist ?? null,
-    meta.album ?? null,
-    meta.year ?? null,
-    meta.trackNo ?? null,
-    meta.artworkPath ?? null,
-    songId
-  );
-}
-
-export async function markMetadataFailed(db: SQLiteDatabase, songId: number): Promise<void> {
-  await db.runAsync("UPDATE songs SET metadata_state = 'failed' WHERE id = ?", songId);
 }
 
 export async function getSong(db: SQLiteDatabase, id: number): Promise<SongRow | null> {
@@ -174,6 +137,13 @@ export async function countSongs(db: SQLiteDatabase): Promise<number> {
     'SELECT COUNT(*) AS n FROM songs WHERE is_missing = 0'
   );
   return row?.n ?? 0;
+}
+
+/** The minimal fields the playlist/backup matcher needs, for every present song. */
+export async function listSongsForMatching(
+  db: SQLiteDatabase
+): Promise<Pick<SongRow, 'id' | 'filename' | 'title' | 'artist'>[]> {
+  return db.getAllAsync('SELECT id, filename, title, artist FROM songs WHERE is_missing = 0');
 }
 
 export async function recordPlay(db: SQLiteDatabase, songId: number): Promise<void> {

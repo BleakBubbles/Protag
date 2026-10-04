@@ -1,7 +1,5 @@
 /** Row shapes as they come back from SQLite (snake_case, integers for booleans). */
 
-export type MetadataState = 'pending' | 'done' | 'failed';
-
 export interface SongRow {
   id: number;
   media_id: string;
@@ -10,14 +8,14 @@ export interface SongRow {
   title: string;
   artist: string | null;
   album: string | null;
+  album_id: string | null;
+  genre: string | null;
   duration_ms: number;
   year: number | null;
   track_no: number | null;
-  artwork_path: string | null;
   added_at: number;
   last_played_at: number | null;
   play_count: number;
-  metadata_state: MetadataState;
   last_seen_at: number;
   is_missing: number;
 }

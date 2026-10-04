@@ -2,25 +2,16 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 export const DATABASE_NAME = 'protag.db';
 
-/** Bump this and add a matching block in `migrate` for every schema change. */
-const DATABASE_VERSION = 1;
-
 /**
- * Runs on every app start via `SQLiteProvider`'s `onInit`.
+ * Schema migrations, in order. Entry `i` upgrades a database from version `i`
+ * to version `i + 1`, so the current schema version is `MIGRATIONS.length`.
  *
- * Migrations are keyed on `PRAGMA user_version` so each one applies exactly once,
- * in order, no matter which version the user is upgrading from.
+ * Never edit an entry once it has shipped — devices that already ran it will not
+ * run it again. Append a new entry instead.
  */
-export async function migrate(db: SQLiteDatabase): Promise<void> {
-  // WAL keeps reads from blocking during a library scan's long write batches.
-  await db.execAsync('PRAGMA journal_mode = WAL;');
-  await db.execAsync('PRAGMA foreign_keys = ON;');
-
-  const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-  let version = row?.user_version ?? 0;
-
-  if (version === 0) {
-    await db.execAsync(`
+export const MIGRATIONS: readonly string[] = [
+  // v1 — initial schema.
+  `
       CREATE TABLE songs (
         id             INTEGER PRIMARY KEY AUTOINCREMENT,
         media_id       TEXT    NOT NULL UNIQUE,
@@ -90,12 +81,56 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
       );
 
       CREATE INDEX idx_play_history_song ON play_history(song_id);
-    `);
-    version = 1;
-  }
+    `,
 
-  await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
-  if (version !== DATABASE_VERSION) {
-    console.warn(`[db] expected version ${DATABASE_VERSION}, migrated to ${version}`);
+  // v2 — metadata now comes from MediaStore during discovery, so the enrichment
+  // bookkeeping and the copied-artwork path go away. Artwork is derived from
+  // album_id at display time instead of being written to disk.
+  `
+      DROP INDEX idx_songs_state;
+      ALTER TABLE songs DROP COLUMN metadata_state;
+      ALTER TABLE songs DROP COLUMN artwork_path;
+      ALTER TABLE songs ADD COLUMN album_id TEXT;
+
+      -- Stored to *suggest* tags for an untagged library; never applied as one.
+      ALTER TABLE songs ADD COLUMN genre TEXT;
+      CREATE INDEX idx_songs_genre ON songs(genre);
+
+      -- App state not worth its own table, e.g. the remembered playlist folder.
+      CREATE TABLE settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `,
+];
+
+export const SCHEMA_VERSION = MIGRATIONS.length;
+
+/**
+ * Runs on every app start via `SQLiteProvider`'s `onInit`.
+ *
+ * Each migration runs in its own transaction together with its `user_version`
+ * bump, so a crash mid-migration rolls back cleanly instead of leaving a
+ * half-applied schema that would fail to re-run ("duplicate column") on every
+ * subsequent launch.
+ */
+export async function migrate(db: SQLiteDatabase): Promise<void> {
+  // WAL keeps reads from blocking during a library scan's write batches. It
+  // cannot be changed inside a transaction, so it is set before migrating.
+  await db.execAsync('PRAGMA journal_mode = WAL;');
+  await db.execAsync('PRAGMA foreign_keys = ON;');
+
+  const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+  const current = row?.user_version ?? 0;
+
+  for (let version = current; version < MIGRATIONS.length; version++) {
+    try {
+      await db.execAsync(
+        `BEGIN; ${MIGRATIONS[version]} PRAGMA user_version = ${version + 1}; COMMIT;`
+      );
+    } catch (error) {
+      await db.execAsync('ROLLBACK;').catch(() => {});
+      throw new Error(`Database migration to v${version + 1} failed: ${String(error)}`);
+    }
   }
 }

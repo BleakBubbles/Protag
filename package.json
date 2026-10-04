@@ -35,7 +35,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
-    "test": "node --experimental-strip-types --experimental-sqlite --test \"tests/*.test.ts\""
+    "test": "node --experimental-strip-types --experimental-sqlite --import ./tests/helpers/register.mjs --test \"tests/*.test.ts\""
   },
   "private": true
 }
