@@ -54,14 +54,19 @@ export const typeface = {
   body: undefined as string | undefined,
 };
 
+/**
+ * Every text style sets an explicit lineHeight. Without one, Android sizes each
+ * line from the font's own metrics, so scripts that render in a fallback font
+ * (Chinese, Japanese, Korean) come out taller than Latin text at the same size.
+ */
 export const font = {
-  title: { fontFamily: typeface.display, fontSize: 22, fontWeight: '700' },
-  heading: { fontFamily: typeface.display, fontSize: 17, fontWeight: '600' },
-  body: { fontFamily: typeface.body, fontSize: 15, fontWeight: '400' },
-  label: { fontFamily: typeface.body, fontSize: 13, fontWeight: '500' },
-  caption: { fontFamily: typeface.body, fontSize: 11, fontWeight: '500' },
+  title: { fontFamily: typeface.display, fontSize: 22, lineHeight: 28, fontWeight: '700' },
+  heading: { fontFamily: typeface.display, fontSize: 17, lineHeight: 22, fontWeight: '600' },
+  body: { fontFamily: typeface.body, fontSize: 15, lineHeight: 20, fontWeight: '400' },
+  label: { fontFamily: typeface.body, fontSize: 13, lineHeight: 18, fontWeight: '500' },
+  caption: { fontFamily: typeface.body, fontSize: 11, lineHeight: 14, fontWeight: '500' },
   /** Tabular digits so counters and timestamps don't jitter as they change. */
-  numeric: { fontFamily: typeface.body, fontSize: 12, fontWeight: '500', fontVariant: ['tabular-nums'] },
+  numeric: { fontFamily: typeface.body, fontSize: 12, lineHeight: 16, fontWeight: '500', fontVariant: ['tabular-nums'] },
 } satisfies Record<string, TextStyle>;
 
 export const iconSize = {
