@@ -21,7 +21,8 @@ export function Artwork({ uri, size }: ArtworkProps) {
   const showImage = uri !== null && failedUri !== uri;
 
   return (
-    <View style={[styles.frame, { width: size, height: size }]}>
+    // Corners scale with size: a thumbnail with the full radius would look like a pill.
+    <View style={[styles.frame, { width: size, height: size, borderRadius: Math.min(radius.lg, size * 0.15) }]}>
       {showImage ? (
         <Image
           source={{ uri }}
@@ -39,7 +40,6 @@ export function Artwork({ uri, size }: ArtworkProps) {
 const styles = StyleSheet.create({
   frame: {
     backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.lg,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',

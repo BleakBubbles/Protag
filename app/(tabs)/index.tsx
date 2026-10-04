@@ -1,13 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { countSongs } from '@/db/songs';
 import { listTagsWithCounts } from '@/db/tags';
-import type { SongRow, TagWithCounts } from '@/db/types';
+import type { SongRow } from '@/db/types';
 import { albumArtUri } from '@/library/assets';
+import { openLibrary, openSongTags } from '@/navigation';
 import {
   usePlaybackStatus,
   usePlayerActions,
@@ -18,12 +16,14 @@ import type { QueueState } from '@/player/queue';
 import { MATCH_ALL } from '@/query/types';
 import { Button } from '@/ui/Button';
 import { formatCount, plural } from '@/ui/format';
+import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
+import { IconButton } from '@/ui/IconButton';
 import { ArtworkSlot } from '@/ui/player/ArtworkSlot';
 import { SeekBar } from '@/ui/player/SeekBar';
 import { TrackInfo } from '@/ui/player/TrackInfo';
 import { TransportControls } from '@/ui/player/TransportControls';
 import { TagChip } from '@/ui/TagChip';
-import { colors, font, spacing } from '@/ui/theme';
+import { colors, font, spacing, touchTarget } from '@/ui/theme';
 
 /**
  * Player screen. Composition only: playback lives in PlayerProvider and the
@@ -45,13 +45,19 @@ function NowPlayingView({ song, queue }: { song: SongRow; queue: QueueState }) {
     // Not a ScrollView: everything but the artwork has a fixed height, and the
     // artwork takes the rest, so the screen always fits exactly.
     <View style={[styles.screen, styles.nowPlaying]}>
-      <Text style={styles.source} numberOfLines={1}>
-        {queue.shuffled ? 'Shuffling' : 'Playing'} · {sourceLabel}
-        <Text style={styles.position}>
-          {'  '}
-          {formatCount(queue.index + 1)} of {formatCount(queue.order.length)}
+      <View style={styles.topRow}>
+        {/* Balances the button on the right so the text stays centred. */}
+        <View style={styles.topRowSpacer} />
+        <Text style={styles.source} numberOfLines={1}>
+          {queue.shuffled ? 'Shuffling' : 'Playing'} · {sourceLabel}
+          <Text style={styles.position}>
+            {'  '}
+            {formatCount(queue.index + 1)} of {formatCount(queue.order.length)}
+          </Text>
         </Text>
-      </Text>
+        {/* Tag while listening — the moment the opinion is fresh. */}
+        <IconButton icon="pricetag-outline" label="Edit tags for this song" onPress={() => openSongTags(song.id)} />
+      </View>
 
       <ArtworkSlot uri={albumArtUri(song.album_id)} />
       <TrackInfo title={song.title} artist={song.artist} album={song.album} />
@@ -78,21 +84,11 @@ function NowPlayingView({ song, queue }: { song: SongRow; queue: QueueState }) {
  * (task 7): shuffle everything, or any one tag including its subtags.
  */
 function QuickStart() {
-  const db = useSQLiteContext();
   const playQuery = usePlayQuery();
-  const [library, setLibrary] = useState<{ songs: number; tags: TagWithCounts[] } | null>(null);
-
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      Promise.all([countSongs(db), listTagsWithCounts(db, null)]).then(([songs, tags]) => {
-        if (!cancelled) setLibrary({ songs, tags: tags.filter((t) => t.song_count > 0) });
-      });
-      return () => {
-        cancelled = true;
-      };
-    }, [db])
-  );
+  const { data: library } = useLibraryQuery(async (db) => {
+    const [songs, tags] = await Promise.all([countSongs(db), listTagsWithCounts(db, null)]);
+    return { songs, tags: tags.filter((t) => t.song_count > 0) };
+  }, []);
 
   if (!library) return <View style={styles.screen} />;
 
@@ -102,7 +98,7 @@ function QuickStart() {
         <Ionicons name="musical-notes-outline" size={64} color={colors.textFaint} />
         <Text style={styles.title}>No music yet</Text>
         <Text style={styles.body}>Scan your music from the Library tab to get started.</Text>
-        <Button label="Go to Library" onPress={() => router.navigate('/library')} />
+        <Button label="Go to Library" onPress={openLibrary} />
       </View>
     );
   }
@@ -150,10 +146,18 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.lg,
   },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+  },
+  topRowSpacer: {
+    width: touchTarget,
+  },
   source: {
     ...font.label,
     color: colors.textDim,
-    alignSelf: 'stretch',
+    flex: 1,
     textAlign: 'center',
   },
   position: {

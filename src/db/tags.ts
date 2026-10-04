@@ -228,3 +228,103 @@ export async function getTagsForSongs(
   }
   return map;
 }
+
+/**
+ * Direct tags for every present song, in one query.
+ *
+ * `getTagsForSongs` binds one parameter per song, which hits SQLite's
+ * bound-parameter limit on a big enough library; this join has no such limit.
+ */
+export async function listAllSongTags(db: SQLiteDatabase): Promise<Map<number, TagRow[]>> {
+  const rows = await db.getAllAsync<TagRow & { song_id: number }>(
+    `SELECT t.*, st.song_id FROM song_tags st
+     JOIN tags t  ON t.id = st.tag_id
+     JOIN songs s ON s.id = st.song_id AND s.is_missing = 0
+     ORDER BY t.name COLLATE NOCASE`
+  );
+  const map = new Map<number, TagRow[]>();
+  for (const { song_id, ...tag } of rows) {
+    const existing = map.get(song_id);
+    if (existing) existing.push(tag);
+    else map.set(song_id, [tag]);
+  }
+  return map;
+}
+
+/** "asian-pop / kpop" → ["asian-pop", "kpop"]. Blank segments are dropped. */
+export function parseTagPath(input: string): string[] {
+  return input
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Find or create each tag along a path and return the last one's id.
+ *
+ * This is what lets someone type "asian-pop/kpop" to make a nested tag — the
+ * Bear/Obsidian convention — without a separate tree editor. Matching is
+ * case-insensitive, so existing tags are reused rather than duplicated.
+ * `rootParentId` starts the path somewhere other than the top level.
+ */
+export async function ensureTagPath(
+  db: SQLiteDatabase,
+  names: readonly string[],
+  rootParentId: number | null = null
+): Promise<number> {
+  if (names.length === 0) throw new TagError('Tag name cannot be empty.');
+
+  let parentId = rootParentId;
+  for (const name of names) {
+    const existing = await db.getFirstAsync<{ id: number }>(
+      'SELECT id FROM tags WHERE parent_id IS ? AND name = ? COLLATE NOCASE',
+      parentId,
+      name.trim()
+    );
+    parentId = existing ? existing.id : await createTag(db, name, parentId);
+  }
+  return parentId as number;
+}
+
+/**
+ * Tags most recently applied to any song, newest first.
+ *
+ * Someone tagging a run of songs mostly reuses the same handful of tags, so
+ * offering these as one-tap chips is what keeps tagging a song to a single tap.
+ */
+export async function listRecentTags(db: SQLiteDatabase, limit: number): Promise<TagRow[]> {
+  return db.getAllAsync<TagRow>(
+    `SELECT t.* FROM tags t
+     JOIN song_tags st ON st.tag_id = t.id
+     GROUP BY t.id
+     ORDER BY MAX(st.added_at) DESC, t.name COLLATE NOCASE
+     LIMIT ?`,
+    limit
+  );
+}
+
+export interface TagDeletionImpact {
+  /** Descendant tags that would be deleted along with it. */
+  subtags: number;
+  /** Songs that would lose this tag or one of its subtags. The songs themselves stay. */
+  songs: number;
+}
+
+/** What deleting a tag would remove, for an honest confirmation dialog. */
+export async function getTagDeletionImpact(
+  db: SQLiteDatabase,
+  id: number
+): Promise<TagDeletionImpact> {
+  const row = await db.getFirstAsync<TagDeletionImpact>(
+    `WITH RECURSIVE sub(id) AS (
+       SELECT id FROM tags WHERE id = ?
+       UNION ALL
+       SELECT t.id FROM tags t JOIN sub ON t.parent_id = sub.id
+     )
+     SELECT
+       MAX((SELECT COUNT(*) FROM sub) - 1, 0) AS subtags,
+       (SELECT COUNT(DISTINCT song_id) FROM song_tags WHERE tag_id IN (SELECT id FROM sub)) AS songs`,
+    id
+  );
+  return row ?? { subtags: 0, songs: 0 };
+}

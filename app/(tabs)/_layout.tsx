@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 
+import { openManageLibrary } from '@/navigation';
+import { IconButton } from '@/ui/IconButton';
 import { colors } from '@/ui/theme';
 
 export default function TabsLayout() {
@@ -31,6 +33,9 @@ export default function TabsLayout() {
         name="library"
         options={{
           title: 'Library',
+          headerRight: () => (
+            <IconButton icon="settings-outline" label="Manage library" onPress={openManageLibrary} />
+          ),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="pricetags-outline" color={color} size={size} />
           ),

@@ -132,6 +132,13 @@ export async function listSongs(
   );
 }
 
+/** Every present song, by title. The Songs view loads them all and filters in memory. */
+export async function listAllSongs(db: SQLiteDatabase): Promise<SongRow[]> {
+  return db.getAllAsync<SongRow>(
+    'SELECT * FROM songs WHERE is_missing = 0 ORDER BY title COLLATE NOCASE'
+  );
+}
+
 export async function countSongs(db: SQLiteDatabase): Promise<number> {
   const row = await db.getFirstAsync<{ n: number }>(
     'SELECT COUNT(*) AS n FROM songs WHERE is_missing = 0'

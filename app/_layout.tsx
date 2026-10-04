@@ -22,6 +22,9 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="tag/[id]" options={{ title: '' }} />
+            <Stack.Screen name="song/[id]/tags" options={{ presentation: 'modal', title: 'Tags' }} />
+            <Stack.Screen name="library-manage" options={{ title: 'Manage library' }} />
           </Stack>
         </PlayerProvider>
       </SQLiteProvider>
