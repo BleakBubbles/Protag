@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { freshDatabase, insertSong } from './helpers/db.ts';
 import { addTagToSong, createTag } from '../src/db/tags.ts';
+import { artworkCacheKey, isNativeLoadableUrl } from '../src/player/artworkUrls.ts';
 import { queueForQuery } from '../src/player/sources.ts';
 import { MATCH_ALL } from '../src/query/types.ts';
 import { formatCount, formatTime, plural } from '../src/ui/format.ts';
@@ -48,4 +49,22 @@ test('a query becomes a queue whose label reads like the query', async () => {
   assert.equal(parent.label, 'asian-pop');
   assert.deepEqual(parent.ids, [ditto, hypeBoy]);
   db.close();
+});
+
+// ---------------------------------------------------------------- lock-screen artwork
+
+test('only URLs the native side can parse are ever sent to the lock screen', () => {
+  // The bug: a content:// URI rejected the whole lock-screen registration.
+  assert.equal(isNativeLoadableUrl('content://media/external/audio/albumart/7'), false);
+  assert.equal(isNativeLoadableUrl('file:///data/user/0/com.protag.app/cache/art/7.img'), true);
+  assert.equal(isNativeLoadableUrl('https://example.com/cover.jpg'), true);
+  assert.equal(isNativeLoadableUrl(''), false);
+  assert.equal(isNativeLoadableUrl(null), false);
+});
+
+test('artwork is cached per album under a filesystem-safe key', () => {
+  assert.equal(artworkCacheKey('content://media/external/audio/albumart/7'), '7');
+  assert.equal(artworkCacheKey('content://media/external/audio/albumart/12?x=1'), '12');
+  assert.equal(artworkCacheKey('content://media/../weird:name'), 'weirdname');
+  assert.equal(artworkCacheKey('content://'), null, 'no shared fallback key');
 });
