@@ -37,7 +37,7 @@ yarn-error.*
 *.tsbuildinfo
 
 # local, machine-specific Claude Code settings
-.claude/settings.local.json
+.claude/
 
 # local working notes, not part of the project
 NOTES.md
