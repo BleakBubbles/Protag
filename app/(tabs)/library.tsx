@@ -1,4 +1,3 @@
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
@@ -13,22 +12,14 @@ import {
 } from 'react-native';
 
 import { getSetting, setSetting, SettingKey } from '@/db/settings';
-import { countSongs, listSongs } from '@/db/songs';
+import { countSongs } from '@/db/songs';
 import { listTags } from '@/db/tags';
-import type { SongRow } from '@/db/types';
 import { importPlaylistsFrom, type FolderImportSummary } from '@/library/playlistFolder';
 import { pickFolder } from '@/library/saf';
 import { MusicPermissionError, scanLibrary, type ScanProgress, type ScanSummary } from '@/library/scan';
+import { Button } from '@/ui/Button';
+import { formatCount, plural } from '@/ui/format';
 import { colors, font, radius, spacing } from '@/ui/theme';
-
-/** 1234567 -> "1,234,567" without relying on Intl being available in Hermes. */
-function formatCount(n: number): string {
-  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
-function plural(n: number, one: string, many = `${one}s`): string {
-  return `${formatCount(n)} ${n === 1 ? one : many}`;
-}
 
 type ScanState =
   | { kind: 'idle' }
@@ -155,7 +146,6 @@ export default function LibraryScreen() {
         </Pressable>
       )}
 
-      {hasSongs && <PlaybackCheck />}
     </ScrollView>
   );
 }
@@ -282,80 +272,6 @@ function ImportSection({ state }: { state: ImportState }) {
   );
 }
 
-/**
- * TEMPORARY — remove when PlayerProvider lands in task 5.
- *
- * Answers the one open question task 5 depends on: whether expo-audio can play
- * the content:// URIs MediaStore hands back (Android 10+ exposes no file paths).
- */
-function PlaybackCheck() {
-  const db = useSQLiteContext();
-  const player = useAudioPlayer(null);
-  const status = useAudioPlayerStatus(player);
-  const [song, setSong] = useState<SongRow | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const playFirst = useCallback(async () => {
-    setError(null);
-    try {
-      const [first] = await listSongs(db, { limit: 1 });
-      if (!first) return;
-      setSong(first);
-      player.replace({ uri: first.uri });
-      player.play();
-    } catch (e) {
-      setError(String(e));
-    }
-  }, [db, player]);
-
-  return (
-    <View style={[styles.card, styles.debugCard]}>
-      <Text style={styles.cardLabel}>Playback check · temporary</Text>
-      {song && (
-        <Text style={styles.body}>
-          {song.title}
-          {song.artist ? ` — ${song.artist}` : ''}
-          {'\n'}
-          {status.playing ? `Playing · ${Math.floor(status.currentTime)}s` : 'Not playing'}
-        </Text>
-      )}
-      {error && <Text style={styles.error}>{error}</Text>}
-      <View style={styles.row}>
-        <Button label="Play first song" onPress={playFirst} />
-        {status.playing && <Button label="Stop" variant="secondary" onPress={() => player.pause()} />}
-      </View>
-    </View>
-  );
-}
-
-function Button({
-  label,
-  onPress,
-  disabled,
-  variant = 'primary',
-}: {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  variant?: 'primary' | 'secondary';
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        styles.button,
-        variant === 'secondary' && styles.buttonSecondary,
-        (pressed || disabled) && styles.buttonDimmed,
-      ]}
-    >
-      <Text style={[styles.buttonLabel, variant === 'secondary' && styles.buttonLabelSecondary]}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   scroll: {
     flex: 1,
@@ -378,9 +294,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.lg,
     gap: spacing.sm,
-  },
-  debugCard: {
-    borderStyle: 'dashed',
   },
   row: {
     flexDirection: 'row',
@@ -416,27 +329,5 @@ const styles = StyleSheet.create({
     color: colors.accent,
     textAlign: 'center',
     paddingVertical: spacing.sm,
-  },
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignSelf: 'flex-start',
-  },
-  buttonSecondary: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  buttonDimmed: {
-    opacity: 0.6,
-  },
-  buttonLabel: {
-    ...font.label,
-    color: colors.accentText,
-  },
-  buttonLabelSecondary: {
-    color: colors.text,
   },
 });

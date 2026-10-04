@@ -1,7 +1,12 @@
+import type { TextStyle } from 'react-native';
+
 /**
- * A single dark palette. Music players are conventionally dark and a second
- * theme is UI surface area we don't need yet — `app.json` pins
- * `userInterfaceStyle` to "dark" so the system never fights this.
+ * Design tokens — the only place visual values live.
+ *
+ * The visual direction is still open (warm "library" vs neutral dark), so every
+ * component reads from here instead of hardcoding. Re-theming the app means
+ * editing this file, not hunting through screens. `app.json` pins
+ * `userInterfaceStyle` to "dark" so the system never fights this palette.
  */
 export const colors = {
   bg: '#0E0E12',
@@ -39,13 +44,36 @@ export const radius = {
   pill: 999,
 } as const;
 
+/**
+ * Font families. `undefined` means the platform default. Switching to a serif
+ * (say, for the library look) is setting these and loading the font with
+ * expo-font — every text style below picks it up.
+ */
+export const typeface = {
+  display: undefined as string | undefined,
+  body: undefined as string | undefined,
+};
+
 export const font = {
-  title: { fontSize: 22, fontWeight: '700' },
-  heading: { fontSize: 17, fontWeight: '600' },
-  body: { fontSize: 15, fontWeight: '400' },
-  label: { fontSize: 13, fontWeight: '500' },
-  caption: { fontSize: 11, fontWeight: '500' },
+  title: { fontFamily: typeface.display, fontSize: 22, fontWeight: '700' },
+  heading: { fontFamily: typeface.display, fontSize: 17, fontWeight: '600' },
+  body: { fontFamily: typeface.body, fontSize: 15, fontWeight: '400' },
+  label: { fontFamily: typeface.body, fontSize: 13, fontWeight: '500' },
+  caption: { fontFamily: typeface.body, fontSize: 11, fontWeight: '500' },
+  /** Tabular digits so counters and timestamps don't jitter as they change. */
+  numeric: { fontFamily: typeface.body, fontSize: 12, fontWeight: '500', fontVariant: ['tabular-nums'] },
+} satisfies Record<string, TextStyle>;
+
+export const iconSize = {
+  sm: 20,
+  md: 26,
+  lg: 34,
+  /** The main play/pause button. */
+  hero: 64,
 } as const;
+
+/** Minimum touch target, per platform accessibility guidance. */
+export const touchTarget = 44;
 
 /** Deterministic tag colour so a tag looks the same everywhere without storing one. */
 const TAG_COLORS = [
