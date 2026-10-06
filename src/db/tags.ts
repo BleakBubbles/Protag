@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { TagRow, TagWithCounts } from './types';
+import type { SongRow, TagRow, TagWithCounts } from './types';
 
 /** Thrown for tag operations the user could plausibly trigger, so callers can show the message. */
 export class TagError extends Error {}
@@ -327,4 +327,51 @@ export async function getTagDeletionImpact(
     id
   );
   return row ?? { subtags: 0, songs: 0 };
+}
+
+/** Songs carrying this exact tag — not via a subtag. What the add-songs picker toggles. */
+export async function listDirectSongIds(db: SQLiteDatabase, tagId: number): Promise<number[]> {
+  const rows = await db.getAllAsync<{ song_id: number }>(
+    'SELECT song_id FROM song_tags WHERE tag_id = ?',
+    tagId
+  );
+  return rows.map((r) => r.song_id);
+}
+
+/**
+ * Songs likely to belong in a tag: other songs by artists already in it,
+ * strongest-represented artist first.
+ *
+ * If a tag holds three NewJeans songs, the rest of your NewJeans probably fits
+ * too — the user's own tagging is the signal, no model involved. Songs already
+ * under the tag (including via subtags) are never suggested.
+ */
+export async function suggestSongsForTag(
+  db: SQLiteDatabase,
+  tagId: number,
+  limit: number
+): Promise<SongRow[]> {
+  return db.getAllAsync<SongRow>(
+    `WITH RECURSIVE sub(id) AS (
+       SELECT id FROM tags WHERE id = ?
+       UNION ALL
+       SELECT t.id FROM tags t JOIN sub ON t.parent_id = sub.id
+     ),
+     members AS (
+       SELECT DISTINCT song_id AS id FROM song_tags WHERE tag_id IN (SELECT id FROM sub)
+     ),
+     artists AS (
+       SELECT s.artist AS artist, COUNT(*) AS weight
+       FROM songs s JOIN members m ON m.id = s.id
+       WHERE s.artist IS NOT NULL
+       GROUP BY s.artist COLLATE NOCASE
+     )
+     SELECT s.* FROM songs s
+     JOIN artists a ON a.artist = s.artist COLLATE NOCASE
+     WHERE s.is_missing = 0 AND s.id NOT IN (SELECT id FROM members)
+     ORDER BY a.weight DESC, s.artist COLLATE NOCASE, s.title COLLATE NOCASE
+     LIMIT ?`,
+    tagId,
+    limit
+  );
 }

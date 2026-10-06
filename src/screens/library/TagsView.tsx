@@ -8,6 +8,7 @@ import { usePlaylistImport } from '../../library/usePlaylistImport';
 import { openTag } from '../../navigation';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
+import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
 import { ImportPrompt, ImportStatus } from '../../ui/library/ImportCards';
 import { TAG_ROW_HEIGHT, TagRow } from '../../ui/library/TagRow';
@@ -20,10 +21,14 @@ export function TagsView() {
   const { data: tags } = useLibraryQuery((db) => listTagsWithCounts(db, null), []);
   const imports = usePlaylistImport();
   const [creating, setCreating] = useState(false);
+  const { getItemLayout, onHeaderLayout } = useFixedRowLayout(TAG_ROW_HEIGHT);
 
+  // Opens the new tag straight away: the next step is almost always adding songs
+  // to it, and an empty tag's screen leads with exactly that.
   const createTag = async (input: string) => {
-    await ensureTagPath(db, parseTagPath(input));
+    const id = await ensureTagPath(db, parseTagPath(input));
     notifyLibraryChanged();
+    openTag(id);
   };
 
   return (
@@ -31,7 +36,7 @@ export function TagsView() {
       <FlatList
         data={tags ?? []}
         keyExtractor={(tag) => String(tag.id)}
-        getItemLayout={(_, index) => ({ length: TAG_ROW_HEIGHT, offset: TAG_ROW_HEIGHT * index, index })}
+        getItemLayout={getItemLayout}
         renderItem={({ item }) => (
           <TagRow
             name={item.name}
@@ -41,7 +46,7 @@ export function TagsView() {
           />
         )}
         ListHeaderComponent={
-          <View style={styles.header}>
+          <View style={styles.header} onLayout={onHeaderLayout}>
             <ImportStatus state={imports.state} />
             <Button label="New tag" variant="secondary" onPress={() => setCreating(true)} />
           </View>

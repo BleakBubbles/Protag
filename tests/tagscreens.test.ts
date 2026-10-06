@@ -8,9 +8,11 @@ import {
   ensureTagPath,
   getTagDeletionImpact,
   listAllSongTags,
+  listDirectSongIds,
   listRecentTags,
   listTags,
   parseTagPath,
+  suggestSongsForTag,
 } from '../src/db/tags.ts';
 import { matchesQuery, searchKey } from '../src/library/search.ts';
 import { buildTagIndex } from '../src/library/tagTree.ts';
@@ -157,4 +159,49 @@ test('search works on CJK titles', () => {
   const key = searchKey(['小幸运', '田馥甄', null]);
   assert.ok(matchesQuery(key, '幸运'));
   assert.ok(matchesQuery(key, '田馥甄'));
+});
+
+// ---------------------------------------------------------------- add-songs picker
+
+test('direct song ids exclude songs that only have a subtag', async () => {
+  const db = await freshDatabase();
+  const kpop = await createTag(db as never, 'kpop', null);
+  const seoul = await createTag(db as never, 'seoul', kpop);
+  const direct = await insertSong(db, 'Direct');
+  const viaChild = await insertSong(db, 'ViaChild');
+  await addTagToSong(db as never, direct, kpop);
+  await addTagToSong(db as never, viaChild, seoul);
+
+  assert.deepEqual(await listDirectSongIds(db as never, kpop), [direct]);
+  db.close();
+});
+
+test('suggestions are other songs by artists already in the tag, strongest first', async () => {
+  const db = await freshDatabase();
+  const kpop = await createTag(db as never, 'kpop', null);
+  const seoul = await createTag(db as never, 'seoul', kpop);
+
+  // In the tag: two NewJeans (one via a subtag), one IVE.
+  await addTagToSong(db as never, await insertSong(db, 'Ditto', { artist: 'NewJeans' }), kpop);
+  await addTagToSong(db as never, await insertSong(db, 'OMG', { artist: 'NewJeans' }), seoul);
+  await addTagToSong(db as never, await insertSong(db, 'Love Dive', { artist: 'IVE' }), kpop);
+
+  // Not yet tagged.
+  await insertSong(db, 'Kitsch', { artist: 'ive' }); // artist case differs
+  await insertSong(db, 'Hype Boy', { artist: 'NewJeans' });
+  await insertSong(db, 'Super Shy', { artist: 'NewJeans' });
+  await insertSong(db, 'Lemon', { artist: 'Kenshi Yonezu' }); // unrelated artist
+  await insertSong(db, 'Gone', { artist: 'NewJeans', missing: true }); // file missing
+
+  const titles = (await suggestSongsForTag(db as never, kpop, 10)).map((s) => s.title);
+  assert.deepEqual(titles, ['Hype Boy', 'Super Shy', 'Kitsch'], 'NewJeans (2 in tag) before IVE (1)');
+  db.close();
+});
+
+test('a tag with no songs has no suggestions', async () => {
+  const db = await freshDatabase();
+  const empty = await createTag(db as never, 'empty', null);
+  await insertSong(db, 'Anything', { artist: 'Someone' });
+  assert.deepEqual(await suggestSongsForTag(db as never, empty, 10), []);
+  db.close();
 });

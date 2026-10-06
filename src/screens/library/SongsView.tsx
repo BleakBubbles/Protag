@@ -10,6 +10,7 @@ import { openSongTags } from '../../navigation';
 import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
 import { EmptyState } from '../../ui/EmptyState';
 import { plural } from '../../ui/format';
+import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { SearchField } from '../../ui/SearchField';
@@ -24,6 +25,7 @@ export function SongsView() {
     return { songs, tags };
   }, []);
   const [query, setQuery] = useState('');
+  const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
   const { playQueue } = usePlayerActions();
   const { song: current, queue } = useNowPlaying();
 
@@ -56,7 +58,7 @@ export function SongsView() {
     <FlatList
       data={visible}
       keyExtractor={(song) => String(song.id)}
-      getItemLayout={(_, index) => ({ length: SONG_ROW_HEIGHT, offset: SONG_ROW_HEIGHT * index, index })}
+      getItemLayout={getItemLayout}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       renderItem={({ item }) => (
@@ -72,7 +74,7 @@ export function SongsView() {
         />
       )}
       ListHeaderComponent={
-        <View style={styles.header}>
+        <View style={styles.header} onLayout={onHeaderLayout}>
           <SearchField
             value={query}
             onChangeText={setQuery}

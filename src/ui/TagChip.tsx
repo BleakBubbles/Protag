@@ -14,15 +14,19 @@ export interface TagChipProps {
   disabled?: boolean;
   /** Small, display-only variant for dense rows like the song list. */
   compact?: boolean;
+  /**
+   * Tapping creates this tag rather than applying an existing one. Shown dashed
+   * with a plus, so a suggestion never silently creates something new.
+   */
+  isNew?: boolean;
 }
 
-export function TagChip({ name, count, onPress, onRemove, disabled, compact }: TagChipProps) {
+export function TagChip({ name, count, onPress, onRemove, disabled, compact, isNew }: TagChipProps) {
   const handler = onRemove ?? onPress;
-  const label = onRemove
-    ? `Remove ${name}`
-    : count === undefined
-      ? name
-      : `${name}, ${count} songs`;
+  let label = name;
+  if (onRemove) label = `Remove ${name}`;
+  else if (isNew) label = `Create tag ${name}`;
+  else if (count !== undefined) label = `${name}, ${count} songs`;
 
   return (
     <Pressable
@@ -33,10 +37,15 @@ export function TagChip({ name, count, onPress, onRemove, disabled, compact }: T
       style={({ pressed }) => [
         styles.chip,
         compact && styles.compact,
+        isNew && styles.isNew,
         (pressed || disabled) && styles.dimmed,
       ]}
     >
-      <View style={[styles.dot, compact && styles.dotCompact, { backgroundColor: tagColor(name) }]} />
+      {isNew ? (
+        <Ionicons name="add" size={iconSize.sm - 4} color={colors.textDim} />
+      ) : (
+        <View style={[styles.dot, compact && styles.dotCompact, { backgroundColor: tagColor(name) }]} />
+      )}
       <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={1}>
         {name}
       </Text>
@@ -65,6 +74,10 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingHorizontal: spacing.sm,
     borderWidth: 0,
+  },
+  isNew: {
+    backgroundColor: 'transparent',
+    borderStyle: 'dashed',
   },
   dimmed: {
     opacity: 0.5,

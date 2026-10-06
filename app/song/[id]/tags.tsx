@@ -104,12 +104,17 @@ export default function SongTagsScreen() {
   if (!data) return <View style={styles.screen} />;
   const { song, applied, index, recent } = data;
 
-  // Genre is only ever a *suggestion* — tapping it is what applies it.
-  const genreSuggestion =
-    song?.genre && !applied.some((t) => t.name.toLowerCase() === song.genre!.toLowerCase())
-      ? song.genre
-      : null;
-  const recentSuggestions = recent.filter((t) => !appliedIds.has(t.id));
+  // Genre is only ever a *suggestion* — tapping it is what applies it. Tapping
+  // reuses a top-level tag of the same name if there is one (that's where
+  // ensureTagPath looks), otherwise creates it — and the chip says which.
+  const genre = song?.genre ?? null;
+  const genreTag = genre
+    ? index.children(null).find((t) => t.name.toLowerCase() === genre.toLowerCase())
+    : undefined;
+  const showGenre = genre !== null && !(genreTag && appliedIds.has(genreTag.id));
+  const recentSuggestions = recent.filter(
+    (t) => !appliedIds.has(t.id) && t.id !== genreTag?.id // don't offer the same tag twice
+  );
 
   return (
     <View style={styles.screen}>
@@ -169,9 +174,13 @@ export default function SongTagsScreen() {
           </View>
         ) : (
           <>
-            {genreSuggestion && (
-              <Section label="Suggested from genre">
-                <TagChip name={genreSuggestion} onPress={() => addPath([genreSuggestion])} />
+            {showGenre && genre && (
+              <Section label={genreTag ? "From this song's genre" : "New tag from this song's genre"}>
+                {genreTag ? (
+                  <TagChip name={genreTag.name} onPress={() => add(genreTag.id)} />
+                ) : (
+                  <TagChip name={genre} isNew onPress={() => addPath([genre])} />
+                )}
               </Section>
             )}
             {recentSuggestions.length > 0 && (

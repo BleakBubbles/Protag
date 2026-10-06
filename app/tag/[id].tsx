@@ -18,7 +18,7 @@ import {
 import type { TagRow as Tag } from '@/db/types';
 import { albumArtUri } from '@/library/assets';
 import { buildTagIndex } from '@/library/tagTree';
-import { openSongTags, openTag } from '@/navigation';
+import { openAddSongs, openSongTags, openTag } from '@/navigation';
 import { useNowPlaying, usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
 import { findSongs } from '@/query/run';
 import type { TagQuery } from '@/query/types';
@@ -26,6 +26,7 @@ import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
 import { plural } from '@/ui/format';
+import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { IconButton } from '@/ui/IconButton';
 import { SONG_ROW_HEIGHT, SongRow } from '@/ui/library/SongRow';
@@ -46,6 +47,7 @@ export default function TagScreen() {
   const { playQueue } = usePlayerActions();
   const { song: current, queue } = useNowPlaying();
   const [dialog, setDialog] = useState<Dialog>(null);
+  const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
 
   const { data } = useLibraryQuery(
     async (db) => {
@@ -155,7 +157,7 @@ export default function TagScreen() {
       <FlatList
         data={data?.songs ?? []}
         keyExtractor={(song) => String(song.id)}
-        getItemLayout={(_, index) => ({ length: SONG_ROW_HEIGHT, offset: SONG_ROW_HEIGHT * index, index })}
+        getItemLayout={getItemLayout}
         renderItem={({ item }) => (
           <SongRow
             id={item.id}
@@ -169,7 +171,7 @@ export default function TagScreen() {
           />
         )}
         ListHeaderComponent={
-          <View style={styles.header}>
+          <View style={styles.header} onLayout={onHeaderLayout}>
             <View style={styles.block}>
               {ancestors.length > 0 && (
                 <View style={styles.breadcrumb}>
@@ -184,11 +186,16 @@ export default function TagScreen() {
                   ))}
                 </View>
               )}
-              <Button
-                label={songCount > 0 ? `Shuffle · ${plural(songCount, 'song')}` : 'No songs to shuffle'}
-                disabled={songCount === 0}
-                onPress={() => playQuery({ type: 'tag', tagId: id, includeDescendants: true })}
-              />
+              {/* One primary action: shuffle once there's something to play; until
+                  then, filling the tag is the obvious next step. */}
+              {songCount > 0 ? (
+                <Button
+                  label={`Shuffle · ${plural(songCount, 'song')}`}
+                  onPress={() => playQuery({ type: 'tag', tagId: id, includeDescendants: true })}
+                />
+              ) : (
+                <Button label="Add songs" onPress={() => openAddSongs(id)} />
+              )}
               <Text style={styles.sectionLabel}>Subtags</Text>
             </View>
             {/* Full-width rows, like the Tags view — outside the padded blocks. */}
@@ -203,16 +210,20 @@ export default function TagScreen() {
             ))}
             <View style={styles.block}>
               <Button label="Add subtag" variant="secondary" onPress={() => setDialog('add-subtag')} />
-              <Text style={styles.sectionLabel}>Songs</Text>
+              <View style={styles.sectionRow}>
+                {/* The row carries the top margin, so the label and its action line up. */}
+                <Text style={[styles.sectionLabel, styles.inRow]}>Songs</Text>
+                {songCount > 0 && (
+                  <Pressable onPress={() => openAddSongs(id)} hitSlop={12} accessibilityRole="button">
+                    <Text style={styles.sectionAction}>+ Add songs</Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
           </View>
         }
         ListEmptyComponent={
-          data ? (
-            <Text style={styles.emptySongs}>
-              No songs yet. Tag one from the Songs tab, or from the player.
-            </Text>
-          ) : null
+          data ? <Text style={styles.emptySongs}>Nothing here yet.</Text> : null
         }
       />
 
@@ -281,6 +292,19 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginTop: spacing.sm,
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+  },
+  inRow: {
+    marginTop: 0,
+  },
+  sectionAction: {
+    ...font.label,
+    color: colors.accent,
   },
   emptySongs: {
     ...font.body,
