@@ -3,29 +3,35 @@ import type { TextStyle } from 'react-native';
 /**
  * Design tokens — the only place visual values live.
  *
- * The visual direction is still open (warm "library" vs neutral dark), so every
- * component reads from here instead of hardcoding. Re-theming the app means
- * editing this file, not hunting through screens. `app.json` pins
+ * Every component reads from here instead of hardcoding, so re-theming the app
+ * means editing this file, not hunting through screens. `app.json` pins
  * `userInterfaceStyle` to "dark" so the system never fights this palette.
+ *
+ * Warm dark: neutrals with a faint brown tint, so the UI feels considered but
+ * still recedes behind album art. Keep the tint barely visible — more and the
+ * beige starts competing with the artwork. The accent is a light teal; the deep
+ * teal it comes from is too dark to read on a dark background, and is saved for
+ * a future light theme.
  */
 export const colors = {
-  bg: '#0E0E12',
-  surface: '#17171F',
-  surfaceAlt: '#1F1F2A',
-  border: '#2A2A38',
+  bg: '#151413',
+  surface: '#1E1D1B',
+  surfaceAlt: '#272624',
+  border: '#34322F',
 
-  text: '#F2F2F7',
-  textDim: '#9A9AAE',
-  textFaint: '#6A6A80',
+  text: '#EFEDE9',
+  textDim: '#A3A09A',
+  textFaint: '#75726C',
 
-  accent: '#7C6BF5',
-  accentDim: '#4A3FA8',
-  accentText: '#FFFFFF',
+  accent: '#6FB3A6',
+  accentDim: '#3E6F67',
+  /** Dark text, not white: white on light teal is too low-contrast. */
+  accentText: '#10302B',
 
-  include: '#3DC98A',
-  exclude: '#F2565B',
+  include: '#8FB57E',
+  exclude: '#D9706A',
 
-  danger: '#F2565B',
+  danger: '#D9706A',
 } as const;
 
 export const spacing = {
@@ -125,16 +131,19 @@ export const iconSize = {
 /** Minimum touch target, per platform accessibility guidance. */
 export const touchTarget = 44;
 
-/** Deterministic tag colour so a tag looks the same everywhere without storing one. */
+/**
+ * Deterministic tag colour so a tag looks the same everywhere without storing one.
+ * Earthy and mid-saturation to sit on the warm neutrals; bright hues clash with them.
+ */
 const TAG_COLORS = [
-  '#7C6BF5',
-  '#3DC98A',
-  '#E8A33D',
-  '#E05C8B',
-  '#3DB4C9',
-  '#B06BF5',
-  '#C9873D',
-  '#5C8BE0',
+  '#6FB3A6', // teal
+  '#C99A5B', // ochre
+  '#C4848E', // dusty rose
+  '#8FB57E', // sage
+  '#7F9CC4', // slate blue
+  '#A68BB8', // plum
+  '#C9785A', // terracotta
+  '#B8A889', // sand
 ];
 
 export function tagColor(seed: string): string {
