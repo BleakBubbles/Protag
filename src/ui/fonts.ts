@@ -1,7 +1,6 @@
 // Per-weight imports on purpose: the package's root index requires all eight
 // Lora files (every weight plus italics), and Metro bundles every font file
-// that's required — ~1.1 MB instead of the ~400 KB actually used.
-import { Lora_500Medium } from '@expo-google-fonts/lora/500Medium';
+// that's required — ~1.1 MB instead of the ~270 KB actually used.
 import { Lora_600SemiBold } from '@expo-google-fonts/lora/600SemiBold';
 import { Lora_700Bold } from '@expo-google-fonts/lora/700Bold';
 
@@ -15,7 +14,6 @@ import { Lora_700Bold } from '@expo-google-fonts/lora/700Bold';
  * the wait at startup.
  */
 export const fontAssets = {
-  Lora_500Medium,
   Lora_600SemiBold,
   Lora_700Bold,
 };

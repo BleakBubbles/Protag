@@ -57,19 +57,23 @@ type Typeface =
   | { kind: 'custom'; families: Partial<Record<Weight, string>> };
 
 /**
- * Serif for display — titles, headings, things the user named — and the system
- * sans for the dense layer: captions, buttons, chips, counts, timestamps.
+ * Serif for display, system sans for everything else.
+ *
+ * **The rule: Lora only at 17 px and up.** At display sizes its serifs and
+ * stroke contrast read as character; below that they read as noise — worse
+ * light-on-dark and in dense lists, where dozens of small titles stack up. So
+ * song titles and tag names in lists are sans too, despite being "content".
  *
  * The sans is Android's own on purpose. Lora has no CJK glyphs, so Chinese text
- * falls back to Noto Sans CJK, which was drawn to sit beside Roboto. Keeping the
- * dense layer system-sans keeps it uniform whatever language a title is in.
+ * falls back to Noto Sans CJK, which was drawn to sit beside Roboto. Keeping
+ * lists system-sans keeps them uniform whatever language a title is in.
  *
  * Changing a custom family here means changing `fontAssets` in fonts.ts to load it.
  */
 export const typefaces = {
   display: {
     kind: 'custom',
-    families: { '500': 'Lora_500Medium', '600': 'Lora_600SemiBold', '700': 'Lora_700Bold' },
+    families: { '600': 'Lora_600SemiBold', '700': 'Lora_700Bold' },
   },
   body: { kind: 'system' },
 } satisfies Record<string, Typeface>;
@@ -82,12 +86,6 @@ function face(typeface: Typeface, weight: Weight): TextStyle {
 }
 
 /**
- * Song titles in lists are the one open call: serif feels more bookish, but CJK
- * titles mix fallback sans with Lora punctuation and Latin. Flip to compare.
- */
-const SONG_TITLES_IN_SERIF = true;
-
-/**
  * Every text style sets an explicit lineHeight. Without one, Android sizes each
  * line from the font's own metrics, so scripts that render in a fallback font
  * (Chinese, Japanese, Korean) come out taller than Latin text at the same size.
@@ -95,12 +93,14 @@ const SONG_TITLES_IN_SERIF = true;
 export const font = {
   title: { ...face(typefaces.display, '700'), fontSize: 22, lineHeight: 28 },
   heading: { ...face(typefaces.display, '600'), fontSize: 17, lineHeight: 22 },
-  /** Things the user named — tags. */
-  name: { ...face(typefaces.display, '600'), fontSize: 15, lineHeight: 20 },
-  /** Song titles in lists. See SONG_TITLES_IN_SERIF. */
-  listTitle: SONG_TITLES_IN_SERIF
-    ? { ...face(typefaces.display, '500'), fontSize: 15, lineHeight: 20 }
-    : { ...face(typefaces.body, '400'), fontSize: 15, lineHeight: 20 },
+  // `name` and `listTitle` are identical today but separate on purpose: they're
+  // different roles, and either may diverge as the design settles. Medium, not
+  // semibold — Android's system font has a true Medium but no true SemiBold, so
+  // '600' gets rounded to Medium or Bold depending on the phone.
+  /** Things the user named — tags in lists. */
+  name: { ...face(typefaces.body, '500'), fontSize: 15, lineHeight: 20 },
+  /** Song titles in lists. Medium, to stand apart from the regular artist line. */
+  listTitle: { ...face(typefaces.body, '500'), fontSize: 15, lineHeight: 20 },
   body: { ...face(typefaces.body, '400'), fontSize: 15, lineHeight: 20 },
   label: { ...face(typefaces.body, '500'), fontSize: 13, lineHeight: 18 },
   caption: { ...face(typefaces.body, '500'), fontSize: 11, lineHeight: 14 },
