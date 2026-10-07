@@ -3,7 +3,7 @@ import { Tabs } from 'expo-router';
 
 import { openManageLibrary } from '@/navigation';
 import { IconButton } from '@/ui/IconButton';
-import { colors } from '@/ui/theme';
+import { colors, headerTitleStyle } from '@/ui/theme';
 
 export default function TabsLayout() {
   return (
@@ -11,6 +11,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: colors.bg },
         headerTintColor: colors.text,
+        headerTitleStyle,
         sceneStyle: { backgroundColor: colors.bg },
         tabBarStyle: {
           backgroundColor: colors.surface,

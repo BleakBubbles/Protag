@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   title: {
-    ...font.body,
+    ...font.listTitle,
     color: colors.text,
     includeFontPadding: false,
   },

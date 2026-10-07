@@ -60,9 +60,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   name: {
-    ...font.body,
+    ...font.name,
     color: colors.text,
-    fontWeight: '600',
   },
   meta: {
     ...font.caption,

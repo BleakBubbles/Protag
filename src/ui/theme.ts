@@ -44,15 +44,48 @@ export const radius = {
   pill: 999,
 } as const;
 
+type Weight = '400' | '500' | '600' | '700';
+
 /**
- * Font families. `undefined` means the platform default. Switching to a serif
- * (say, for the library look) is setting these and loading the font with
- * expo-font — every text style below picks it up.
+ * A typeface as React Native needs it. A system font takes a `fontWeight`; a
+ * custom font registers every weight as its own family (`Lora_700Bold`), and
+ * its weight is pinned to 'normal' — any other weight, set directly or inherited
+ * from a parent Text, makes Android draw a synthetic bold over the real file.
  */
-export const typeface = {
-  display: undefined as string | undefined,
-  body: undefined as string | undefined,
-};
+type Typeface =
+  | { kind: 'system' }
+  | { kind: 'custom'; families: Partial<Record<Weight, string>> };
+
+/**
+ * Serif for display — titles, headings, things the user named — and the system
+ * sans for the dense layer: captions, buttons, chips, counts, timestamps.
+ *
+ * The sans is Android's own on purpose. Lora has no CJK glyphs, so Chinese text
+ * falls back to Noto Sans CJK, which was drawn to sit beside Roboto. Keeping the
+ * dense layer system-sans keeps it uniform whatever language a title is in.
+ *
+ * Changing a custom family here means changing `fontAssets` in fonts.ts to load it.
+ */
+export const typefaces = {
+  display: {
+    kind: 'custom',
+    families: { '500': 'Lora_500Medium', '600': 'Lora_600SemiBold', '700': 'Lora_700Bold' },
+  },
+  body: { kind: 'system' },
+} satisfies Record<string, Typeface>;
+
+function face(typeface: Typeface, weight: Weight): TextStyle {
+  if (typeface.kind === 'system') return { fontWeight: weight };
+  const fontFamily = typeface.families[weight];
+  if (!fontFamily) throw new Error(`No ${weight} weight is loaded for this typeface`);
+  return { fontFamily, fontWeight: 'normal' };
+}
+
+/**
+ * Song titles in lists are the one open call: serif feels more bookish, but CJK
+ * titles mix fallback sans with Lora punctuation and Latin. Flip to compare.
+ */
+const SONG_TITLES_IN_SERIF = true;
 
 /**
  * Every text style sets an explicit lineHeight. Without one, Android sizes each
@@ -60,14 +93,26 @@ export const typeface = {
  * (Chinese, Japanese, Korean) come out taller than Latin text at the same size.
  */
 export const font = {
-  title: { fontFamily: typeface.display, fontSize: 22, lineHeight: 28, fontWeight: '700' },
-  heading: { fontFamily: typeface.display, fontSize: 17, lineHeight: 22, fontWeight: '600' },
-  body: { fontFamily: typeface.body, fontSize: 15, lineHeight: 20, fontWeight: '400' },
-  label: { fontFamily: typeface.body, fontSize: 13, lineHeight: 18, fontWeight: '500' },
-  caption: { fontFamily: typeface.body, fontSize: 11, lineHeight: 14, fontWeight: '500' },
+  title: { ...face(typefaces.display, '700'), fontSize: 22, lineHeight: 28 },
+  heading: { ...face(typefaces.display, '600'), fontSize: 17, lineHeight: 22 },
+  /** Things the user named — tags. */
+  name: { ...face(typefaces.display, '600'), fontSize: 15, lineHeight: 20 },
+  /** Song titles in lists. See SONG_TITLES_IN_SERIF. */
+  listTitle: SONG_TITLES_IN_SERIF
+    ? { ...face(typefaces.display, '500'), fontSize: 15, lineHeight: 20 }
+    : { ...face(typefaces.body, '400'), fontSize: 15, lineHeight: 20 },
+  body: { ...face(typefaces.body, '400'), fontSize: 15, lineHeight: 20 },
+  label: { ...face(typefaces.body, '500'), fontSize: 13, lineHeight: 18 },
+  caption: { ...face(typefaces.body, '500'), fontSize: 11, lineHeight: 14 },
   /** Tabular digits so counters and timestamps don't jitter as they change. */
-  numeric: { fontFamily: typeface.body, fontSize: 12, lineHeight: 16, fontWeight: '500', fontVariant: ['tabular-nums'] },
+  numeric: { ...face(typefaces.body, '500'), fontSize: 12, lineHeight: 16, fontVariant: ['tabular-nums'] },
 } satisfies Record<string, TextStyle>;
+
+/** Navigator header titles, in the display face. */
+export const headerTitleStyle = {
+  fontFamily: font.heading.fontFamily,
+  fontWeight: font.heading.fontWeight,
+};
 
 export const iconSize = {
   sm: 20,
