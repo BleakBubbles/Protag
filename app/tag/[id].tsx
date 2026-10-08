@@ -239,9 +239,13 @@ export default function TagScreen() {
                 {/* The row carries the top margin, so the label and its action line up. */}
                 <Text style={[styles.sectionLabel, styles.inRow]}>Songs</Text>
                 {songCount > 0 && (
-                  <Pressable onPress={() => openAddSongs(id)} hitSlop={12} accessibilityRole="button">
-                    <Text style={styles.sectionAction}>+ Add songs</Text>
-                  </Pressable>
+                  <Button
+                    label="Add songs"
+                    icon="add"
+                    variant="tonal"
+                    size="small"
+                    onPress={() => openAddSongs(id)}
+                  />
                 )}
               </View>
             </View>
@@ -367,9 +371,5 @@ const styles = StyleSheet.create({
   },
   inRow: {
     marginTop: 0,
-  },
-  sectionAction: {
-    ...font.label,
-    color: colors.accentFg,
   },
 });

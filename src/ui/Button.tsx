@@ -19,8 +19,12 @@ export interface ButtonProps {
   variant?: ButtonVariant;
   /** Shown before the label. */
   icon?: IconName;
+  /** `small` fits beside a section heading; its touch area still meets the minimum. */
+  size?: 'regular' | 'small';
   style?: StyleProp<ViewStyle>;
 }
+
+const SMALL_HEIGHT = 32;
 
 const LABEL_COLOR: Record<ButtonVariant, string> = {
   primary: colors.onAccent,
@@ -28,7 +32,15 @@ const LABEL_COLOR: Record<ButtonVariant, string> = {
   secondary: colors.text,
 };
 
-export function Button({ label, onPress, disabled, variant = 'primary', icon, style }: ButtonProps) {
+export function Button({
+  label,
+  onPress,
+  disabled,
+  variant = 'primary',
+  icon,
+  size = 'regular',
+  style,
+}: ButtonProps) {
   const color = LABEL_COLOR[variant];
   return (
     <Pressable
@@ -36,15 +48,17 @@ export function Button({ label, onPress, disabled, variant = 'primary', icon, st
       disabled={disabled}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
+      hitSlop={size === 'small' ? (touchTarget - SMALL_HEIGHT) / 2 : undefined}
       style={({ pressed }) => [
         styles.button,
         variant === 'tonal' && styles.tonal,
         variant === 'secondary' && styles.secondary,
+        size === 'small' && styles.small,
         (pressed || disabled) && styles.dimmed,
         style,
       ]}
     >
-      {icon && <Ionicons name={icon} size={iconSize.sm} color={color} />}
+      {icon && <Ionicons name={icon} size={size === 'small' ? iconSize.sm - 4 : iconSize.sm} color={color} />}
       <Text style={[styles.label, { color }]}>{label}</Text>
     </Pressable>
   );
@@ -71,6 +85,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  small: {
+    minHeight: SMALL_HEIGHT,
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
   },
   dimmed: {
     opacity: 0.6,
