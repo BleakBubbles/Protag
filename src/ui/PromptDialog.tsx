@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button } from './Button';
@@ -33,6 +33,7 @@ export function PromptDialog({
   const [value, setValue] = useState(initialValue);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   // Reset each time it opens.
   useEffect(() => {
@@ -56,7 +57,16 @@ export function PromptDialog({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      // Not `autoFocus`: on Android that focuses the field before the dialog's
+      // window is ready, so the keyboard doesn't open. Focusing once it's shown
+      // does; the short wait covers the fade-in on slower phones.
+      onShow={() => setTimeout(() => inputRef.current?.focus(), 50)}
+    >
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cancel" />
       {/* Sits in the upper part of the screen so the keyboard never covers it. */}
       <View style={styles.positioner} pointerEvents="box-none">
@@ -64,6 +74,7 @@ export function PromptDialog({
           <Text style={styles.title}>{title}</Text>
           {message ? <Text style={styles.message}>{message}</Text> : null}
           <TextInput
+            ref={inputRef}
             value={value}
             onChangeText={(text) => {
               setValue(text);
@@ -72,7 +83,6 @@ export function PromptDialog({
             placeholder={placeholder}
             placeholderTextColor={colors.textFaint}
             selectionColor={colors.accentFg}
-            autoFocus
             autoCorrect={false}
             autoCapitalize="none"
             returnKeyType="done"
