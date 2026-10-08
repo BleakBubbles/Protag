@@ -10,8 +10,10 @@ import {
   listTagsWithCounts,
   renameTag,
   reparentTag,
+  setTagColor,
   TagError,
 } from '../src/db/tags.ts';
+import { nextTagColor, TAG_COLOR_CYCLE } from '../src/db/tagColors.ts';
 
 test('a tag cannot be moved inside its own subtree', async () => {
   const db = await freshDatabase();
@@ -147,4 +149,27 @@ test('getTagPath returns the breadcrumb root-first', async () => {
     ['asian-pop', 'kpop', 'seoul']
   );
   db.close();
+});
+
+test('new tags cycle through the palette, carrying on after the newest tag', async () => {
+  const db = await freshDatabase();
+  const first = await createTag(db as never, 'driving', null);
+  const second = await createTag(db as never, 'kpop', null);
+  await setTagColor(db as never, second, 'red');
+  const third = await createTag(db as never, 'chill', first);
+
+  const colorOf = async (id: number) =>
+    (await db.getFirstAsync<{ color: string }>('SELECT color FROM tags WHERE id = ?', id))!.color;
+  assert.equal(await colorOf(first), TAG_COLOR_CYCLE[0]);
+  assert.equal(await colorOf(second), 'red', 'a picked colour sticks');
+  assert.equal(await colorOf(third), nextTagColor('red'));
+  db.close();
+});
+
+test('the colour cycle wraps around and skips gray', () => {
+  const last = TAG_COLOR_CYCLE[TAG_COLOR_CYCLE.length - 1];
+  assert.equal(nextTagColor(last), TAG_COLOR_CYCLE[0]);
+  assert.equal(nextTagColor('gray'), TAG_COLOR_CYCLE[0]);
+  assert.equal(nextTagColor(null), TAG_COLOR_CYCLE[0]);
+  assert.ok(!TAG_COLOR_CYCLE.includes('gray'));
 });

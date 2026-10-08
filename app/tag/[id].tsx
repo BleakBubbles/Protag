@@ -14,6 +14,7 @@ import {
   parseTagPath,
   renameTag,
   reparentTag,
+  setTagColor,
 } from '@/db/tags';
 import type { TagRow as Tag } from '@/db/types';
 import { albumArtUri } from '@/library/assets';
@@ -24,6 +25,7 @@ import { findSongs } from '@/query/run';
 import type { TagQuery } from '@/query/types';
 import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
+import { ColorSheet } from '@/ui/ColorSheet';
 import { EmptyState } from '@/ui/EmptyState';
 import { plural } from '@/ui/format';
 import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
@@ -36,7 +38,7 @@ import { colors, font, spacing } from '@/ui/theme';
 
 const NO_TAGS: readonly Tag[] = [];
 
-type Dialog = 'menu' | 'rename' | 'move' | 'add-subtag' | null;
+type Dialog = 'menu' | 'rename' | 'color' | 'move' | 'add-subtag' | null;
 
 /** One tag: its subtags, every song under it (subtags included), and shuffle. */
 export default function TagScreen() {
@@ -125,6 +127,7 @@ export default function TagScreen() {
 
   const menu: SheetAction[] = [
     { label: 'Rename', onPress: () => setDialog('rename') },
+    { label: 'Colour', onPress: () => setDialog('color') },
     { label: 'Move to…', onPress: () => setDialog('move') },
     { label: 'Delete', destructive: true, onPress: confirmDelete },
   ];
@@ -203,6 +206,7 @@ export default function TagScreen() {
               <TagRow
                 key={child.id}
                 name={child.name}
+                color={child.color}
                 songCount={child.song_count}
                 childCount={child.child_count}
                 onPress={() => openTag(child.id)}
@@ -232,6 +236,16 @@ export default function TagScreen() {
         visible={dialog === 'move'}
         title={`Move "${tag?.name ?? ''}" to`}
         actions={moveTargets}
+        onClose={() => setDialog(null)}
+      />
+      <ColorSheet
+        visible={dialog === 'color'}
+        title={`Colour for "${tag?.name ?? ''}"`}
+        selected={tag?.color}
+        onSelect={async (color) => {
+          await setTagColor(db, id, color);
+          notifyLibraryChanged();
+        }}
         onClose={() => setDialog(null)}
       />
       <PromptDialog
@@ -284,7 +298,7 @@ const styles = StyleSheet.create({
   },
   crumbLink: {
     ...font.label,
-    color: colors.accent,
+    color: colors.accentFg,
   },
   sectionLabel: {
     ...font.caption,
@@ -304,7 +318,7 @@ const styles = StyleSheet.create({
   },
   sectionAction: {
     ...font.label,
-    color: colors.accent,
+    color: colors.accentFg,
   },
   emptySongs: {
     ...font.body,

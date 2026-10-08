@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { createTestDatabase, freshDatabase, type TestDatabase } from './helpers/db.ts';
 import { migrate, MIGRATIONS, SCHEMA_VERSION } from '../src/db/schema.ts';
+import { TAG_COLOR_CYCLE } from '../src/db/tagColors.ts';
 
 async function columns(db: TestDatabase, table: string): Promise<string[]> {
   const rows = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
@@ -78,5 +79,22 @@ test('a failed migration rolls back completely and can be retried', async () => 
   await db.execAsync('DROP TABLE settings;');
   await migrate(db as never);
   assert.equal(await version(db), SCHEMA_VERSION);
+  db.close();
+});
+
+test('upgrading gives existing tags colours from the cycle, in creation order', async () => {
+  const db = await v1Database();
+  for (let i = 0; i < TAG_COLOR_CYCLE.length + 1; i++) {
+    await db.runAsync('INSERT INTO tags (name, parent_id, created_at) VALUES (?, NULL, 1)', `t${i}`);
+  }
+
+  await migrate(db as never);
+
+  const rows = await db.getAllAsync<{ color: string }>('SELECT color FROM tags ORDER BY id');
+  assert.deepEqual(
+    rows.map((r) => r.color),
+    [...TAG_COLOR_CYCLE, TAG_COLOR_CYCLE[0]],
+    'the migration matches the cycle new tags use'
+  );
   db.close();
 });

@@ -40,6 +40,7 @@ export function TagsView() {
         renderItem={({ item }) => (
           <TagRow
             name={item.name}
+            color={item.color}
             songCount={item.song_count}
             childCount={item.child_count}
             onPress={() => openTag(item.id)}

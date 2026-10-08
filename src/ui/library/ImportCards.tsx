@@ -42,7 +42,7 @@ export function ImportStatus({ state }: { state: ImportState }) {
     return (
       <Card>
         <View style={styles.row}>
-          <ActivityIndicator color={colors.accent} />
+          <ActivityIndicator color={colors.accentFg} />
           <CardText>Importing playlists…</CardText>
         </View>
       </Card>

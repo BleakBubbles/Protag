@@ -29,7 +29,7 @@ export default function LibraryScreen() {
   if (songCount === undefined) {
     return (
       <View style={[styles.screen, styles.centered]}>
-        <ActivityIndicator color={colors.accent} />
+        <ActivityIndicator color={colors.accentFg} />
       </View>
     );
   }

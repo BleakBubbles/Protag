@@ -102,6 +102,19 @@ export const MIGRATIONS: readonly string[] = [
         value TEXT NOT NULL
       );
     `,
+
+  // v3 — tags get a user-changeable colour, stored by name (see db/tagColors.ts).
+  // Existing tags are coloured in creation order, following TAG_COLOR_CYCLE as it
+  // was when this shipped.
+  `
+      ALTER TABLE tags ADD COLUMN color TEXT;
+      UPDATE tags SET color = CASE (id - 1) % 11
+        WHEN 0 THEN 'teal'   WHEN 1 THEN 'orange' WHEN 2  THEN 'blue'
+        WHEN 3 THEN 'pink'   WHEN 4 THEN 'green'  WHEN 5  THEN 'purple'
+        WHEN 6 THEN 'yellow' WHEN 7 THEN 'red'    WHEN 8  THEN 'cyan'
+        WHEN 9 THEN 'brown'  ELSE 'indigo'
+      END;
+    `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

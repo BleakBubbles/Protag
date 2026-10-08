@@ -52,7 +52,7 @@ export const PickSongRow = memo(function PickSongRow({
       <Ionicons
         name={selected ? 'checkmark-circle' : 'ellipse-outline'}
         size={iconSize.md}
-        color={selected ? colors.accent : colors.textFaint}
+        color={selected ? colors.accentFg : colors.textFaint}
       />
     </Pressable>
   );
@@ -83,6 +83,6 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   via: {
-    color: colors.accent,
+    color: colors.accentFg,
   },
 });

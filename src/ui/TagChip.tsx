@@ -6,6 +6,8 @@ import { colors, font, iconSize, radius, spacing, tagColor, touchTarget } from '
 
 export interface TagChipProps {
   name: string;
+  /** The tag's stored colour name. */
+  color?: string | null;
   /** Shown after the name when given. */
   count?: number;
   onPress?: () => void;
@@ -21,7 +23,7 @@ export interface TagChipProps {
   isNew?: boolean;
 }
 
-export function TagChip({ name, count, onPress, onRemove, disabled, compact, isNew }: TagChipProps) {
+export function TagChip({ name, color, count, onPress, onRemove, disabled, compact, isNew }: TagChipProps) {
   const handler = onRemove ?? onPress;
   let label = name;
   if (onRemove) label = `Remove ${name}`;
@@ -44,7 +46,7 @@ export function TagChip({ name, count, onPress, onRemove, disabled, compact, isN
       {isNew ? (
         <Ionicons name="add" size={iconSize.sm - 4} color={colors.textDim} />
       ) : (
-        <View style={[styles.dot, compact && styles.dotCompact, { backgroundColor: tagColor(name) }]} />
+        <View style={[styles.dot, compact && styles.dotCompact, { backgroundColor: tagColor(color) }]} />
       )}
       <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={1}>
         {name}

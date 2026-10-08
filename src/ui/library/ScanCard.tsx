@@ -20,7 +20,7 @@ export function ScanCard({ state, hasSongs, disabled, onScan }: ScanCardProps) {
     return (
       <Card>
         <View style={styles.row}>
-          <ActivityIndicator color={colors.accent} />
+          <ActivityIndicator color={colors.accentFg} />
           <CardText>
             {progress
               ? `Reading your library… ${formatCount(progress.scanned)} of ${formatCount(progress.total)}`

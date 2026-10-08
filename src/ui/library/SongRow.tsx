@@ -62,7 +62,7 @@ export const SongRow = memo(function SongRow({
           {/* Always present, so every row is the same height whether tagged or not. */}
           <View style={styles.chips}>
             {tags.slice(0, MAX_CHIPS).map((tag) => (
-              <TagChip key={tag.id} name={tag.name} compact />
+              <TagChip key={tag.id} name={tag.name} color={tag.color} compact />
             ))}
             {hidden > 0 && <Text style={styles.more}>+{hidden}</Text>}
           </View>
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   active: {
-    color: colors.accent,
+    color: colors.accentFg,
   },
   artist: {
     ...font.caption,

@@ -1,5 +1,7 @@
 import type { TextStyle } from 'react-native';
 
+import { isTagColor, type TagColor } from '@/db/tagColors';
+
 /**
  * Design tokens — the only place visual values live.
  *
@@ -9,9 +11,11 @@ import type { TextStyle } from 'react-native';
  *
  * Warm dark: neutrals with a faint brown tint, so the UI feels considered but
  * still recedes behind album art. Keep the tint barely visible — more and the
- * beige starts competing with the artwork. The accent is a light teal; the deep
- * teal it comes from is too dark to read on a dark background, and is saved for
- * a future light theme.
+ * beige starts competing with the artwork.
+ *
+ * The accent is a deep teal, in two shades: `accent` for filled shapes (buttons,
+ * the seek bar) and `accentFg` for teal text and icons on the dark background,
+ * where the deep shade is too dark to read.
  */
 export const colors = {
   bg: '#151413',
@@ -23,10 +27,10 @@ export const colors = {
   textDim: '#A3A09A',
   textFaint: '#75726C',
 
-  accent: '#6FB3A6',
-  accentDim: '#3E6F67',
-  /** Dark text, not white: white on light teal is too low-contrast. */
-  accentText: '#10302B',
+  accent: '#22695F',
+  /** Text on an `accent` fill. */
+  onAccent: '#FFFFFF',
+  accentFg: '#52A194',
 
   include: '#8FB57E',
   exclude: '#D9706A',
@@ -132,24 +136,25 @@ export const iconSize = {
 export const touchTarget = 44;
 
 /**
- * Deterministic tag colour so a tag looks the same everywhere without storing one.
- * Earthy and mid-saturation to sit on the warm neutrals; bright hues clash with them.
+ * What each tag colour name looks like. A wide range, so a big library can tell
+ * tags apart, but softened slightly so they sit on the warm neutrals.
  */
-const TAG_COLORS = [
-  '#6FB3A6', // teal
-  '#C99A5B', // ochre
-  '#C4848E', // dusty rose
-  '#8FB57E', // sage
-  '#7F9CC4', // slate blue
-  '#A68BB8', // plum
-  '#C9785A', // terracotta
-  '#B8A889', // sand
-];
+export const tagColors = {
+  red: '#E06C64',
+  orange: '#E08A4F',
+  yellow: '#D9B648',
+  green: '#74B266',
+  teal: '#3F9E8F',
+  cyan: '#4FB0C6',
+  blue: '#5E8FDB',
+  indigo: '#8A80DC',
+  purple: '#B07CD0',
+  pink: '#DB7AA8',
+  brown: '#A9805E',
+  gray: '#959089',
+} satisfies Record<TagColor, string>;
 
-export function tagColor(seed: string): string {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) | 0;
-  }
-  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length];
+/** A tag's stored colour name as a colour; gray for none or a name no longer in the palette. */
+export function tagColor(name: string | null | undefined): string {
+  return name && isTagColor(name) ? tagColors[name] : tagColors.gray;
 }

@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...font.label,
-    color: colors.accentText,
+    color: colors.onAccent,
   },
   labelSecondary: {
     color: colors.text,

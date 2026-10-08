@@ -8,13 +8,15 @@ export const TAG_ROW_HEIGHT = 60;
 
 export interface TagRowProps {
   name: string;
+  /** The tag's stored colour name. */
+  color: string | null;
   /** Includes songs tagged with any subtag. */
   songCount: number;
   childCount: number;
   onPress: () => void;
 }
 
-export function TagRow({ name, songCount, childCount, onPress }: TagRowProps) {
+export function TagRow({ name, color, songCount, childCount, onPress }: TagRowProps) {
   const meta = [plural(songCount, 'song'), childCount > 0 ? plural(childCount, 'subtag') : null]
     .filter(Boolean)
     .join(' · ');
@@ -26,7 +28,7 @@ export function TagRow({ name, songCount, childCount, onPress }: TagRowProps) {
       accessibilityLabel={`${name}, ${meta}`}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
-      <View style={[styles.dot, { backgroundColor: tagColor(name) }]} />
+      <View style={[styles.dot, { backgroundColor: tagColor(color) }]} />
       <View style={styles.text}>
         <Text style={styles.name} numberOfLines={1}>
           {name}

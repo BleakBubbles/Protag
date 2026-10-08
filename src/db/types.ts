@@ -26,6 +26,8 @@ export interface TagRow {
   parent_id: number | null;
   sort_order: number;
   created_at: number;
+  /** A `TagColor` name. Typed loosely because it's stored data: render unknown values as gray. */
+  color: string | null;
 }
 
 export interface SavedQueryRow {

@@ -71,6 +71,6 @@ const styles = StyleSheet.create({
   badge: {
     ...font.caption,
     fontSize: 9,
-    color: colors.accent,
+    color: colors.accentFg,
   },
 });

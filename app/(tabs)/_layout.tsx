@@ -17,7 +17,7 @@ export default function TabsLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
         },
-        tabBarActiveTintColor: colors.accent,
+        tabBarActiveTintColor: colors.accentFg,
         tabBarInactiveTintColor: colors.textFaint,
       }}
     >

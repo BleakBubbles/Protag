@@ -139,7 +139,7 @@ export default function SongTagsScreen() {
             <Text style={styles.hint}>No tags yet.</Text>
           ) : (
             applied.map((tag) => (
-              <TagChip key={tag.id} name={index.label(tag.id)} onRemove={() => remove(tag.id)} />
+              <TagChip key={tag.id} name={index.label(tag.id)} color={tag.color} onRemove={() => remove(tag.id)} />
             ))
           )}
         </View>
@@ -177,7 +177,7 @@ export default function SongTagsScreen() {
             {showGenre && genre && (
               <Section label={genreTag ? "From this song's genre" : "New tag from this song's genre"}>
                 {genreTag ? (
-                  <TagChip name={genreTag.name} onPress={() => add(genreTag.id)} />
+                  <TagChip name={genreTag.name} color={genreTag.color} onPress={() => add(genreTag.id)} />
                 ) : (
                   <TagChip name={genre} isNew onPress={() => addPath([genre])} />
                 )}
@@ -186,7 +186,7 @@ export default function SongTagsScreen() {
             {recentSuggestions.length > 0 && (
               <Section label="Recent">
                 {recentSuggestions.map((tag) => (
-                  <TagChip key={tag.id} name={index.label(tag.id)} onPress={() => add(tag.id)} />
+                  <TagChip key={tag.id} name={index.label(tag.id)} color={tag.color} onPress={() => add(tag.id)} />
                 ))}
               </Section>
             )}
@@ -273,6 +273,6 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   resultAccent: {
-    color: colors.accent,
+    color: colors.accentFg,
   },
 });

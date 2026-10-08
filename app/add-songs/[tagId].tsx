@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   },
   added: {
     ...font.caption,
-    color: colors.accent,
+    color: colors.accentFg,
   },
   sectionLabel: {
     ...font.caption,

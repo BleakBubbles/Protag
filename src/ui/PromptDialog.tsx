@@ -71,7 +71,7 @@ export function PromptDialog({
             }}
             placeholder={placeholder}
             placeholderTextColor={colors.textFaint}
-            selectionColor={colors.accent}
+            selectionColor={colors.accentFg}
             autoFocus
             autoCorrect={false}
             autoCapitalize="none"

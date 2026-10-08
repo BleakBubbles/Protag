@@ -119,6 +119,7 @@ function QuickStart() {
               <TagChip
                 key={tag.id}
                 name={tag.name}
+                color={tag.color}
                 count={tag.song_count}
                 onPress={() => playQuery({ type: 'tag', tagId: tag.id, includeDescendants: true })}
               />

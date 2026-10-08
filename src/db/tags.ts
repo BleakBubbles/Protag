@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { nextTagColor, type TagColor } from './tagColors';
 import type { SongRow, TagRow, TagWithCounts } from './types';
 
 /** Thrown for tag operations the user could plausibly trigger, so callers can show the message. */
@@ -75,10 +76,10 @@ export async function buildDescendantMap(db: SQLiteDatabase): Promise<Map<number
 export async function getTagPath(db: SQLiteDatabase, id: number): Promise<TagRow[]> {
   const rows = await db.getAllAsync<TagRow & { depth: number }>(
     `
-    WITH RECURSIVE up(id, name, parent_id, sort_order, created_at, depth) AS (
-      SELECT id, name, parent_id, sort_order, created_at, 0 FROM tags WHERE id = ?
+    WITH RECURSIVE up(id, name, parent_id, sort_order, created_at, color, depth) AS (
+      SELECT id, name, parent_id, sort_order, created_at, color, 0 FROM tags WHERE id = ?
       UNION ALL
-      SELECT t.id, t.name, t.parent_id, t.sort_order, t.created_at, up.depth + 1
+      SELECT t.id, t.name, t.parent_id, t.sort_order, t.created_at, t.color, up.depth + 1
       FROM tags t JOIN up ON t.id = up.parent_id
     )
     SELECT * FROM up ORDER BY depth DESC
@@ -103,13 +104,22 @@ export async function createTag(
   );
   if (duplicate) throw new TagError(`A tag named "${clean}" already exists here.`);
 
+  // New tags cycle through the palette, carrying on from the newest tag's colour.
+  const newest = await db.getFirstAsync<{ color: string | null }>(
+    'SELECT color FROM tags ORDER BY id DESC LIMIT 1'
+  );
   const result = await db.runAsync(
-    'INSERT INTO tags (name, parent_id, sort_order, created_at) VALUES (?, ?, 0, ?)',
+    'INSERT INTO tags (name, parent_id, sort_order, created_at, color) VALUES (?, ?, 0, ?, ?)',
     clean,
     parentId,
-    Date.now()
+    Date.now(),
+    nextTagColor(newest?.color)
   );
   return result.lastInsertRowId;
+}
+
+export async function setTagColor(db: SQLiteDatabase, id: number, color: TagColor): Promise<void> {
+  await db.runAsync('UPDATE tags SET color = ? WHERE id = ?', color, id);
 }
 
 export async function renameTag(db: SQLiteDatabase, id: number, name: string): Promise<void> {

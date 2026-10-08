@@ -30,7 +30,7 @@ export function IconButton({
   disabled,
   badge,
 }: IconButtonProps) {
-  const tint = color ?? (active ? colors.accent : colors.text);
+  const tint = color ?? (active ? colors.accentFg : colors.text);
   return (
     <Pressable
       onPress={onPress}
