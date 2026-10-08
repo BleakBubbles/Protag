@@ -13,8 +13,8 @@ import { isTagColor, type TagColor } from '@/db/tagColors';
  * still recedes behind album art. Keep the tint barely visible — more and the
  * beige starts competing with the artwork.
  *
- * The accent is a deep teal, in two shades: `accent` for filled shapes (buttons,
- * the seek bar) and `accentFg` for teal text and icons on the dark background,
+ * The accent is a deep teal, in two shades: `accent` for filled shapes (buttons)
+ * and `accentFg` for teal text, icons and thin lines on the dark background,
  * where the deep shade is too dark to read.
  */
 export const colors = {
@@ -27,10 +27,10 @@ export const colors = {
   textDim: '#A3A09A',
   textFaint: '#75726C',
 
-  accent: '#22695F',
+  accent: '#0F5C54',
   /** Text on an `accent` fill. */
   onAccent: '#FFFFFF',
-  accentFg: '#52A194',
+  accentFg: '#2E9384',
 
   include: '#8FB57E',
   exclude: '#D9706A',

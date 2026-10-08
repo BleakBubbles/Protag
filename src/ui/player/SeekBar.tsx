@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   fill: {
     height: '100%',
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentFg,
   },
   thumb: {
     position: 'absolute',
