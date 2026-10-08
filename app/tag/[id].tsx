@@ -34,7 +34,7 @@ import { IconButton } from '@/ui/IconButton';
 import { SONG_ROW_HEIGHT, SongRow } from '@/ui/library/SongRow';
 import { TagRow } from '@/ui/library/TagRow';
 import { PromptDialog } from '@/ui/PromptDialog';
-import { colors, font, spacing } from '@/ui/theme';
+import { colors, font, headerTitleStyle, spacing, tagColor } from '@/ui/theme';
 
 const NO_TAGS: readonly Tag[] = [];
 
@@ -127,7 +127,6 @@ export default function TagScreen() {
 
   const menu: SheetAction[] = [
     { label: 'Rename', onPress: () => setDialog('rename') },
-    { label: 'Colour', onPress: () => setDialog('color') },
     { label: 'Move to…', onPress: () => setDialog('move') },
     { label: 'Delete', destructive: true, onPress: confirmDelete },
   ];
@@ -151,6 +150,27 @@ export default function TagScreen() {
       <Stack.Screen
         options={{
           title: tag?.name ?? '',
+          // The colour sits beside the name so the two stay associated, and
+          // tapping it is the way to change it.
+          headerTitle: () =>
+            tag ? (
+              <View style={styles.titleRow}>
+                <Pressable
+                  onPress={() => setDialog('color')}
+                  hitSlop={15}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Colour: ${tag.color ?? 'none'}. Change colour`}
+                  style={({ pressed }) => [
+                    styles.titleDot,
+                    { backgroundColor: tagColor(tag.color) },
+                    pressed && styles.titleDotPressed,
+                  ]}
+                />
+                <Text style={styles.titleText} numberOfLines={1}>
+                  {tag.name}
+                </Text>
+              </View>
+            ) : null,
           headerRight: () => (
             <IconButton icon="ellipsis-horizontal" label="Tag options" onPress={() => setDialog('menu')} />
           ),
@@ -278,6 +298,29 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flexShrink: 1,
+  },
+  titleDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  titleDotPressed: {
+    opacity: 0.6,
+  },
+  // Matches the navigator's own titles on the other screens: display face, at
+  // the header's default Android size rather than `font.heading`'s 17.
+  titleText: {
+    ...headerTitleStyle,
+    fontSize: 20,
+    lineHeight: 26,
+    color: colors.text,
+    flexShrink: 1,
   },
   header: {
     paddingVertical: spacing.lg,
