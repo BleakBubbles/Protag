@@ -33,6 +33,7 @@ import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { IconButton } from '@/ui/IconButton';
 import { SONG_ROW_HEIGHT, SongRow } from '@/ui/library/SongRow';
 import { TagRow } from '@/ui/library/TagRow';
+import { LogoMark } from '@/ui/LogoMark';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { colors, font, headerTitleStyle, spacing, tagColor } from '@/ui/theme';
 
@@ -211,15 +212,13 @@ export default function TagScreen() {
                   ))}
                 </View>
               )}
-              {/* One primary action: shuffle once there's something to play; until
-                  then, filling the tag is the obvious next step. */}
-              {songCount > 0 ? (
+              {/* Shuffle once there's something to play. Until then, the empty
+                  state below carries the one call to action: add songs. */}
+              {songCount > 0 && (
                 <Button
                   label={`Shuffle · ${plural(songCount, 'song')}`}
                   onPress={() => playQuery({ type: 'tag', tagId: id, includeDescendants: true })}
                 />
-              ) : (
-                <Button label="Add songs" onPress={() => openAddSongs(id)} />
               )}
               <Text style={styles.sectionLabel}>Subtags</Text>
             </View>
@@ -249,7 +248,15 @@ export default function TagScreen() {
           </View>
         }
         ListEmptyComponent={
-          data ? <Text style={styles.emptySongs}>Nothing here yet.</Text> : null
+          data && tag ? (
+            <EmptyState
+              art={<LogoMark width={56} color={colors.border} />}
+              title="No songs yet"
+              body={`Add songs to "${tag.name}" here, or tag them from the player as you listen.`}
+            >
+              <Button label="Add songs" onPress={() => openAddSongs(id)} />
+            </EmptyState>
+          ) : null
         }
       />
 
@@ -364,10 +371,5 @@ const styles = StyleSheet.create({
   sectionAction: {
     ...font.label,
     color: colors.accentFg,
-  },
-  emptySongs: {
-    ...font.body,
-    color: colors.textDim,
-    paddingHorizontal: spacing.lg,
   },
 });

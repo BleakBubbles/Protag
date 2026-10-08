@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { countSongs } from '@/db/songs';
 import { useLibraryScan } from '@/library/useLibraryScan';
@@ -7,6 +7,7 @@ import { SongsView } from '@/screens/library/SongsView';
 import { TagsView } from '@/screens/library/TagsView';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { ScanCard } from '@/ui/library/ScanCard';
+import { LogoMark } from '@/ui/LogoMark';
 import { SegmentedControl } from '@/ui/SegmentedControl';
 import { colors, font, spacing } from '@/ui/theme';
 
@@ -39,12 +40,9 @@ export default function LibraryScreen() {
       <ScrollView style={styles.screen} contentContainerStyle={styles.onboarding}>
         {/* The one place the app introduces itself; everywhere else the music is the focus. */}
         <View style={styles.welcome}>
-          <Image
-            source={require('../../assets/logo-mark.png')}
-            style={styles.logo}
-            resizeMode="contain"
-            accessibilityIgnoresInvertColors
-          />
+          <View style={styles.logo}>
+            <LogoMark width={48} />
+          </View>
           <Text style={styles.welcomeTitle}>Welcome to ProTag</Text>
           <Text style={styles.welcomeText}>Tag your songs, then shuffle by tag.</Text>
         </View>
@@ -82,10 +80,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  // The mark's own proportions (see MARK_BOUNDS in scripts/make-icons.mjs).
   logo: {
-    width: 48,
-    height: 48 * (416 / 280),
     marginBottom: spacing.md,
   },
   welcomeTitle: {
