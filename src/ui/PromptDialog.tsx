@@ -19,6 +19,16 @@ export interface PromptDialogProps {
   onClose: () => void;
 }
 
+/**
+ * Why the keyboard needs a delay: an Android Modal is its own window, and the
+ * keyboard only opens for a field in a window that has finished taking focus.
+ * Neither `autoFocus` nor focusing in `onShow` waits for that (tested: no
+ * keyboard), so focus is requested a moment later. A well-known React Native
+ * quirk; if it ever proves flaky, draw the dialog inside the app's own window
+ * instead of a Modal and `autoFocus` works as-is.
+ */
+const KEYBOARD_DELAY_MS = 100;
+
 /** Text-input dialog. React Native's `Alert.prompt` is iOS-only, hence this. */
 export function PromptDialog({
   visible,
@@ -62,9 +72,7 @@ export function PromptDialog({
       transparent
       animationType="fade"
       onRequestClose={onClose}
-      // Not `autoFocus`: on Android that focuses the field before the dialog's
-      // window is ready, so the keyboard doesn't open. Focusing once it's shown does.
-      onShow={() => inputRef.current?.focus()}
+      onShow={() => setTimeout(() => inputRef.current?.focus(), KEYBOARD_DELAY_MS)}
     >
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cancel" />
       {/* Sits in the upper part of the screen so the keyboard never covers it. */}
