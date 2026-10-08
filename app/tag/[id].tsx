@@ -150,11 +150,16 @@ export default function TagScreen() {
       <Stack.Screen
         options={{
           title: tag?.name ?? '',
-          // The colour sits beside the name so the two stay associated, and
-          // tapping it is the way to change it.
+          // The colour follows the name, so the two read as one, and tapping it
+          // is the way to change it. After the name rather than before it, which
+          // put it too close to the back arrow. The name shrinks first, so a
+          // long name truncates and the dot stays visible.
           headerTitle: () =>
             tag ? (
               <View style={styles.titleRow}>
+                <Text style={styles.titleText} numberOfLines={1}>
+                  {tag.name}
+                </Text>
                 <Pressable
                   onPress={() => setDialog('color')}
                   hitSlop={15}
@@ -166,9 +171,6 @@ export default function TagScreen() {
                     pressed && styles.titleDotPressed,
                   ]}
                 />
-                <Text style={styles.titleText} numberOfLines={1}>
-                  {tag.name}
-                </Text>
               </View>
             ) : null,
           headerRight: () => (
