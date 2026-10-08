@@ -21,7 +21,8 @@ export function EmptyState({ icon, art, title, body, children }: EmptyStateProps
       {art ?? (icon ? <Ionicons name={icon} size={48} color={colors.textFaint} /> : null)}
       <Text style={styles.title}>{title}</Text>
       {body ? <Text style={styles.body}>{body}</Text> : null}
-      {children}
+      {/* A row, so buttons centre here whatever their own alignSelf. */}
+      {children ? <View style={styles.actions}>{children}</View> : null}
     </View>
   );
 }
@@ -42,5 +43,11 @@ const styles = StyleSheet.create({
     ...font.body,
     color: colors.textDim,
     textAlign: 'center',
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.md,
+    marginTop: spacing.sm,
   },
 });

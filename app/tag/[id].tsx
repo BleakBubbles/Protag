@@ -254,7 +254,7 @@ export default function TagScreen() {
               title="No songs yet"
               body={`Add songs to "${tag.name}" here, or tag them from the player as you listen.`}
             >
-              <Button label="Add songs" onPress={() => openAddSongs(id)} />
+              <Button label="Add songs" icon="add" variant="tonal" onPress={() => openAddSongs(id)} />
             </EmptyState>
           ) : null
         }

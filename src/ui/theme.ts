@@ -31,6 +31,8 @@ export const colors = {
   /** Text on an `accent` fill. */
   onAccent: '#FFFFFF',
   accentFg: '#2E9384',
+  /** `accentFg` at low opacity: a soft teal wash behind teal text (tonal buttons). */
+  accentTint: '#2E938429',
 
   include: '#8FB57E',
   exclude: '#D9706A',
