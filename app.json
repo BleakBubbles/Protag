@@ -14,7 +14,7 @@
     "android": {
       "package": "com.protag.app",
       "adaptiveIcon": {
-        "backgroundColor": "#EDDCB9",
+        "backgroundColor": "#F5E7CA",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },

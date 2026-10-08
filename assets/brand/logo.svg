@@ -1,0 +1,12 @@
+<svg width="560" height="560" viewBox="0 0 560 560" fill="#446170" xmlns="http://www.w3.org/2000/svg">
+<!-- The ProTag mark: a half note that reads as a P. Drawn on a 560 square that
+     is the whole icon; the stem deliberately runs off the bottom, so it extends
+     past the canvas (rendered when the mark is placed on a larger canvas).
+     No fills on the shapes: they take the colour of whatever contains them. -->
+<mask id="ring-hole" maskUnits="userSpaceOnUse" x="0" y="0" width="560" height="560">
+  <ellipse cx="279.611" cy="254.964" rx="140" ry="100" transform="rotate(-22.5 279.611 254.964)" fill="#FFFFFF"/>
+  <ellipse cx="279.567" cy="254.578" rx="84" ry="60" transform="rotate(-22.5 279.567 254.578)" fill="#000000"/>
+</mask>
+<rect x="144.73" y="279.964" width="56" height="840"/>
+<rect width="560" height="560" mask="url(#ring-hole)"/>
+</svg>

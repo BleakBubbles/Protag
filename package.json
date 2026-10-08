@@ -26,6 +26,7 @@
     "react-native-screens": "~4.26.0"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^26.2.0",
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
@@ -35,6 +36,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "icons": "node scripts/make-icons.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "test": "node --experimental-strip-types --experimental-sqlite --import ./tests/helpers/register.mjs --test \"tests/*.test.ts\""
   },
