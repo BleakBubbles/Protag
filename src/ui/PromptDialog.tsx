@@ -63,9 +63,8 @@ export function PromptDialog({
       animationType="fade"
       onRequestClose={onClose}
       // Not `autoFocus`: on Android that focuses the field before the dialog's
-      // window is ready, so the keyboard doesn't open. Focusing once it's shown
-      // does; the short wait covers the fade-in on slower phones.
-      onShow={() => setTimeout(() => inputRef.current?.focus(), 50)}
+      // window is ready, so the keyboard doesn't open. Focusing once it's shown does.
+      onShow={() => inputRef.current?.focus()}
     >
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cancel" />
       {/* Sits in the upper part of the screen so the keyboard never covers it. */}
