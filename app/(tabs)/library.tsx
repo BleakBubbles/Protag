@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { countSongs } from '@/db/songs';
 import { useLibraryScan } from '@/library/useLibraryScan';
@@ -8,7 +8,7 @@ import { TagsView } from '@/screens/library/TagsView';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { ScanCard } from '@/ui/library/ScanCard';
 import { SegmentedControl } from '@/ui/SegmentedControl';
-import { colors, spacing } from '@/ui/theme';
+import { colors, font, spacing } from '@/ui/theme';
 
 type LibraryView = 'tags' | 'songs';
 
@@ -37,6 +37,17 @@ export default function LibraryScreen() {
   if (songCount === 0) {
     return (
       <ScrollView style={styles.screen} contentContainerStyle={styles.onboarding}>
+        {/* The one place the app introduces itself; everywhere else the music is the focus. */}
+        <View style={styles.welcome}>
+          <Image
+            source={require('../../assets/logo-mark.png')}
+            style={styles.logo}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+          />
+          <Text style={styles.welcomeTitle}>Welcome to ProTag</Text>
+          <Text style={styles.welcomeText}>Tag your songs, then shuffle by tag.</Text>
+        </View>
         <ScanCard state={scan.state} hasSongs={false} disabled={scan.busy} onScan={scan.run} />
       </ScrollView>
     );
@@ -62,7 +73,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   onboarding: {
+    flexGrow: 1,
+    justifyContent: 'center',
     padding: spacing.lg,
+    gap: spacing.xl,
+  },
+  welcome: {
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  // The mark's own proportions (see MARK_BOUNDS in scripts/make-icons.mjs).
+  logo: {
+    width: 48,
+    height: 48 * (416 / 280),
+    marginBottom: spacing.md,
+  },
+  welcomeTitle: {
+    ...font.title,
+    color: colors.text,
+  },
+  welcomeText: {
+    ...font.body,
+    color: colors.textDim,
   },
   segments: {
     paddingHorizontal: spacing.lg,

@@ -41,7 +41,15 @@
       ],
       "expo-sqlite",
       "expo-sharing",
-      "expo-music-library"
+      "expo-music-library",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#151413",
+          "image": "./assets/logo-mark.png",
+          "imageWidth": 80
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

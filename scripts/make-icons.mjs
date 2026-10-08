@@ -48,3 +48,14 @@ write('favicon.png', icon, 48);
 write('android-icon-foreground.png', compose({ color: MARK, scale: 72 / 108 }));
 // Themed (Material You) icons: the launcher recolours this; only the shape matters.
 write('android-icon-monochrome.png', compose({ color: '#FFFFFF', scale: 72 / 108 }));
+
+// The mark alone, cropped to its own bounds (stem ending at the logo's bottom
+// edge), in the light colour for the app's dark background. Used by the splash
+// screen and inside the app. The crop is the mark's bounding box in logo.svg's
+// coordinates, with a little room.
+const MARK_BOUNDS = '140 144 280 416';
+write(
+  'logo-mark.png',
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARK_BOUNDS}"><g fill="${BACKGROUND}">${logo}</g></svg>`,
+  512
+);
