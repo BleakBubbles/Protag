@@ -7,7 +7,25 @@ import { colors, font, iconSize, radius, spacing, tagColor } from '../theme';
 
 export const TAG_TILE_HEIGHT = 64;
 /** Tag colour opacity (hex alpha) behind tiles that aren't included. */
-const WASH = { off: '80', excluded: '59' }; // 50%, 35%
+/** Opacity of the press ripple. */
+const RIPPLE = 0.13;
+/** Opacity of the tag's colour behind a tile that's off. */
+const OFF_WASH = 0.5;
+/**
+ * Behind an excluded tile: chosen so that pressing it (a ripple of the tag's
+ * own colour on top) comes to exactly the off wash, which is the state the
+ * tap leads to. Releasing then changes nothing but the red marks.
+ */
+const EXCLUDED_WASH = (byte(OFF_WASH) - byte(RIPPLE)) / (1 - byte(RIPPLE));
+
+/** An opacity as colours actually store it (one of 256 steps), so the sums above come out exact. */
+function byte(opacity: number): number {
+  return Math.round(opacity * 255) / 255;
+}
+
+/** `#RRGGBB` plus an opacity, as `#RRGGBBAA`. */
+const withAlpha = (hex: string, opacity: number) =>
+  hex + Math.round(opacity * 255).toString(16).padStart(2, '0');
 const BADGE = 20;
 
 const CHOICE_LABEL: Record<TagChoice, string> = {
@@ -46,7 +64,7 @@ export function TagTile({ name, color, songCount, choice, width, onPress, expand
     <View
       style={[
         styles.tile,
-        { width, backgroundColor: included ? hue : `${hue}${excluded ? WASH.excluded : WASH.off}` },
+        { width, backgroundColor: included ? hue : withAlpha(hue, excluded ? EXCLUDED_WASH : OFF_WASH) },
         excluded && styles.excluded,
       ]}
     >
@@ -55,7 +73,7 @@ export function TagTile({ name, color, songCount, choice, width, onPress, expand
         accessibilityRole="button"
         accessibilityLabel={`${name}, ${CHOICE_LABEL[choice]}, ${songCount} songs`}
         accessibilityHint="Tap to include, then exclude, then clear"
-        android_ripple={{ color: `${colors.text}22` }}
+        android_ripple={{ color: withAlpha(excluded ? hue : colors.text, RIPPLE) }}
         style={styles.main}
       >
         <Text
