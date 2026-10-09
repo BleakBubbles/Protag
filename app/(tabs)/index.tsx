@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { notifyLibraryChanged } from '@/db/changes';
 import { deleteMix, listMixes, MixError, renameMix, saveMix, type Mix } from '@/db/mixes';
@@ -19,19 +19,20 @@ import {
   cycleTag,
   EMPTY_DRAFT,
   isEmptyDraft,
+  MATCH_ALL,
   pruneDraft,
   tagChoice,
   type QueryDraft,
 } from '@/query/types';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
-import { FilterChip } from '@/ui/FilterChip';
 import { plural } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
+import { MIX_BAR_HEIGHT, MixBar } from '@/ui/play/MixBar';
 import { MixCard } from '@/ui/play/MixCard';
+import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
 import { PromptDialog } from '@/ui/PromptDialog';
-import { QueryChip } from '@/ui/QueryChip';
 import { colors, font, spacing, tagColor } from '@/ui/theme';
 
 /**
@@ -80,8 +81,9 @@ type LibraryData = {
   mixArt: Map<number, string[]>;
 };
 
-function Builder({ tags, descendants, mixes, mixArt }: LibraryData) {
+function Builder({ songs, tags, descendants, mixes, mixArt }: LibraryData) {
   const db = useSQLiteContext();
+  const { width: screenWidth } = useWindowDimensions();
   const playQuery = usePlayQuery();
   const [draft, setDraft] = useState<QueryDraft>(EMPTY_DRAFT);
   const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
@@ -119,15 +121,6 @@ function Builder({ tags, descendants, mixes, mixArt }: LibraryData) {
     [names]
   );
 
-  const shuffleLabel =
-    count === null
-      ? 'Shuffle'
-      : empty
-        ? `Shuffle everything · ${plural(count, 'song')}`
-        : count === 0
-          ? 'No songs match'
-          : `Shuffle · ${plural(count, 'song')}`;
-
   const clear = () => {
     setDraft(EMPTY_DRAFT);
     setEditing(null);
@@ -149,40 +142,21 @@ function Builder({ tags, descendants, mixes, mixArt }: LibraryData) {
       },
     ]);
 
-  const renderLevel = (parentId: number | null) =>
-    (children.get(parentId) ?? []).map((tag) => {
-      const hasChildren = (children.get(tag.id)?.length ?? 0) > 0;
-      const open = expanded.has(tag.id);
-      return (
-        <Fragment key={tag.id}>
-          <QueryChip
-            name={tag.name}
-            color={tag.color}
-            choice={tagChoice(current, tag.id)}
-            onPress={() => setDraft((d) => cycleTag(d, tag.id))}
-            expanded={open}
-            onToggleExpanded={
-              hasChildren
-                ? () =>
-                    setExpanded((prev) => {
-                      const next = new Set(prev);
-                      if (open) next.delete(tag.id);
-                      else next.add(tag.id);
-                      return next;
-                    })
-                : undefined
-            }
-          />
-          {/* Full width, so the subtags start on their own line under the parent. */}
-          {open && (
-            <View style={[styles.subtags, { borderLeftColor: tagColor(tag.color) }]}>{renderLevel(tag.id)}</View>
-          )}
-        </Fragment>
-      );
-    });
+  const toggleExpanded = useCallback(
+    (id: number) =>
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      }),
+    []
+  );
+  const choiceOf = useCallback((id: number) => tagChoice(current, id), [current]);
+  const cycle = useCallback((id: number) => setDraft((d) => cycleTag(d, id)), []);
 
   return (
-    <>
+    <View style={styles.screen}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         {mixes.length > 0 && (
           <View style={styles.section}>
@@ -208,52 +182,47 @@ function Builder({ tags, descendants, mixes, mixArt }: LibraryData) {
           </View>
         )}
 
+        {/* Always the same label, so it never changes size as tags are picked. */}
         <Button
-          label={shuffleLabel}
+          label={`Shuffle everything · ${plural(songs, 'song')}`}
           icon="shuffle"
-          onPress={() => playQuery(query)}
-          disabled={count === 0}
-          style={styles.shuffle}
+          variant="secondary"
+          onPress={() => playQuery(MATCH_ALL)}
+          style={styles.shuffleAll}
         />
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Mix by tag</Text>
+          <Text style={styles.sectionLabel}>Your tags</Text>
           {tags.length === 0 ? (
             <Text style={styles.hint}>Tag some songs in the Library to mix them here.</Text>
           ) : (
             <>
-              <View style={styles.chips}>{renderLevel(null)}</View>
-              {/* Everything that appears in response to a tap sits below the chips,
-                  so it can never push the chip being tapped out from under a finger. */}
-              {!empty && (
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summary} numberOfLines={2}>
-                    {describeQuery(query, names)}
-                  </Text>
-                  <TextAction label="Save" onPress={() => setSaving(true)} />
-                  <TextAction label="Clear" onPress={clear} />
-                </View>
-              )}
-              {/* Only once there's a choice to make: one-tag shuffles stay one tap. */}
-              {current.include.length >= 2 && (
-                <View style={styles.modeRow}>
-                  <FilterChip
-                    label="Match all"
-                    selected={current.mode === 'and'}
-                    onToggle={() => setDraft((d) => ({ ...d, mode: 'and' }))}
-                  />
-                  <FilterChip
-                    label="Match any"
-                    selected={current.mode === 'or'}
-                    onToggle={() => setDraft((d) => ({ ...d, mode: 'or' }))}
-                  />
-                </View>
-              )}
+              <TagGrid
+                tags={children.get(null) ?? []}
+                childrenOf={children}
+                expanded={expanded}
+                choiceOf={choiceOf}
+                onCycle={cycle}
+                onToggleExpanded={toggleExpanded}
+                width={screenWidth - spacing.lg * 2}
+              />
               <Text style={styles.hint}>Tap a tag to include it, again to exclude it.</Text>
             </>
           )}
         </View>
       </ScrollView>
+
+      <MixBar
+        visible={!empty}
+        summary={describeQuery(query, names)}
+        count={count}
+        mode={current.include.length >= 2 ? current.mode : null}
+        onToggleMode={() => setDraft((d) => ({ ...d, mode: d.mode === 'and' ? 'or' : 'and' }))}
+        saveLabel={editing ? 'Save mix' : 'Save as mix'}
+        onSave={() => setSaving(true)}
+        onShuffle={() => playQuery(query)}
+        onClear={clear}
+      />
 
       <ActionSheet
         visible={menuMix !== null}
@@ -305,15 +274,7 @@ function Builder({ tags, descendants, mixes, mixArt }: LibraryData) {
         }}
         onClose={() => setRenaming(null)}
       />
-    </>
-  );
-}
-
-function TextAction({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} hitSlop={12} accessibilityRole="button">
-      <Text style={styles.textAction}>{label}</Text>
-    </Pressable>
+    </View>
   );
 }
 
@@ -331,6 +292,8 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     gap: spacing.xl,
+    // Always room for the mix bar, so the page's scroll range doesn't change when it appears.
+    paddingBottom: MIX_BAR_HEIGHT + spacing.lg * 2,
   },
   section: {
     gap: spacing.md,
@@ -358,39 +321,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
   },
-  shuffle: {
+  shuffleAll: {
     alignSelf: 'stretch',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
-  },
-  summary: {
-    ...font.label,
-    color: colors.textDim,
-    flex: 1,
-  },
-  textAction: {
-    ...font.label,
-    color: colors.accentFg,
-  },
-  modeRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  subtags: {
-    width: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    paddingLeft: spacing.md,
-    borderLeftWidth: 2,
   },
   hint: {
     ...font.caption,
