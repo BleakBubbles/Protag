@@ -227,6 +227,10 @@ export default function TagScreen() {
         getItemLayout={getItemLayout}
         onScroll={onScroll}
         scrollEventThrottle={32}
+        // Throttling can drop the event for where a short scroll actually stops;
+        // these two always report the final position.
+        onScrollEndDrag={onScroll}
+        onMomentumScrollEnd={onScroll}
         contentContainerStyle={songCount > 0 ? { paddingBottom: FAB_CLEARANCE } : undefined}
         renderItem={({ item }) => (
           <SongRow
