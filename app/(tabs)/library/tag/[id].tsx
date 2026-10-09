@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -48,6 +48,8 @@ import { PromptDialog } from '@/ui/PromptDialog';
 import { colors, font, headerTitleStyle, spacing, tagColor } from '@/ui/theme';
 
 const NO_TAGS: readonly Tag[] = [];
+/** Scrolled further than this, the add button folds to its icon. */
+const FAB_FOLD_AT = 48;
 
 type Dialog = 'menu' | 'rename' | 'color' | 'move' | 'add-subtag' | null;
 
@@ -64,16 +66,13 @@ export default function TagScreen() {
   const [songMenu, setSongMenu] = useState<number | null>(null);
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
 
-  // The add button folds to just its icon while scrolling down through the
-  // songs, and unfolds on the way back up or near the top.
+  // The add button shows its label at the top of the page and folds to just the
+  // plus once the list is scrolled. It changes only when crossing that line, not
+  // with every change of scroll direction: a button that's always there shouldn't
+  // keep moving and pulling the eye away from the songs.
   const [fabExtended, setFabExtended] = useState(true);
-  const lastScrollY = useRef(0);
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = e.nativeEvent.contentOffset.y;
-    const dy = y - lastScrollY.current;
-    lastScrollY.current = y;
-    if (y < 48 || dy < -6) setFabExtended(true);
-    else if (dy > 6) setFabExtended(false);
+    setFabExtended(e.nativeEvent.contentOffset.y < FAB_FOLD_AT);
   }, []);
 
   const { data } = useLibraryQuery(

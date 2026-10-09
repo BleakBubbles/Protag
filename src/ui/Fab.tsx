@@ -16,8 +16,9 @@ export interface FabProps {
   label: string;
   icon: IconName;
   /**
-   * Shows the label. Fold it away while the user scrolls down through a list,
-   * so the button covers less of it, and bring it back when they scroll up.
+   * Shows the label. Fold it away once a list is scrolled, so the button covers
+   * less of it, and bring it back at the top. Avoid toggling on scroll direction:
+   * the movement draws the eye every time.
    */
   extended: boolean;
   onPress: () => void;
