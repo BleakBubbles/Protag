@@ -68,7 +68,7 @@ export function TagTile({ name, color, songCount, choice, width, onPress, expand
         style={[styles.main, { backgroundColor: withAlpha(hue, WASH[shown]) }]}
       >
         <Text
-          style={[styles.name, { color: text }, excluded && styles.struck, included && styles.nameOnColor]}
+          style={[styles.name, { color: text }, excluded && styles.struck]}
           numberOfLines={1}
         >
           {name}
@@ -135,9 +135,6 @@ const styles = StyleSheet.create({
   },
   name: {
     ...font.listTitle,
-  },
-  nameOnColor: {
-    fontWeight: '700',
   },
   struck: {
     color: colors.textDim,
