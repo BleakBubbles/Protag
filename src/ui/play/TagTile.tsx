@@ -1,32 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { TagChoice } from '../../query/types';
+import { NEXT_CHOICE, type TagChoice } from '../../query/types';
 import { formatCount } from '../format';
 import { colors, font, iconSize, radius, spacing, tagColor } from '../theme';
 
 export const TAG_TILE_HEIGHT = 64;
-/** Tag colour opacity (hex alpha) behind tiles that aren't included. */
-/** Opacity of the press ripple. */
-const RIPPLE = 0.13;
-/** Opacity of the tag's colour behind a tile that's off. */
-const OFF_WASH = 0.5;
-/**
- * Behind an excluded tile: chosen so that pressing it (a ripple of the tag's
- * own colour on top) comes to exactly the off wash, which is the state the
- * tap leads to. Releasing then changes nothing but the red marks.
- */
-const EXCLUDED_WASH = (byte(OFF_WASH) - byte(RIPPLE)) / (1 - byte(RIPPLE));
-
-/** An opacity as colours actually store it (one of 256 steps), so the sums above come out exact. */
-function byte(opacity: number): number {
-  return Math.round(opacity * 255) / 255;
-}
+const BADGE = 20;
+/** How strongly each state shows the tag's colour (1 = solid). */
+const WASH: Record<TagChoice, number> = { include: 1, off: 0.5, exclude: 0.43 };
 
 /** `#RRGGBB` plus an opacity, as `#RRGGBBAA`. */
 const withAlpha = (hex: string, opacity: number) =>
   hex + Math.round(opacity * 255).toString(16).padStart(2, '0');
-const BADGE = 20;
 
 const CHOICE_LABEL: Record<TagChoice, string> = {
   include: 'included',
@@ -61,31 +47,43 @@ export function TagTile({ name, color, songCount, choice, width, onPress, expand
   const ink = included ? colors.bg : colors.text;
 
   return (
-    <View
-      style={[
-        styles.tile,
-        { width, backgroundColor: included ? hue : withAlpha(hue, excluded ? EXCLUDED_WASH : OFF_WASH) },
-        excluded && styles.excluded,
-      ]}
-    >
+    <View style={[styles.tile, { width }]}>
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={`${name}, ${CHOICE_LABEL[choice]}, ${songCount} songs`}
         accessibilityHint="Tap to include, then exclude, then clear"
-        android_ripple={{ color: withAlpha(excluded ? hue : colors.text, RIPPLE) }}
-        style={styles.main}
+        // While pressed, the tile already shows the colour the tap leads to, so
+        // releasing only adds or removes the marks: no ripple left fading over
+        // the new state.
+        style={({ pressed }) => [
+          styles.main,
+          { backgroundColor: withAlpha(hue, WASH[pressed ? NEXT_CHOICE[choice] : choice]) },
+        ]}
       >
-        <Text
-          style={[styles.name, { color: ink }, excluded && styles.struck, included && styles.nameOnColor]}
-          numberOfLines={1}
-        >
-          {name}
-        </Text>
-        <Text style={[styles.count, { color: included ? ink : excluded ? colors.exclude : colors.textDim }]}>
-          {excluded ? 'not these' : `${formatCount(songCount)} ${songCount === 1 ? 'song' : 'songs'}`}
-        </Text>
+        {({ pressed }) => {
+          const solid = (pressed ? NEXT_CHOICE[choice] : choice) === 'include';
+          const text = solid ? colors.bg : colors.text;
+          return (
+            <>
+              <Text
+                style={[styles.name, { color: text }, excluded && styles.struck, included && styles.nameOnColor]}
+                numberOfLines={1}
+              >
+                {name}
+              </Text>
+              <Text style={[styles.count, { color: excluded ? colors.exclude : solid ? text : colors.textDim }]}>
+                {excluded ? 'not these' : `${formatCount(songCount)} ${songCount === 1 ? 'song' : 'songs'}`}
+              </Text>
+            </>
+          );
+        }}
       </Pressable>
+
+      {/* A layer on top rather than a border on the tile: it can't shift the
+          text, and the tile never has a border removed (which on Android once
+          left its contents blank). */}
+      {excluded && <View style={styles.outline} pointerEvents="none" />}
 
       {choice !== 'off' && (
         <View
@@ -116,18 +114,19 @@ export function TagTile({ name, color, songCount, choice, width, onPress, expand
 }
 
 const styles = StyleSheet.create({
-  // The border is always there, transparent unless excluded. Removing a border
-  // from a rounded, clipped view on Android left the tile's contents blank
-  // after cycling back to off; a constant border also keeps the text from
-  // shifting by its width when a tile is excluded.
   tile: {
     height: TAG_TILE_HEIGHT,
     borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
     overflow: 'hidden',
   },
-  excluded: {
+  outline: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
     borderColor: colors.exclude,
   },
   main: {

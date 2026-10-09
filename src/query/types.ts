@@ -73,20 +73,21 @@ export function tagChoice(draft: QueryDraft, tagId: number): TagChoice {
   return 'off';
 }
 
-/**
- * One tap on a tag in the builder: off → include → exclude → off. Every state
- * shows on the chip, so the cycle teaches itself.
- */
+/** What one tap does to a tag in the builder: off → include → exclude → off. */
+export const NEXT_CHOICE: Record<TagChoice, TagChoice> = {
+  off: 'include',
+  include: 'exclude',
+  exclude: 'off',
+};
+
+/** One tap on a tag. Every state shows on the tile, so the cycle teaches itself. */
 export function cycleTag(draft: QueryDraft, tagId: number): QueryDraft {
-  const without = (ids: number[]) => ids.filter((id) => id !== tagId);
-  switch (tagChoice(draft, tagId)) {
-    case 'off':
-      return { ...draft, include: [...draft.include, tagId] };
-    case 'include':
-      return { ...draft, include: without(draft.include), exclude: [...draft.exclude, tagId] };
-    case 'exclude':
-      return { ...draft, exclude: without(draft.exclude) };
-  }
+  const next = NEXT_CHOICE[tagChoice(draft, tagId)];
+  const include = draft.include.filter((id) => id !== tagId);
+  const exclude = draft.exclude.filter((id) => id !== tagId);
+  if (next === 'include') include.push(tagId);
+  if (next === 'exclude') exclude.push(tagId);
+  return { ...draft, include, exclude };
 }
 
 export function isEmptyDraft(draft: QueryDraft): boolean {
