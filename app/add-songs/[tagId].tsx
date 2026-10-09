@@ -19,6 +19,7 @@ import { matchesQuery, searchKey } from '@/library/search';
 import { buildTagIndex } from '@/library/tagTree';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
+import { FilterChip } from '@/ui/FilterChip';
 import { plural } from '@/ui/format';
 import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
@@ -38,6 +39,9 @@ export default function AddSongsScreen() {
   const tagId = Number(rawId);
   const db = useSQLiteContext();
   const [query, setQuery] = useState('');
+  // Working through what's not tagged yet is how a new library gets tagged at all.
+  const [untaggedOnly, setUntaggedOnly] = useState(false);
+  const [recentFirst, setRecentFirst] = useState(false);
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(PICK_ROW_HEIGHT);
 
   const { data } = useLibraryQuery(
@@ -58,7 +62,10 @@ export default function AddSongsScreen() {
         const sub = applied.find((t) => below.has(t.id));
         if (sub) viaSubtag.set(songId, sub.name);
       }
-      return { index, songs, direct, viaSubtag, suggestions };
+      // Snapshotted on open, like everything here: a song tagged in this picker
+      // stays in the "not tagged yet" list rather than vanishing from under the finger.
+      const tagged = new Set(songTags.keys());
+      return { index, songs, direct, viaSubtag, suggestions, tagged };
     },
     [tagId]
   );
@@ -115,13 +122,16 @@ export default function AddSongsScreen() {
     [data]
   );
   const trimmed = query.trim();
-  const visible = useMemo(
-    () =>
-      trimmed
-        ? searchable.filter((s) => matchesQuery(s.key, trimmed)).map((s) => s.song)
-        : searchable.map((s) => s.song),
-    [searchable, trimmed]
+  const keep = useCallback(
+    (song: SongRow) => !untaggedOnly || !data?.tagged.has(song.id),
+    [untaggedOnly, data]
   );
+  const visible = useMemo(() => {
+    const matched = trimmed ? searchable.filter((s) => matchesQuery(s.key, trimmed)) : searchable;
+    const songs = matched.map((s) => s.song).filter(keep);
+    // `listAllSongs` is title order; a stable sort keeps that within equal dates.
+    return recentFirst ? songs.sort((a, b) => b.added_at - a.added_at) : songs;
+  }, [searchable, trimmed, keep, recentFirst]);
 
   const tag = data?.index.byId.get(tagId);
   if (data && !tag) {
@@ -152,7 +162,7 @@ export default function AddSongsScreen() {
     />
   );
 
-  const suggestions = trimmed ? [] : (data?.suggestions ?? []);
+  const suggestions = trimmed ? [] : (data?.suggestions ?? []).filter(keep);
 
   return (
     <View style={styles.screen}>
@@ -179,6 +189,18 @@ export default function AddSongsScreen() {
                 placeholder="Search songs, artists, albums"
                 returnKeyType="search"
               />
+              <View style={styles.filters}>
+                <FilterChip
+                  label="Not tagged yet"
+                  selected={untaggedOnly}
+                  onToggle={() => setUntaggedOnly((on) => !on)}
+                />
+                <FilterChip
+                  label="Recently added"
+                  selected={recentFirst}
+                  onToggle={() => setRecentFirst((on) => !on)}
+                />
+              </View>
               {added > 0 && <Text style={styles.added}>{plural(added, 'song')} added</Text>}
             </View>
             {suggestions.length > 0 && (
@@ -187,12 +209,16 @@ export default function AddSongsScreen() {
                 {suggestions.map(renderRow)}
               </>
             )}
-            <Text style={styles.sectionLabel}>{trimmed ? 'Matches' : 'All songs'}</Text>
+            <Text style={styles.sectionLabel}>
+              {trimmed ? 'Matches' : untaggedOnly ? 'Not tagged yet' : 'All songs'}
+            </Text>
           </View>
         }
         ListEmptyComponent={
-          data && trimmed ? (
+          !data ? null : trimmed ? (
             <EmptyState icon="search" title="No matches" body={`Nothing matches "${trimmed}".`} />
+          ) : untaggedOnly ? (
+            <EmptyState icon="checkmark-done" title="Everything's tagged" body="Every song has at least one tag." />
           ) : null
         }
       />
@@ -208,6 +234,11 @@ const styles = StyleSheet.create({
   search: {
     padding: spacing.lg,
     paddingBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  filters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
   },
   added: {
