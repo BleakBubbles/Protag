@@ -7,7 +7,7 @@ import { colors, font, iconSize, radius, spacing, tagColor } from '../theme';
 
 export const TAG_TILE_HEIGHT = 64;
 /** Tag colour opacity (hex alpha) behind tiles that aren't included. */
-const WASH = { off: '4D', excluded: '33' }; // 30%, 20%
+const WASH = { off: '80', excluded: '59' }; // 50%, 35%
 const BADGE = 20;
 
 const CHOICE_LABEL: Record<TagChoice, string> = {
