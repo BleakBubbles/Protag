@@ -8,6 +8,8 @@ export const SettingKey = {
   playlistPrompt: 'playlists.prompt',
   /** Epoch ms of the last tag backup export (the share sheet was completed). */
   lastBackupExport: 'backup.lastExportAt',
+  /** 'shown' once the user has seen how to bring back a hidden mini-player. */
+  miniPlayerHint: 'miniPlayer.hint',
 } as const;
 
 export type SettingKey = (typeof SettingKey)[keyof typeof SettingKey];

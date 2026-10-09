@@ -9,7 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DATABASE_NAME, migrate } from '@/db/schema';
 import { PlayerProvider } from '@/player/PlayerProvider';
 import { fontAssets } from '@/ui/fonts';
-import { colors, headerTitleStyle } from '@/ui/theme';
+import { stackScreenOptions } from '@/ui/stackOptions';
 
 // Keep the splash screen up until fonts are ready, so text never reflows from
 // the system font to Lora. Called at module scope, per the docs: inside a
@@ -38,19 +38,16 @@ export default function RootLayout() {
         <StatusBar style="light" />
         {/* Above the navigator, so playback survives switching tabs and screens. */}
         <PlayerProvider>
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: colors.bg },
-              headerTintColor: colors.text,
-              headerTitleStyle,
-              contentStyle: { backgroundColor: colors.bg },
-            }}
-          >
+          <Stack screenOptions={stackScreenOptions}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="tag/[id]" options={{ title: '' }} />
+            {/* Slides up from the mini-player and back down, like other music apps. */}
+            <Stack.Screen
+              name="player"
+              options={{ headerShown: false, animation: 'slide_from_bottom' }}
+            />
+            {/* Focused tasks cover everything, the mini-player included. */}
             <Stack.Screen name="song/[id]/tags" options={{ presentation: 'modal', title: 'Tags' }} />
             <Stack.Screen name="add-songs/[tagId]" options={{ presentation: 'modal', title: '' }} />
-            <Stack.Screen name="library-manage" options={{ title: 'Manage library' }} />
           </Stack>
         </PlayerProvider>
       </SQLiteProvider>

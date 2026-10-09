@@ -36,7 +36,7 @@ import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
 import { ColorSheet } from '@/ui/ColorSheet';
 import { EmptyState } from '@/ui/EmptyState';
-import { Fab, useFabClearance } from '@/ui/Fab';
+import { Fab, FAB_CLEARANCE } from '@/ui/Fab';
 import { plural } from '@/ui/format';
 import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
@@ -63,7 +63,6 @@ export default function TagScreen() {
   /** The song whose long-press options are open. */
   const [songMenu, setSongMenu] = useState<number | null>(null);
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
-  const fabClearance = useFabClearance();
 
   // The add button folds to just its icon while scrolling down through the
   // songs, and unfolds on the way back up or near the top.
@@ -229,7 +228,7 @@ export default function TagScreen() {
         getItemLayout={getItemLayout}
         onScroll={onScroll}
         scrollEventThrottle={32}
-        contentContainerStyle={songCount > 0 ? { paddingBottom: fabClearance } : undefined}
+        contentContainerStyle={songCount > 0 ? { paddingBottom: FAB_CLEARANCE } : undefined}
         renderItem={({ item }) => (
           <SongRow
             id={item.id}

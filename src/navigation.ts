@@ -6,7 +6,7 @@ import { router } from 'expo-router';
  * this file, not hunting for string paths across the app.
  */
 export const openTag = (id: number) =>
-  router.push({ pathname: '/tag/[id]', params: { id: String(id) } });
+  router.push({ pathname: '/library/tag/[id]', params: { id: String(id) } });
 
 export const openSongTags = (id: number) =>
   router.push({ pathname: '/song/[id]/tags', params: { id: String(id) } });
@@ -14,6 +14,9 @@ export const openSongTags = (id: number) =>
 export const openAddSongs = (tagId: number) =>
   router.push({ pathname: '/add-songs/[tagId]', params: { tagId: String(tagId) } });
 
-export const openManageLibrary = () => router.push('/library-manage');
+export const openManageLibrary = () => router.push('/library/manage');
 
 export const openLibrary = () => router.navigate('/library');
+
+/** The full-screen player, sliding up over everything. */
+export const openPlayer = () => router.push('/player');

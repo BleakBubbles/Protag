@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { IconName } from './IconButton';
 import { colors, font, radius, spacing } from './theme';
@@ -11,10 +10,7 @@ export const FAB_SIZE = 56;
 const ICON = 24;
 
 /** Room to leave at the bottom of a list so its last row can scroll clear of the button. */
-export function useFabClearance(): number {
-  const insets = useSafeAreaInsets();
-  return insets.bottom + FAB_SIZE + spacing.lg * 2;
-}
+export const FAB_CLEARANCE = FAB_SIZE + spacing.lg * 2;
 
 export interface FabProps {
   label: string;
@@ -29,10 +25,10 @@ export interface FabProps {
 
 /**
  * Floating action button: the screen's main action, reachable from anywhere in
- * a long list. Bottom-right, above the system navigation bar.
+ * a long list. Bottom-right of the screen it's in; for a tab screen that's
+ * already above the tab bar and mini-player, so no insets are added here.
  */
 export function Fab({ label, icon, extended, onPress }: FabProps) {
-  const insets = useSafeAreaInsets();
   const progress = useRef(new Animated.Value(extended ? 1 : 0)).current;
   const [labelWidth, setLabelWidth] = useState(0);
 
@@ -63,7 +59,7 @@ export function Fab({ label, icon, extended, onPress }: FabProps) {
         accessibilityRole="button"
         accessibilityLabel={label}
         android_ripple={{ color: colors.rippleOnAccent, foreground: true }}
-        style={[styles.fab, { bottom: insets.bottom + spacing.lg }]}
+        style={styles.fab}
       >
         <Ionicons name={icon} size={ICON} color={colors.onAccent} />
         <Animated.View
@@ -86,6 +82,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: spacing.lg,
+    bottom: spacing.lg,
     height: FAB_SIZE,
     minWidth: FAB_SIZE,
     flexDirection: 'row',
