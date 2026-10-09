@@ -14,6 +14,7 @@ import {
   listTagsWithCounts,
   parseTagPath,
   renameTag,
+  removeTagFromSong,
   reparentTag,
   setTagColor,
 } from '@/db/tags';
@@ -49,6 +50,8 @@ export default function TagScreen() {
   const { playQueue } = usePlayerActions();
   const { song: current, queue } = useNowPlaying();
   const [dialog, setDialog] = useState<Dialog>(null);
+  /** The song whose long-press options are open. */
+  const [songMenu, setSongMenu] = useState<number | null>(null);
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
 
   const { data } = useLibraryQuery(
@@ -144,6 +147,25 @@ export default function TagScreen() {
 
   const songCount = data?.songs.length ?? 0;
 
+  // Long-press options: take the song out of this tag. A song can be here via
+  // a subtag (or several), so offer each tag in this subtree it actually carries.
+  const menuSong = songMenu === null ? undefined : data?.songs.find((s) => s.id === songMenu);
+  const songActions: SheetAction[] = [];
+  if (data && menuSong) {
+    const subtree = data.index.descendantIds(id).add(id);
+    for (const applied of data.songTags.get(menuSong.id) ?? []) {
+      if (!subtree.has(applied.id)) continue;
+      songActions.push({
+        label: `Remove from ${applied.id === id ? applied.name : data.index.label(applied.id)}`,
+        onPress: async () => {
+          await removeTagFromSong(db, menuSong.id, applied.id);
+          notifyLibraryChanged();
+        },
+      });
+    }
+    songActions.push({ label: 'Edit tags…', onPress: () => openSongTags(menuSong.id) });
+  }
+
   return (
     <View style={styles.screen}>
       <Stack.Screen
@@ -191,6 +213,7 @@ export default function TagScreen() {
             tags={data?.songTags.get(item.id) ?? NO_TAGS}
             active={current?.id === item.id}
             onPress={playFrom}
+            onLongPress={setSongMenu}
             onEditTags={openSongTags}
           />
         )}
@@ -262,6 +285,12 @@ export default function TagScreen() {
         }
       />
 
+      <ActionSheet
+        visible={menuSong !== undefined}
+        title={menuSong?.title}
+        actions={songActions}
+        onClose={() => setSongMenu(null)}
+      />
       <ActionSheet visible={dialog === 'menu'} title={tag?.name} actions={menu} onClose={() => setDialog(null)} />
       <ActionSheet
         visible={dialog === 'move'}

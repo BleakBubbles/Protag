@@ -28,6 +28,8 @@ export interface SongRowProps {
    * callback to every row and memo actually skips re-rendering unchanged rows.
    */
   onPress: (id: number) => void;
+  /** More options for the song, e.g. removing it from the tag being viewed. */
+  onLongPress?: (id: number) => void;
   onEditTags: (id: number) => void;
 }
 
@@ -39,6 +41,7 @@ export const SongRow = memo(function SongRow({
   tags,
   active,
   onPress,
+  onLongPress,
   onEditTags,
 }: SongRowProps) {
   const hidden = tags.length - MAX_CHIPS;
@@ -47,6 +50,7 @@ export const SongRow = memo(function SongRow({
     <View style={styles.row}>
       <Pressable
         onPress={() => onPress(id)}
+        onLongPress={onLongPress && (() => onLongPress(id))}
         accessibilityRole="button"
         accessibilityLabel={`Play ${title}${artist ? ` by ${artist}` : ''}`}
         style={({ pressed }) => [styles.main, pressed && styles.pressed]}
