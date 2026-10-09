@@ -62,17 +62,11 @@ export function TagTile({ name, color, songCount, choice, width, onPress, expand
         android_ripple={{ color: `${colors.text}22` }}
         style={styles.main}
       >
-        {/* Every text style is set in every state (never removed by a state
-            change), and the key gives each state a fresh native text view: on
-            Android, *removing* a style like line-through could leave the text
-            blank after cycling back to off. */}
-        <Text key={`name-${choice}`} style={[styles.name, NAME_STYLE[choice](ink)]} numberOfLines={1}>
+        {/* Every text style is set in every state rather than added and removed. */}
+        <Text style={[styles.name, NAME_STYLE[choice](ink)]} numberOfLines={1}>
           {name}
         </Text>
-        <Text
-          key={`count-${choice}`}
-          style={[styles.count, { color: included ? ink : excluded ? colors.exclude : colors.textDim }]}
-        >
+        <Text style={[styles.count, { color: included ? ink : excluded ? colors.exclude : colors.textDim }]}>
           {excluded ? 'not these' : `${formatCount(songCount)} ${songCount === 1 ? 'song' : 'songs'}`}
         </Text>
       </Pressable>
@@ -106,13 +100,18 @@ export function TagTile({ name, color, songCount, choice, width, onPress, expand
 }
 
 const styles = StyleSheet.create({
+  // The border is always there, transparent unless excluded. Removing a border
+  // from a rounded, clipped view on Android left the tile's contents blank
+  // after cycling back to off; a constant border also keeps the text from
+  // shifting by its width when a tile is excluded.
   tile: {
     height: TAG_TILE_HEIGHT,
     borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
     overflow: 'hidden',
   },
   excluded: {
-    borderWidth: 1.5,
     borderColor: colors.exclude,
   },
   main: {
