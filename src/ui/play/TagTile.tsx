@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type TextStyle } from 'react-native';
 
 import type { TagChoice } from '../../query/types';
 import { formatCount } from '../format';
@@ -7,6 +7,12 @@ import { colors, font, iconSize, radius, spacing, tagColor } from '../theme';
 
 export const TAG_TILE_HEIGHT = 64;
 const BADGE = 20;
+
+const NAME_STYLE: Record<TagChoice, (ink: string) => TextStyle> = {
+  off: (ink) => ({ color: ink, fontWeight: '500', textDecorationLine: 'none' }),
+  include: (ink) => ({ color: ink, fontWeight: '700', textDecorationLine: 'none' }),
+  exclude: () => ({ color: colors.textDim, fontWeight: '500', textDecorationLine: 'line-through' }),
+};
 
 const CHOICE_LABEL: Record<TagChoice, string> = {
   include: 'included',
@@ -56,13 +62,17 @@ export function TagTile({ name, color, songCount, choice, width, onPress, expand
         android_ripple={{ color: `${colors.text}22` }}
         style={styles.main}
       >
-        <Text
-          style={[styles.name, { color: ink }, excluded && styles.struck, included && styles.nameOnColor]}
-          numberOfLines={1}
-        >
+        {/* Every text style is set in every state (never removed by a state
+            change), and the key gives each state a fresh native text view: on
+            Android, *removing* a style like line-through could leave the text
+            blank after cycling back to off. */}
+        <Text key={`name-${choice}`} style={[styles.name, NAME_STYLE[choice](ink)]} numberOfLines={1}>
           {name}
         </Text>
-        <Text style={[styles.count, { color: included ? ink : excluded ? colors.exclude : colors.textDim }]}>
+        <Text
+          key={`count-${choice}`}
+          style={[styles.count, { color: included ? ink : excluded ? colors.exclude : colors.textDim }]}
+        >
           {excluded ? 'not these' : `${formatCount(songCount)} ${songCount === 1 ? 'song' : 'songs'}`}
         </Text>
       </Pressable>
@@ -113,13 +123,6 @@ const styles = StyleSheet.create({
   },
   name: {
     ...font.listTitle,
-  },
-  nameOnColor: {
-    fontWeight: '700',
-  },
-  struck: {
-    color: colors.textDim,
-    textDecorationLine: 'line-through',
   },
   count: {
     ...font.caption,
