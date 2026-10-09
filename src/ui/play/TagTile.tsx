@@ -74,7 +74,7 @@ export function TagTile({ name, color, songCount, choice, width, onPress, expand
           {name}
         </Text>
         <Text style={[styles.count, { color: excluded ? colors.exclude : shown === 'include' ? text : colors.textDim }]}>
-          {excluded ? 'not these' : `${formatCount(songCount)} ${songCount === 1 ? 'song' : 'songs'}`}
+          {`${formatCount(songCount)} ${songCount === 1 ? 'song' : 'songs'}`}
         </Text>
       </Pressable>
 
