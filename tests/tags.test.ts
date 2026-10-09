@@ -4,11 +4,14 @@ import assert from 'node:assert/strict';
 import { freshDatabase, insertSong } from './helpers/db.ts';
 import {
   addTagToSong,
+  addTagToSongs,
   createTag,
   deleteTag,
   getTagPath,
   listSongsInTag,
   listTagsWithCounts,
+  moveSongsToTag,
+  removeSongsFromTag,
   renameTag,
   reparentTag,
   setTagColor,
@@ -197,5 +200,36 @@ test("a tag's songs come newest-tagged first, counting subtags", async () => {
     ['Alpha', 'Bravo', 'Charlie'],
     'latest tagging wins, no duplicates, missing files and untagged songs left out'
   );
+  db.close();
+});
+
+test('batch edits: remove from a tag tree, add to many, move between tags', async () => {
+  const db = await freshDatabase();
+  const kpop = await createTag(db as never, 'kpop', null);
+  const bts = await createTag(db as never, 'bts', kpop);
+  const chill = await createTag(db as never, 'chill', null);
+  const [a, b, c] = await Promise.all(['A', 'B', 'C'].map((t) => insertSong(db, t)));
+  await addTagToSong(db as never, a, kpop);
+  await addTagToSong(db as never, b, bts);
+  await addTagToSong(db as never, c, kpop);
+  await addTagToSong(db as never, a, chill);
+
+  const tagsOf = async (song: number) =>
+    (await db.getAllAsync<{ tag_id: number }>('SELECT tag_id FROM song_tags WHERE song_id = ? ORDER BY tag_id', song)).map(
+      (r) => r.tag_id
+    );
+
+  await removeSongsFromTag(db as never, [a, b], kpop);
+  assert.deepEqual(await tagsOf(a), [chill], 'other tags survive');
+  assert.deepEqual(await tagsOf(b), [], 'subtag links go too');
+  assert.deepEqual(await tagsOf(c), [kpop], 'unselected songs untouched');
+
+  await addTagToSongs(db as never, [a, c], chill);
+  assert.deepEqual(await tagsOf(c), [kpop, chill]);
+
+  await moveSongsToTag(db as never, [c], kpop, bts);
+  assert.deepEqual(await tagsOf(c), [bts, chill], 'moving into a subtag keeps that link');
+  await moveSongsToTag(db as never, [c], kpop, chill);
+  assert.deepEqual(await tagsOf(c), [chill]);
   db.close();
 });

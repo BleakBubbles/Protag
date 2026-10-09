@@ -1,11 +1,12 @@
 import { memo } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { TagRow as Tag } from '../../db/types';
 import { IconButton } from '../IconButton';
 import { Artwork } from '../player/Artwork';
 import { TagChip } from '../TagChip';
-import { colors, font, spacing } from '../theme';
+import { colors, font, iconSize, spacing, touchTarget } from '../theme';
 
 /**
  * Fixed so the list can compute row positions instead of measuring each one,
@@ -24,6 +25,12 @@ export interface SongRowProps {
   /** Highlights the row, e.g. the song currently playing. */
   active?: boolean;
   /**
+   * In a list's selection mode: the tag button becomes a check circle in the
+   * same spot (so nothing shifts), and taps are the list's to interpret.
+   */
+  selecting?: boolean;
+  selected?: boolean;
+  /**
    * Take the id rather than being pre-bound, so the parent can pass one stable
    * callback to every row and memo actually skips re-rendering unchanged rows.
    */
@@ -40,6 +47,8 @@ export const SongRow = memo(function SongRow({
   artworkUri,
   tags,
   active,
+  selecting,
+  selected,
   onPress,
   onLongPress,
   onEditTags,
@@ -47,12 +56,17 @@ export const SongRow = memo(function SongRow({
   const hidden = tags.length - MAX_CHIPS;
 
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, selected && styles.selected]}>
       <Pressable
         onPress={() => onPress(id)}
         onLongPress={onLongPress && (() => onLongPress(id))}
         accessibilityRole="button"
-        accessibilityLabel={`Play ${title}${artist ? ` by ${artist}` : ''}`}
+        accessibilityLabel={
+          selecting
+            ? `${selected ? 'Deselect' : 'Select'} ${title}`
+            : `Play ${title}${artist ? ` by ${artist}` : ''}`
+        }
+        accessibilityState={selecting ? { selected } : undefined}
         style={({ pressed }) => [styles.main, pressed && styles.pressed]}
       >
         <Artwork uri={artworkUri} size={THUMB} />
@@ -72,12 +86,22 @@ export const SongRow = memo(function SongRow({
           </View>
         </View>
       </Pressable>
-      <IconButton
-        icon={tags.length > 0 ? 'pricetags' : 'pricetag-outline'}
-        label={`Edit tags for ${title}`}
-        color={tags.length > 0 ? colors.textDim : colors.textFaint}
-        onPress={() => onEditTags(id)}
-      />
+      {selecting ? (
+        <View style={styles.check} pointerEvents="none">
+          <Ionicons
+            name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+            size={iconSize.md}
+            color={selected ? colors.accentFg : colors.textFaint}
+          />
+        </View>
+      ) : (
+        <IconButton
+          icon={tags.length > 0 ? 'pricetags' : 'pricetag-outline'}
+          label={`Edit tags for ${title}`}
+          color={tags.length > 0 ? colors.textDim : colors.textFaint}
+          onPress={() => onEditTags(id)}
+        />
+      )}
     </View>
   );
 });
@@ -88,6 +112,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingRight: spacing.sm,
+  },
+  selected: {
+    backgroundColor: colors.accentTint,
+  },
+  check: {
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   main: {
     flex: 1,

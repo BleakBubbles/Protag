@@ -1,8 +1,9 @@
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
+  BackHandler,
   FlatList,
   Pressable,
   StyleSheet,
@@ -14,6 +15,7 @@ import {
 
 import { notifyLibraryChanged } from '@/db/changes';
 import {
+  addTagToSongs,
   deleteTag,
   ensureTagPath,
   getTagDeletionImpact,
@@ -21,9 +23,10 @@ import {
   listTags,
   listSongsInTag,
   listTagsWithCounts,
+  moveSongsToTag,
   parseTagPath,
+  removeSongsFromTag,
   renameTag,
-  removeTagFromSong,
   reparentTag,
   setTagColor,
 } from '@/db/tags';
@@ -41,6 +44,7 @@ import { plural } from '@/ui/format';
 import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { IconButton } from '@/ui/IconButton';
+import { SelectionBar } from '@/ui/library/SelectionBar';
 import { SONG_ROW_HEIGHT, SongRow } from '@/ui/library/SongRow';
 import { TagRow } from '@/ui/library/TagRow';
 import { LogoMark } from '@/ui/LogoMark';
@@ -62,8 +66,10 @@ export default function TagScreen() {
   const { playQueue } = usePlayerActions();
   const { song: current, queue } = useNowPlaying();
   const [dialog, setDialog] = useState<Dialog>(null);
-  /** The song whose long-press options are open. */
-  const [songMenu, setSongMenu] = useState<number | null>(null);
+  /** Selection mode: the selected song ids, or null when not selecting. */
+  const [selection, setSelection] = useState<ReadonlySet<number> | null>(null);
+  /** Which tag picker is open for the selection. */
+  const [picking, setPicking] = useState<'add' | 'move' | null>(null);
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
 
   // The add button shows its label at the top of the page and folds to just the
@@ -90,6 +96,35 @@ export default function TagScreen() {
 
   const tag = data?.index.byId.get(id);
   const ancestors = data && tag ? data.index.path(id).slice(0, -1) : [];
+
+  // Long-press starts selecting; then taps toggle. Deselecting the last song,
+  // the header's close button, or back leaves selection mode.
+  const toggle = useCallback(
+    (songId: number) =>
+      setSelection((prev) => {
+        const next = new Set(prev);
+        if (next.has(songId)) next.delete(songId);
+        else next.add(songId);
+        return next.size > 0 ? next : null;
+      }),
+    []
+  );
+  const selecting = selection !== null;
+  useFocusEffect(
+    useCallback(() => {
+      if (!selecting) return;
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        setSelection(null);
+        return true;
+      });
+      return () => sub.remove();
+    }, [selecting])
+  );
+  // Songs can leave the list under a selection (e.g. retagged elsewhere).
+  const selected = useMemo(
+    () => (selection && data ? data.songs.filter((s) => selection.has(s.id)).map((s) => s.id) : []),
+    [selection, data]
+  );
 
   const playFrom = useCallback(
     (songId: number) =>
@@ -168,63 +203,102 @@ export default function TagScreen() {
 
   const songCount = data?.songs.length ?? 0;
 
-  // Long-press options: take the song out of this tag. A song can be here via
-  // a subtag (or several), so offer each tag in this subtree it actually carries.
-  const menuSong = songMenu === null ? undefined : data?.songs.find((s) => s.id === songMenu);
-  const songActions: SheetAction[] = [];
-  if (data && menuSong) {
-    const subtree = data.index.descendantIds(id).add(id);
-    for (const applied of data.songTags.get(menuSong.id) ?? []) {
-      if (!subtree.has(applied.id)) continue;
-      songActions.push({
-        label: `Remove from ${applied.id === id ? applied.name : data.index.label(applied.id)}`,
-        onPress: async () => {
-          await removeTagFromSong(db, menuSong.id, applied.id);
-          notifyLibraryChanged();
+  const done = () => {
+    setSelection(null);
+    notifyLibraryChanged();
+  };
+
+  const confirmRemove = () => {
+    if (!tag) return;
+    const subtags = (data?.children.length ?? 0) > 0;
+    Alert.alert(
+      `Remove ${plural(selected.length, 'song')} from "${tag.name}"?`,
+      `${subtags ? 'They leave its subtags too. ' : ''}The songs stay in your library.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            await removeSongsFromTag(db, selected, id);
+            done();
+          },
         },
-      });
-    }
-    songActions.push({ label: 'Edit tags…', onPress: () => openSongTags(menuSong.id) });
-  }
+      ]
+    );
+  };
+
+  // Every other tag, by path. A picked tag gets the selection (and, for a move,
+  // this tag gives it up).
+  const targets: SheetAction[] = data
+    ? data.index
+        .all()
+        .filter((t) => t.id !== id)
+        .map((t) => ({
+          label: data.index.label(t.id),
+          onPress: async () => {
+            if (picking === 'move') await moveSongsToTag(db, selected, id, t.id);
+            else await addTagToSongs(db, selected, t.id);
+            done();
+          },
+        }))
+    : [];
+
+  const selectionHeader = {
+    title: `${plural(selected.length, 'song')} selected`,
+    headerTitle: undefined,
+    headerLeft: () => (
+      <IconButton icon="close" label="Stop selecting" onPress={() => setSelection(null)} />
+    ),
+    headerRight: () => (
+      <IconButton
+        icon="checkmark-done"
+        label="Select all"
+        onPress={() => setSelection(new Set(data?.songs.map((s) => s.id)))}
+      />
+    ),
+  };
+
+  const tagHeader = {
+    headerLeft: undefined,
+    title: tag?.name ?? '',
+    // The colour follows the name, so the two read as one, and tapping it
+    // is the way to change it. After the name rather than before it, which
+    // put it too close to the back arrow. The name shrinks first, so a
+    // long name truncates and the dot stays visible.
+    headerTitle: () =>
+      tag ? (
+        <View style={styles.titleRow}>
+          <Text style={styles.titleText} numberOfLines={1}>
+            {tag.name}
+          </Text>
+          <Pressable
+            onPress={() => setDialog('color')}
+            hitSlop={15}
+            accessibilityRole="button"
+            accessibilityLabel={`Colour: ${tag.color ?? 'none'}. Change colour`}
+            style={({ pressed }) => [
+              styles.titleDot,
+              { backgroundColor: tagColor(tag.color) },
+              pressed && styles.titleDotPressed,
+            ]}
+          />
+        </View>
+      ) : null,
+    headerRight: () => (
+      <IconButton icon="ellipsis-horizontal" label="Tag options" onPress={() => setDialog('menu')} />
+    ),
+  };
 
   return (
     <View style={styles.screen}>
-      <Stack.Screen
-        options={{
-          title: tag?.name ?? '',
-          // The colour follows the name, so the two read as one, and tapping it
-          // is the way to change it. After the name rather than before it, which
-          // put it too close to the back arrow. The name shrinks first, so a
-          // long name truncates and the dot stays visible.
-          headerTitle: () =>
-            tag ? (
-              <View style={styles.titleRow}>
-                <Text style={styles.titleText} numberOfLines={1}>
-                  {tag.name}
-                </Text>
-                <Pressable
-                  onPress={() => setDialog('color')}
-                  hitSlop={15}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Colour: ${tag.color ?? 'none'}. Change colour`}
-                  style={({ pressed }) => [
-                    styles.titleDot,
-                    { backgroundColor: tagColor(tag.color) },
-                    pressed && styles.titleDotPressed,
-                  ]}
-                />
-              </View>
-            ) : null,
-          headerRight: () => (
-            <IconButton icon="ellipsis-horizontal" label="Tag options" onPress={() => setDialog('menu')} />
-          ),
-        }}
-      />
+      <Stack.Screen options={selecting ? selectionHeader : tagHeader} />
 
       <FlatList
         data={data?.songs ?? []}
         keyExtractor={(song) => String(song.id)}
         getItemLayout={getItemLayout}
+        extraData={selection}
         onScroll={onScroll}
         scrollEventThrottle={32}
         // Throttling can drop the event for where a short scroll actually stops;
@@ -240,8 +314,10 @@ export default function TagScreen() {
             artworkUri={albumArtUri(item.album_id)}
             tags={data?.songTags.get(item.id) ?? NO_TAGS}
             active={current?.id === item.id}
-            onPress={playFrom}
-            onLongPress={setSongMenu}
+            selecting={selecting}
+            selected={selection?.has(item.id) ?? false}
+            onPress={selecting ? toggle : playFrom}
+            onLongPress={toggle}
             onEditTags={openSongTags}
           />
         )}
@@ -303,14 +379,24 @@ export default function TagScreen() {
 
       {/* Adding songs is a main way to tag, so it stays in reach anywhere in a
           long list. An empty tag has the same call to action in its empty state. */}
-      {songCount > 0 && (
-        <Fab label="Add songs" icon="add" extended={fabExtended} onPress={() => openAddSongs(id)} />
+      {selecting ? (
+        <SelectionBar
+          actions={[
+            { label: 'Add to…', icon: 'pricetag-outline', onPress: () => setPicking('add') },
+            { label: 'Move to…', icon: 'arrow-redo-outline', onPress: () => setPicking('move') },
+            { label: 'Remove', icon: 'remove-circle-outline', destructive: true, onPress: confirmRemove },
+          ]}
+        />
+      ) : (
+        songCount > 0 && (
+          <Fab label="Add songs" icon="add" extended={fabExtended} onPress={() => openAddSongs(id)} />
+        )
       )}
       <ActionSheet
-        visible={menuSong !== undefined}
-        title={menuSong?.title}
-        actions={songActions}
-        onClose={() => setSongMenu(null)}
+        visible={picking !== null}
+        title={`${picking === 'move' ? 'Move' : 'Add'} ${plural(selected.length, 'song')} to`}
+        actions={targets.length > 0 ? targets : [{ label: 'No other tags yet', disabled: true, onPress: () => {} }]}
+        onClose={() => setPicking(null)}
       />
       <ActionSheet visible={dialog === 'menu'} title={tag?.name} actions={menu} onClose={() => setDialog(null)} />
       <ActionSheet

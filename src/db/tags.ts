@@ -413,3 +413,84 @@ export async function suggestSongsForTag(
     limit
   );
 }
+
+// ------------------------------------------------------------------ batch edits
+
+const SUBTREE = `WITH RECURSIVE sub(id) AS (
+  SELECT id FROM tags WHERE id = ?
+  UNION ALL
+  SELECT t.id FROM tags t JOIN sub ON t.parent_id = sub.id
+)`;
+
+const placeholders = (ids: readonly number[]) => ids.map(() => '?').join(', ');
+
+/**
+ * Take songs out of a tag entirely, subtags included, so they leave its page.
+ * The songs themselves are untouched.
+ */
+export async function removeSongsFromTag(
+  db: SQLiteDatabase,
+  songIds: readonly number[],
+  tagId: number
+): Promise<void> {
+  if (songIds.length === 0) return;
+  await db.runAsync(
+    `${SUBTREE}
+     DELETE FROM song_tags
+     WHERE tag_id IN (SELECT id FROM sub) AND song_id IN (${placeholders(songIds)})`,
+    tagId,
+    ...songIds
+  );
+}
+
+/** Apply a tag to several songs; ones that already have it are left as they are. */
+export async function addTagToSongs(
+  db: SQLiteDatabase,
+  songIds: readonly number[],
+  tagId: number
+): Promise<void> {
+  const now = Date.now();
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    for (const songId of songIds) {
+      await txn.runAsync(
+        'INSERT OR IGNORE INTO song_tags (song_id, tag_id, added_at) VALUES (?, ?, ?)',
+        songId,
+        tagId,
+        now
+      );
+    }
+  });
+}
+
+/**
+ * Move songs out of one tag (subtags included) and into another, as one step.
+ * Moving into one of the source's own subtags works: that link is the one
+ * that's kept.
+ */
+export async function moveSongsToTag(
+  db: SQLiteDatabase,
+  songIds: readonly number[],
+  fromTagId: number,
+  toTagId: number
+): Promise<void> {
+  if (songIds.length === 0) return;
+  const now = Date.now();
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    await txn.runAsync(
+      `${SUBTREE}
+       DELETE FROM song_tags
+       WHERE tag_id IN (SELECT id FROM sub) AND tag_id != ? AND song_id IN (${placeholders(songIds)})`,
+      fromTagId,
+      toTagId,
+      ...songIds
+    );
+    for (const songId of songIds) {
+      await txn.runAsync(
+        'INSERT OR IGNORE INTO song_tags (song_id, tag_id, added_at) VALUES (?, ?, ?)',
+        songId,
+        toTagId,
+        now
+      );
+    }
+  });
+}
