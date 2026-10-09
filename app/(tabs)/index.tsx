@@ -202,39 +202,13 @@ function Builder({ songs, tags, descendants, mixes }: LibraryData) {
           </View>
         )}
 
-        <View style={styles.section}>
-          <Button
-            label={shuffleLabel}
-            icon="shuffle"
-            onPress={() => playQuery(query)}
-            disabled={count === 0}
-            style={styles.shuffle}
-          />
-          {!empty && (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summary} numberOfLines={2}>
-                {describeQuery(query, names)}
-              </Text>
-              <TextAction label="Save" onPress={() => setSaving(true)} />
-              <TextAction label="Clear" onPress={clear} />
-            </View>
-          )}
-          {/* Only once there's a choice to make: one-tag shuffles stay one tap. */}
-          {current.include.length >= 2 && (
-            <View style={styles.modeRow}>
-              <FilterChip
-                label="Match all"
-                selected={current.mode === 'and'}
-                onToggle={() => setDraft((d) => ({ ...d, mode: 'and' }))}
-              />
-              <FilterChip
-                label="Match any"
-                selected={current.mode === 'or'}
-                onToggle={() => setDraft((d) => ({ ...d, mode: 'or' }))}
-              />
-            </View>
-          )}
-        </View>
+        <Button
+          label={shuffleLabel}
+          icon="shuffle"
+          onPress={() => playQuery(query)}
+          disabled={count === 0}
+          style={styles.shuffle}
+        />
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Mix by tag</Text>
@@ -243,6 +217,32 @@ function Builder({ songs, tags, descendants, mixes }: LibraryData) {
           ) : (
             <>
               <View style={styles.chips}>{renderLevel(null)}</View>
+              {/* Everything that appears in response to a tap sits below the chips,
+                  so it can never push the chip being tapped out from under a finger. */}
+              {!empty && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summary} numberOfLines={2}>
+                    {describeQuery(query, names)}
+                  </Text>
+                  <TextAction label="Save" onPress={() => setSaving(true)} />
+                  <TextAction label="Clear" onPress={clear} />
+                </View>
+              )}
+              {/* Only once there's a choice to make: one-tag shuffles stay one tap. */}
+              {current.include.length >= 2 && (
+                <View style={styles.modeRow}>
+                  <FilterChip
+                    label="Match all"
+                    selected={current.mode === 'and'}
+                    onToggle={() => setDraft((d) => ({ ...d, mode: 'and' }))}
+                  />
+                  <FilterChip
+                    label="Match any"
+                    selected={current.mode === 'or'}
+                    onToggle={() => setDraft((d) => ({ ...d, mode: 'or' }))}
+                  />
+                </View>
+              )}
               <Text style={styles.hint}>Tap a tag to include it, again to exclude it.</Text>
             </>
           )}

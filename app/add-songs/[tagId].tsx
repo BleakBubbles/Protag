@@ -201,7 +201,11 @@ export default function AddSongsScreen() {
                   onToggle={() => setRecentFirst((on) => !on)}
                 />
               </View>
-              {added > 0 && <Text style={styles.added}>{plural(added, 'song')} added</Text>}
+              {/* Always one line, so the first tap doesn't push the list down: it
+                  explains the toggle until there's a count to show instead. */}
+              <Text style={[styles.status, added > 0 && styles.added]} numberOfLines={1}>
+                {added > 0 ? `${plural(added, 'song')} added` : 'Tap a song to add it. Tap again to take it out.'}
+              </Text>
             </View>
             {suggestions.length > 0 && (
               <>
@@ -241,8 +245,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  added: {
+  status: {
     ...font.caption,
+    color: colors.textFaint,
+  },
+  added: {
     color: colors.accentFg,
   },
   sectionLabel: {
