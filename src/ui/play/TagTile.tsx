@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { NEXT_CHOICE, type TagChoice } from '../../query/types';
@@ -46,38 +47,35 @@ export function TagTile({ name, color, songCount, choice, width, onPress, expand
   const excluded = choice === 'exclude';
   const ink = included ? colors.bg : colors.text;
 
+  // While pressed, the tile already shows the colour the tap leads to, so
+  // releasing only adds or removes the marks. The preview is tied to the state
+  // the press *started* on: Pressable holds a quick tap "pressed" for 130 ms,
+  // past the moment the tap lands, and previewing from the new state then would
+  // flash a third state.
+  const [pressedOn, setPressedOn] = useState<TagChoice | null>(null);
+  const shown = pressedOn === choice ? NEXT_CHOICE[choice] : choice;
+  const text = shown === 'include' ? colors.bg : colors.text;
+
   return (
     <View style={[styles.tile, { width }]}>
       <Pressable
         onPress={onPress}
+        onPressIn={() => setPressedOn(choice)}
+        onPressOut={() => setPressedOn(null)}
         accessibilityRole="button"
         accessibilityLabel={`${name}, ${CHOICE_LABEL[choice]}, ${songCount} songs`}
         accessibilityHint="Tap to include, then exclude, then clear"
-        // While pressed, the tile already shows the colour the tap leads to, so
-        // releasing only adds or removes the marks: no ripple left fading over
-        // the new state.
-        style={({ pressed }) => [
-          styles.main,
-          { backgroundColor: withAlpha(hue, WASH[pressed ? NEXT_CHOICE[choice] : choice]) },
-        ]}
+        style={[styles.main, { backgroundColor: withAlpha(hue, WASH[shown]) }]}
       >
-        {({ pressed }) => {
-          const solid = (pressed ? NEXT_CHOICE[choice] : choice) === 'include';
-          const text = solid ? colors.bg : colors.text;
-          return (
-            <>
-              <Text
-                style={[styles.name, { color: text }, excluded && styles.struck, included && styles.nameOnColor]}
-                numberOfLines={1}
-              >
-                {name}
-              </Text>
-              <Text style={[styles.count, { color: excluded ? colors.exclude : solid ? text : colors.textDim }]}>
-                {excluded ? 'not these' : `${formatCount(songCount)} ${songCount === 1 ? 'song' : 'songs'}`}
-              </Text>
-            </>
-          );
-        }}
+        <Text
+          style={[styles.name, { color: text }, excluded && styles.struck, included && styles.nameOnColor]}
+          numberOfLines={1}
+        >
+          {name}
+        </Text>
+        <Text style={[styles.count, { color: excluded ? colors.exclude : shown === 'include' ? text : colors.textDim }]}>
+          {excluded ? 'not these' : `${formatCount(songCount)} ${songCount === 1 ? 'song' : 'songs'}`}
+        </Text>
       </Pressable>
 
       {/* A layer on top rather than a border on the tile: it can't shift the
