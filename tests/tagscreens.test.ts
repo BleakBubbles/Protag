@@ -110,6 +110,7 @@ const row = (id: number, name: string, parent_id: number | null) => ({
   parent_id,
   sort_order: 0,
   created_at: 0,
+  color: null,
 });
 
 const TREE = [

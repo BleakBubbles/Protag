@@ -31,7 +31,7 @@ function asset(overrides: Partial<Asset> = {}): Asset {
     mediaType: 'audio',
     width: 0,
     height: 0,
-    creationTime: 0,
+    creationTime: 1_700_000_000_000,
     modificationTime: 0,
     ...overrides,
   } as Asset;
@@ -53,6 +53,7 @@ test('maps a MediaStore asset to a song row', () => {
     genre: 'K-Pop',
     trackNo: 1,
     durationMs: 185500,
+    addedAt: 1_700_000_000_000,
   });
 });
 
@@ -111,6 +112,7 @@ function scanned(mediaId: string, overrides: Partial<ScannedSong> = {}): Scanned
     genre: null,
     trackNo: null,
     durationMs: 200000,
+    addedAt: null,
     ...overrides,
   };
 }
@@ -311,5 +313,17 @@ test('a playlist with no matches creates no tag', async () => {
   assert.equal(result.tagId, null);
   const tagCount = await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM tags');
   assert.equal(tagCount?.n, 0);
+  db.close();
+});
+
+test("a song's added date is when the file reached the phone, refreshed on rescan", async () => {
+  const db = await freshDatabase();
+  await recordScanPage(db as never, [scanned('1')], 5000);
+  const before = await db.getFirstAsync<{ added_at: number }>('SELECT added_at FROM songs');
+  assert.equal(before?.added_at, 5000, 'falls back to the scan time when MediaStore has no date');
+
+  await recordScanPage(db as never, [scanned('1', { addedAt: 1234 })], 6000);
+  const after = await db.getFirstAsync<{ added_at: number }>('SELECT added_at FROM songs');
+  assert.equal(after?.added_at, 1234);
   db.close();
 });

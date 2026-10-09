@@ -14,6 +14,8 @@ export interface ScannedSong {
   genre: string | null;
   trackNo: number | null;
   durationMs: number;
+  /** When the file arrived on the phone (MediaStore's date added), in ms; null if unknown. */
+  addedAt: number | null;
 }
 
 /** "03 - Ditto.mp3" -> "Ditto", for files with no title tag. */
@@ -49,6 +51,7 @@ export async function upsertScannedSong(
        genre        = excluded.genre,
        track_no     = excluded.track_no,
        duration_ms  = excluded.duration_ms,
+       added_at     = excluded.added_at,
        last_seen_at = excluded.last_seen_at,
        is_missing   = 0`,
     song.mediaId,
@@ -61,7 +64,9 @@ export async function upsertScannedSong(
     song.genre,
     song.trackNo,
     song.durationMs,
-    seenAt,
+    // "Recently added" means new to the phone, not new to ProTag: the first scan
+    // finds everything at once. Refreshed on rescans so older rows pick it up.
+    song.addedAt ?? seenAt,
     seenAt
   );
 }

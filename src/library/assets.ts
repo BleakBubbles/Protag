@@ -60,6 +60,7 @@ export function toScannedSong(asset: Asset, genreNames: Map<string, string>): Ma
       genre: asset.genreId ? clean(genreNames.get(asset.genreId)) : null,
       trackNo: positiveInt(asset.trackNumber),
       durationMs,
+      addedAt: positiveInt(asset.creationTime),
     },
   };
 }
