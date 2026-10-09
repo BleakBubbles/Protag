@@ -77,9 +77,10 @@ export function usePlayQuery() {
   const db = useSQLiteContext();
   const { playQueue } = usePlayerActions();
   return useCallback(
-    async (query: TagQuery, { shuffle = true }: { shuffle?: boolean } = {}) => {
-      const { ids, label } = await queueForQuery(db, query);
-      return playQueue(ids, { shuffle, label });
+    async (query: TagQuery, { shuffle = true, label }: { shuffle?: boolean; label?: string } = {}) => {
+      const request = await queueForQuery(db, query);
+      // A mix plays under its own name; anything else is described from the query.
+      return playQueue(request.ids, { shuffle, label: label ?? request.label });
     },
     [db, playQueue]
   );

@@ -5,7 +5,7 @@ import { freshDatabase, insertSong, type TestDatabase } from './helpers/db.ts';
 import { addTagToSong, buildDescendantMap, createTag } from '../src/db/tags.ts';
 import { compileCountSelect, compileSongSelect } from '../src/query/compile.ts';
 import { describeQuery } from '../src/query/describe.ts';
-import { buildQuery, type TagQuery } from '../src/query/types.ts';
+import { buildQuery, cycleTag, EMPTY_DRAFT, isEmptyDraft, pruneDraft, tagChoice, type TagQuery } from '../src/query/types.ts';
 
 /**
  * Fixture tree:
@@ -195,4 +195,20 @@ test('describeQuery renders a readable label', async () => {
     ),
     'asian-pop AND driving, not sad'
   );
+});
+
+test('tapping a tag cycles it include → exclude → off', () => {
+  let draft = cycleTag(EMPTY_DRAFT, 7);
+  assert.equal(tagChoice(draft, 7), 'include');
+  draft = cycleTag(draft, 7);
+  assert.equal(tagChoice(draft, 7), 'exclude');
+  assert.deepEqual(draft.include, [], 'never in both lists');
+  draft = cycleTag(draft, 7);
+  assert.equal(tagChoice(draft, 7), 'off');
+  assert.ok(isEmptyDraft(draft));
+});
+
+test('a draft drops tags that no longer exist', () => {
+  const draft = { ...EMPTY_DRAFT, include: [1, 2], exclude: [3] };
+  assert.deepEqual(pruneDraft(draft, new Set([2])), { ...EMPTY_DRAFT, include: [2], exclude: [] });
 });

@@ -14,17 +14,7 @@ export async function getTag(db: SQLiteDatabase, id: number): Promise<TagRow | n
   return db.getFirstAsync<TagRow>('SELECT * FROM tags WHERE id = ?', id);
 }
 
-/**
- * Children of `parentId` (or root tags when null), each with an *inherited* song
- * count — songs under the tag or any of its descendants. Missing files are left
- * out so the count matches what a shuffle would actually play.
- */
-export async function listTagsWithCounts(
-  db: SQLiteDatabase,
-  parentId: number | null
-): Promise<TagWithCounts[]> {
-  return db.getAllAsync<TagWithCounts>(
-    `
+const TAGS_WITH_COUNTS = `
     WITH RECURSIVE sub(root, id) AS (
       SELECT id, id FROM tags
       UNION ALL
@@ -39,12 +29,26 @@ export async function listTagsWithCounts(
         WHERE st.tag_id IN (SELECT id FROM sub WHERE sub.root = t.id)
       ) AS song_count,
       (SELECT COUNT(*) FROM tags c WHERE c.parent_id = t.id) AS child_count
-    FROM tags t
-    WHERE t.parent_id IS ?
-    ORDER BY t.sort_order, t.name COLLATE NOCASE
-    `,
+    FROM tags t`;
+
+/**
+ * Children of `parentId` (or root tags when null), each with an *inherited* song
+ * count — songs under the tag or any of its descendants. Missing files are left
+ * out so the count matches what a shuffle would actually play.
+ */
+export async function listTagsWithCounts(
+  db: SQLiteDatabase,
+  parentId: number | null
+): Promise<TagWithCounts[]> {
+  return db.getAllAsync<TagWithCounts>(
+    `${TAGS_WITH_COUNTS} WHERE t.parent_id IS ? ORDER BY t.sort_order, t.name COLLATE NOCASE`,
     parentId
   );
+}
+
+/** The whole tree with counts, in one query: for views that show every level, like the query builder. */
+export async function listAllTagsWithCounts(db: SQLiteDatabase): Promise<TagWithCounts[]> {
+  return db.getAllAsync<TagWithCounts>(`${TAGS_WITH_COUNTS} ORDER BY t.sort_order, t.name COLLATE NOCASE`);
 }
 
 /**

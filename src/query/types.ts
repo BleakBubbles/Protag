@@ -64,3 +64,40 @@ export function buildQuery(draft: QueryDraft): TagQuery {
 export function isEmptyQuery(query: TagQuery): boolean {
   return query.type === 'all';
 }
+
+export type TagChoice = 'include' | 'exclude' | 'off';
+
+export function tagChoice(draft: QueryDraft, tagId: number): TagChoice {
+  if (draft.include.includes(tagId)) return 'include';
+  if (draft.exclude.includes(tagId)) return 'exclude';
+  return 'off';
+}
+
+/**
+ * One tap on a tag in the builder: off → include → exclude → off. Every state
+ * shows on the chip, so the cycle teaches itself.
+ */
+export function cycleTag(draft: QueryDraft, tagId: number): QueryDraft {
+  const without = (ids: number[]) => ids.filter((id) => id !== tagId);
+  switch (tagChoice(draft, tagId)) {
+    case 'off':
+      return { ...draft, include: [...draft.include, tagId] };
+    case 'include':
+      return { ...draft, include: without(draft.include), exclude: [...draft.exclude, tagId] };
+    case 'exclude':
+      return { ...draft, exclude: without(draft.exclude) };
+  }
+}
+
+export function isEmptyDraft(draft: QueryDraft): boolean {
+  return draft.include.length === 0 && draft.exclude.length === 0;
+}
+
+/** Drop tags that no longer exist, e.g. from a mix saved before a tag was deleted. */
+export function pruneDraft(draft: QueryDraft, existing: ReadonlySet<number>): QueryDraft {
+  return {
+    ...draft,
+    include: draft.include.filter((id) => existing.has(id)),
+    exclude: draft.exclude.filter((id) => existing.has(id)),
+  };
+}
