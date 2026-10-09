@@ -7,6 +7,7 @@ import {
   createTag,
   deleteTag,
   getTagPath,
+  listSongsInTag,
   listTagsWithCounts,
   renameTag,
   reparentTag,
@@ -172,4 +173,29 @@ test('the colour cycle wraps around and skips gray', () => {
   assert.equal(nextTagColor('gray'), TAG_COLOR_CYCLE[0]);
   assert.equal(nextTagColor(null), TAG_COLOR_CYCLE[0]);
   assert.ok(!TAG_COLOR_CYCLE.includes('gray'));
+});
+
+test("a tag's songs come newest-tagged first, counting subtags", async () => {
+  const db = await freshDatabase();
+  const kpop = await createTag(db as never, 'kpop', null);
+  const bts = await createTag(db as never, 'bts', kpop);
+  const [a, b, c] = await Promise.all(['Alpha', 'Bravo', 'Charlie'].map((t) => insertSong(db, t)));
+  await insertSong(db, 'Untagged');
+  const missing = await insertSong(db, 'Missing', { missing: true });
+  const tagAt = (song: number, tag: number, at: number) =>
+    db.runAsync('INSERT INTO song_tags (song_id, tag_id, added_at) VALUES (?, ?, ?)', song, tag, at);
+
+  await tagAt(a, kpop, 100);
+  await tagAt(b, bts, 300);
+  await tagAt(c, kpop, 200);
+  await tagAt(a, bts, 400); // tagged again later, via the subtag
+  await tagAt(missing, kpop, 999);
+
+  const songs = await listSongsInTag(db as never, kpop);
+  assert.deepEqual(
+    songs.map((s) => s.title),
+    ['Alpha', 'Bravo', 'Charlie'],
+    'latest tagging wins, no duplicates, missing files and untagged songs left out'
+  );
+  db.close();
 });

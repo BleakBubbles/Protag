@@ -10,6 +10,7 @@ import {
   getTagDeletionImpact,
   listAllSongTags,
   listTags,
+  listSongsInTag,
   listTagsWithCounts,
   parseTagPath,
   renameTag,
@@ -21,8 +22,6 @@ import { albumArtUri } from '@/library/assets';
 import { buildTagIndex } from '@/library/tagTree';
 import { openAddSongs, openSongTags, openTag } from '@/navigation';
 import { useNowPlaying, usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
-import { findSongs } from '@/query/run';
-import type { TagQuery } from '@/query/types';
 import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
 import { ColorSheet } from '@/ui/ColorSheet';
@@ -54,11 +53,10 @@ export default function TagScreen() {
 
   const { data } = useLibraryQuery(
     async (db) => {
-      const query: TagQuery = { type: 'tag', tagId: id, includeDescendants: true };
       const [tags, children, songs, songTags] = await Promise.all([
         listTags(db),
         listTagsWithCounts(db, id),
-        findSongs(db, query, { order: 'title' }),
+        listSongsInTag(db, id),
         listAllSongTags(db),
       ]);
       return { index: buildTagIndex(tags), children, songs, songTags };

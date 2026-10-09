@@ -339,6 +339,30 @@ export async function getTagDeletionImpact(
   return row ?? { subtags: 0, songs: 0 };
 }
 
+/**
+ * Every song under a tag (subtags included), most recently tagged first — the
+ * order a playlist shows new additions in, without asking anyone to arrange it.
+ * A song tagged more than once in the subtree counts from its latest tagging.
+ */
+export async function listSongsInTag(db: SQLiteDatabase, tagId: number): Promise<SongRow[]> {
+  return db.getAllAsync<SongRow>(
+    `WITH RECURSIVE sub(id) AS (
+       SELECT id FROM tags WHERE id = ?
+       UNION ALL
+       SELECT t.id FROM tags t JOIN sub ON t.parent_id = sub.id
+     ),
+     members AS (
+       SELECT song_id, MAX(added_at) AS tagged_at
+       FROM song_tags WHERE tag_id IN (SELECT id FROM sub)
+       GROUP BY song_id
+     )
+     SELECT s.* FROM songs s JOIN members m ON m.song_id = s.id
+     WHERE s.is_missing = 0
+     ORDER BY m.tagged_at DESC, s.title COLLATE NOCASE`,
+    tagId
+  );
+}
+
 /** Songs carrying this exact tag — not via a subtag. What the add-songs picker toggles. */
 export async function listDirectSongIds(db: SQLiteDatabase, tagId: number): Promise<number[]> {
   const rows = await db.getAllAsync<{ song_id: number }>(
