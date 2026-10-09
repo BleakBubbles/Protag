@@ -21,6 +21,7 @@ function describePlan(plan: ImportPlan): string {
     `${plural(tags, 'tag')}${plan.newTags > 0 && plan.newTags < tags ? `, ${plan.newTags} of them new` : ''}.`,
     `${plural(plan.matchedSongs, 'song')} found on this phone, getting ${plural(plan.newLinks, 'new tag')}.`,
   ];
+  if (plan.newMixes.length > 0) lines.push(`Also adds ${plural(plan.newMixes.length, 'mix', 'mixes')}.`);
   if (plan.unmatchedSongs.length > 0) {
     lines.push(
       `${plural(plan.unmatchedSongs.length, "song isn't", "songs aren't")} on this phone. Import this file again after adding them.`
@@ -74,7 +75,7 @@ export function useBackup() {
       setState({ kind: 'working' });
       const plan = await planImport(db, parseBackup(text));
 
-      if (plan.newTags === 0 && plan.newLinks === 0) {
+      if (plan.newTags === 0 && plan.newLinks === 0 && plan.newMixes.length === 0) {
         setState({ kind: 'imported', message: 'Everything in that backup is already here.' });
         return;
       }

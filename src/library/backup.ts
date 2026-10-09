@@ -1,6 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { listMixes, parseDraft } from '../db/mixes';
 import { isTagColor } from '../db/tagColors';
+import type { QueryDraft } from '../query/types';
 import { SongMatcher } from './match';
 
 /**
@@ -33,12 +35,21 @@ export interface BackupSong {
   tags: { tag: number; addedAt: number }[];
 }
 
+/** A saved mix; its draft refers to tags by their ids in this file. */
+export interface BackupMix {
+  name: string;
+  draft: QueryDraft;
+  createdAt: number;
+}
+
 export interface BackupFile {
   app: 'ProTag';
   format: number;
   exportedAt: string;
   tags: BackupTag[];
   songs: BackupSong[];
+  /** Added after format 1 shipped; optional, so older files still read. */
+  mixes: BackupMix[];
 }
 
 /** Thrown for a file that isn't a backup ProTag can read; the message is for the user. */
@@ -53,7 +64,7 @@ export class BackupError extends Error {}
  * kept in the backup.
  */
 export async function buildBackup(db: SQLiteDatabase, now = new Date()): Promise<BackupFile> {
-  const [tags, links] = await Promise.all([
+  const [tags, links, mixes] = await Promise.all([
     db.getAllAsync<{ id: number; name: string; parent_id: number | null; color: string | null; created_at: number }>(
       'SELECT id, name, parent_id, color, created_at FROM tags ORDER BY id'
     ),
@@ -71,6 +82,7 @@ export async function buildBackup(db: SQLiteDatabase, now = new Date()): Promise
        FROM song_tags st JOIN songs s ON s.id = st.song_id
        ORDER BY st.song_id, st.tag_id`
     ),
+    listMixes(db),
   ]);
 
   const songs = new Map<number, BackupSong>();
@@ -102,6 +114,8 @@ export async function buildBackup(db: SQLiteDatabase, now = new Date()): Promise
       createdAt: t.created_at,
     })),
     songs: [...songs.values()],
+    // Library tag ids are the file's tag ids, so drafts carry over as they are.
+    mixes: mixes.map((m) => ({ name: m.name, draft: m.draft, createdAt: m.createdAt })),
   };
 }
 
@@ -166,7 +180,22 @@ export function parseBackup(text: string): BackupFile {
     });
   }
 
-  return { app: 'ProTag', format: data.format, exportedAt: optString(data.exportedAt) ?? '', tags, songs };
+  const mixes: BackupMix[] = [];
+  for (const m of Array.isArray(data.mixes) ? data.mixes : []) {
+    if (!isObject(m) || typeof m.name !== 'string' || !m.name.trim()) continue;
+    const draft = parseDraft(JSON.stringify(m.draft ?? {}));
+    mixes.push({
+      name: m.name.trim(),
+      draft: {
+        ...draft,
+        include: draft.include.filter((id) => tagIds.has(id)),
+        exclude: draft.exclude.filter((id) => tagIds.has(id)),
+      },
+      createdAt: isNumber(m.createdAt) ? m.createdAt : Date.now(),
+    });
+  }
+
+  return { app: 'ProTag', format: data.format, exportedAt: optString(data.exportedAt) ?? '', tags, songs, mixes };
 }
 
 // ------------------------------------------------------------------ import
@@ -183,6 +212,8 @@ export interface ImportPlan {
   unmatchedSongs: BackupSong[];
   /** Tag applications the import would add (ones already present don't count). */
   newLinks: number;
+  /** Mixes whose name isn't taken here; a same-named mix already here is kept as it is. */
+  newMixes: BackupMix[];
 }
 
 interface LibraryTag {
@@ -227,14 +258,16 @@ function resolveTags(backup: BackupFile, library: readonly LibraryTag[]): Map<nu
  * deleted, and re-importing the same file changes nothing.
  */
 export async function planImport(db: SQLiteDatabase, backup: BackupFile): Promise<ImportPlan> {
-  const [library, songs, links] = await Promise.all([
+  const [library, songs, links, mixes] = await Promise.all([
     db.getAllAsync<LibraryTag>('SELECT id, name, parent_id FROM tags'),
     // Missing songs too: their rows (and tags) wait for the file to come back.
     db.getAllAsync<{ id: number; filename: string; title: string; artist: string | null }>(
       'SELECT id, filename, title, artist FROM songs'
     ),
     db.getAllAsync<{ song_id: number; tag_id: number }>('SELECT song_id, tag_id FROM song_tags'),
+    listMixes(db),
   ]);
+  const mixNames = new Set(mixes.map((m) => m.name.toLowerCase()));
 
   const resolved = resolveTags(backup, library);
   const matcher = new SongMatcher(songs);
@@ -265,6 +298,7 @@ export async function planImport(db: SQLiteDatabase, backup: BackupFile): Promis
     matchedSongs: songIdsBySong.filter((id) => id !== null).length,
     unmatchedSongs: backup.songs.filter((_, i) => songIdsBySong[i] === null),
     newLinks: added.size,
+    newMixes: backup.mixes.filter((m) => !mixNames.has(m.name.toLowerCase())),
   };
 }
 
@@ -322,6 +356,18 @@ export async function applyImport(db: SQLiteDatabase, plan: ImportPlan): Promise
           link.addedAt
         );
       }
+    }
+
+    const toLibrary = (ids: number[]) => ids.map((id) => libraryIds.get(id)!);
+    for (const mix of plan.newMixes) {
+      const draft = { ...mix.draft, include: toLibrary(mix.draft.include), exclude: toLibrary(mix.draft.exclude) };
+      // OR IGNORE: a mix of that name made while the summary was up wins.
+      await txn.runAsync(
+        'INSERT OR IGNORE INTO saved_queries (name, query_json, created_at) VALUES (?, ?, ?)',
+        mix.name,
+        JSON.stringify(draft),
+        mix.createdAt
+      );
     }
   });
 }

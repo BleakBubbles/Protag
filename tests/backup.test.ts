@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { freshDatabase, insertSong, type TestDatabase } from './helpers/db.ts';
+import { listMixes, saveMix } from '../src/db/mixes.ts';
 import { addTagToSong, createTag, setTagColor } from '../src/db/tags.ts';
+import { EMPTY_DRAFT } from '../src/query/types.ts';
 import {
   applyImport,
   BACKUP_FORMAT,
@@ -167,4 +169,38 @@ test('a link to a tag missing from the file is dropped, not fatal', () => {
     })
   );
   assert.deepEqual(backup.songs[0].tags.map((l) => l.tag), [1]);
+});
+
+test('mixes come along, pointing at the restored tags', async () => {
+  const source = await taggedLibrary();
+  const ids = async (db: TestDatabase, name: string) =>
+    (await db.getFirstAsync<{ id: number }>('SELECT id FROM tags WHERE name = ?', name))!.id;
+  await saveMix(source as never, 'Night drive', {
+    ...EMPTY_DRAFT,
+    include: [await ids(source, 'driving')],
+    exclude: [await ids(source, 'bts')],
+  });
+  await saveMix(source as never, 'Gym', { ...EMPTY_DRAFT, include: [await ids(source, 'kpop')] });
+
+  const target = await newPhone();
+  // Something else already took this target's id numbers, so ids must be mapped, not copied.
+  await createTag(target as never, 'unrelated', null);
+  await saveMix(target as never, 'gym', { ...EMPTY_DRAFT, mode: 'or' });
+
+  const plan = await exportInto(source, target);
+  assert.deepEqual(plan.newMixes.map((m) => m.name), ['Night drive'], 'a mix already here by name is kept');
+  await applyImport(target as never, plan);
+
+  const night = (await listMixes(target as never)).find((m) => m.name === 'Night drive')!;
+  assert.deepEqual(night.draft.include, [await ids(target, 'driving')]);
+  assert.deepEqual(night.draft.exclude, [await ids(target, 'bts')]);
+  const gym = (await listMixes(target as never)).find((m) => m.name === 'gym')!;
+  assert.equal(gym.draft.mode, 'or', 'untouched');
+  source.close();
+  target.close();
+});
+
+test('a backup made before mixes existed still imports', () => {
+  const backup = parseBackup(JSON.stringify({ app: 'ProTag', format: 1, tags: [], songs: [] }));
+  assert.deepEqual(backup.mixes, []);
 });
