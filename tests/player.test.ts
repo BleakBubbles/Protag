@@ -6,7 +6,7 @@ import { addTagToSong, createTag } from '../src/db/tags.ts';
 import { artworkCacheKey, isNativeLoadableUrl } from '../src/player/artworkUrls.ts';
 import { queueForQuery } from '../src/player/sources.ts';
 import { MATCH_ALL } from '../src/query/types.ts';
-import { formatCount, formatTime, plural } from '../src/ui/format.ts';
+import { formatCount, formatDaysAgo, formatTime, plural } from '../src/ui/format.ts';
 
 test('formatTime renders player timestamps', () => {
   assert.equal(formatTime(0), '0:00');
@@ -67,4 +67,12 @@ test('artwork is cached per album under a filesystem-safe key', () => {
   assert.equal(artworkCacheKey('content://media/external/audio/albumart/12?x=1'), '12');
   assert.equal(artworkCacheKey('content://media/../weird:name'), 'weirdname');
   assert.equal(artworkCacheKey('content://'), null, 'no shared fallback key');
+});
+
+test('days ago counts calendar days, not 24-hour spans', () => {
+  const now = new Date(2026, 9, 8, 0, 30).getTime();
+  assert.equal(formatDaysAgo(new Date(2026, 9, 8, 0, 5).getTime(), now), 'today');
+  assert.equal(formatDaysAgo(new Date(2026, 9, 7, 23, 50).getTime(), now), 'yesterday');
+  assert.equal(formatDaysAgo(new Date(2026, 9, 1).getTime(), now), '7 days ago');
+  assert.equal(formatDaysAgo(new Date(2026, 5, 1).getTime(), now), '4 months ago');
 });

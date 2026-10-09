@@ -16,3 +16,15 @@ export function formatTime(seconds: number): string {
   const s = String(total % 60).padStart(2, '0');
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** How long ago, in calendar days: "today", "yesterday", "5 days ago", "3 months ago". */
+export function formatDaysAgo(then: number, now = Date.now()): string {
+  const startOf = (ms: number) => new Date(ms).setHours(0, 0, 0, 0);
+  const days = Math.round((startOf(now) - startOf(then)) / DAY_MS);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 60) return `${days} days ago`;
+  return `${Math.round(days / 30)} months ago`;
+}

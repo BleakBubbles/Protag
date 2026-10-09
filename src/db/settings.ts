@@ -6,6 +6,8 @@ export const SettingKey = {
   playlistFolder: 'playlists.folderUri',
   /** 'dismissed' once the user declines the playlist import prompt. */
   playlistPrompt: 'playlists.prompt',
+  /** Epoch ms of the last tag backup export (the share sheet was completed). */
+  lastBackupExport: 'backup.lastExportAt',
 } as const;
 
 export type SettingKey = (typeof SettingKey)[keyof typeof SettingKey];
