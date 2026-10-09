@@ -68,12 +68,13 @@ export function compileWhere(
   }
 }
 
-export type SongOrder = 'title' | 'artist' | 'recent' | 'random';
+export type SongOrder = 'title' | 'artist' | 'recent' | 'played' | 'random';
 
 const ORDER_SQL: Record<SongOrder, string> = {
   title: 's.title COLLATE NOCASE',
   artist: 's.artist COLLATE NOCASE, s.title COLLATE NOCASE',
   recent: 's.added_at DESC',
+  played: 's.play_count DESC, s.last_played_at DESC, s.title COLLATE NOCASE',
   random: 'RANDOM()',
 };
 

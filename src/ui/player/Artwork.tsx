@@ -8,6 +8,8 @@ export interface ArtworkProps {
   /** `content://` album-art URI from MediaStore, or null. */
   uri: string | null;
   size: number;
+  /** Overrides the size-scaled corner radius, e.g. 0 for tiles in a mosaic. */
+  cornerRadius?: number;
 }
 
 /**
@@ -15,14 +17,14 @@ export interface ArtworkProps {
  * checked, so it may point at nothing — a load error falls back to the
  * placeholder rather than an empty box.
  */
-export function Artwork({ uri, size }: ArtworkProps) {
+export function Artwork({ uri, size, cornerRadius }: ArtworkProps) {
   // Keyed by uri so a new song gets a fresh chance to load.
   const [failedUri, setFailedUri] = useState<string | null>(null);
   const showImage = uri !== null && failedUri !== uri;
 
   return (
     // Corners scale with size: a thumbnail with the full radius would look like a pill.
-    <View style={[styles.frame, { width: size, height: size, borderRadius: Math.min(radius.lg, size * 0.15) }]}>
+    <View style={[styles.frame, { width: size, height: size, borderRadius: cornerRadius ?? Math.min(radius.lg, size * 0.15) }]}>
       {showImage ? (
         <Image
           source={{ uri }}

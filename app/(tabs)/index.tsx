@@ -9,6 +9,7 @@ import { deleteMix, listMixes, MixError, renameMix, saveMix, type Mix } from '@/
 import { countSongs } from '@/db/songs';
 import { buildDescendantMap, listAllTagsWithCounts } from '@/db/tags';
 import type { TagWithCounts } from '@/db/types';
+import { loadMixArt } from '@/library/mixArt';
 import { openLibrary } from '@/navigation';
 import { usePlayQuery } from '@/player/PlayerProvider';
 import { describeQuery } from '@/query/describe';
@@ -50,8 +51,9 @@ export default function PlayScreen() {
       buildDescendantMap(db),
       listMixes(db),
     ]);
+    const mixArt = await loadMixArt(db, mixes, new Set(tags.map((t) => t.id)), descendants);
     // A tag with nothing under it can't be shuffled, so the builder leaves it out.
-    return { songs, tags: tags.filter((t) => t.song_count > 0), descendants, mixes };
+    return { songs, tags: tags.filter((t) => t.song_count > 0), descendants, mixes, mixArt };
   }, []);
 
   if (!data) return <View style={styles.screen} />;
@@ -75,9 +77,10 @@ type LibraryData = {
   tags: TagWithCounts[];
   descendants: Map<number, number[]>;
   mixes: Mix[];
+  mixArt: Map<number, string[]>;
 };
 
-function Builder({ songs, tags, descendants, mixes }: LibraryData) {
+function Builder({ tags, descendants, mixes, mixArt }: LibraryData) {
   const db = useSQLiteContext();
   const playQuery = usePlayQuery();
   const [draft, setDraft] = useState<QueryDraft>(EMPTY_DRAFT);
@@ -90,6 +93,7 @@ function Builder({ songs, tags, descendants, mixes }: LibraryData) {
   const [renaming, setRenaming] = useState<Mix | null>(null);
 
   const names = useMemo(() => new Map(tags.map((t) => [t.id, t.name])), [tags]);
+  const colorsById = useMemo(() => new Map(tags.map((t) => [t.id, t.color])), [tags]);
   const children = useMemo(() => {
     const map = new Map<number | null, TagWithCounts[]>();
     for (const tag of tags) map.set(tag.parent_id, [...(map.get(tag.parent_id) ?? []), tag]);
@@ -194,6 +198,8 @@ function Builder({ songs, tags, descendants, mixes }: LibraryData) {
                   key={mix.id}
                   name={mix.name}
                   description={describe(mix.draft)}
+                  albumIds={mixArt.get(mix.id) ?? []}
+                  color={tagColor(colorsById.get(mix.draft.include[0] ?? -1) ?? null)}
                   onPress={() => playMix(mix)}
                   onLongPress={() => setMenuMix(mix)}
                 />

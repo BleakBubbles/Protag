@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import type { Asset } from 'expo-music-library';
 
 import { freshDatabase, insertSong } from './helpers/db.ts';
+import { distinctAlbums } from '../src/library/mixArt.ts';
+import { findSongs } from '../src/query/run.ts';
 import { getTagsForSong } from '../src/db/tags.ts';
 import type { ScannedSong } from '../src/db/songs.ts';
 import { albumArtUri, MIN_DURATION_MS, toScannedSong } from '../src/library/assets.ts';
@@ -325,5 +327,22 @@ test("a song's added date is when the file reached the phone, refreshed on resca
   await recordScanPage(db as never, [scanned('1', { addedAt: 1234 })], 6000);
   const after = await db.getFirstAsync<{ added_at: number }>('SELECT added_at FROM songs');
   assert.equal(after?.added_at, 1234);
+  db.close();
+});
+
+test("a mix's artwork is its most-played albums, each once", async () => {
+  assert.deepEqual(
+    distinctAlbums([{ album_id: 'a' }, { album_id: null }, { album_id: 'a' }, { album_id: 'b' }, { album_id: 'c' }]),
+    ['a', 'b', 'c']
+  );
+  assert.equal(distinctAlbums(['1', '2', '3', '4', '5'].map((album_id) => ({ album_id }))).length, 4);
+
+  const db = await freshDatabase();
+  for (const [title, album, plays] of [['Rare', 'r', 1], ['Fave', 'f', 9], ['Mid', 'm', 4]] as const) {
+    const id = await insertSong(db, title);
+    await db.runAsync('UPDATE songs SET album_id = ?, play_count = ? WHERE id = ?', album, plays, id);
+  }
+  const songs = await findSongs(db as never, { type: 'all' }, { order: 'played' });
+  assert.deepEqual(distinctAlbums(songs), ['f', 'm', 'r']);
   db.close();
 });
