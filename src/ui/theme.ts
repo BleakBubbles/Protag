@@ -33,6 +33,8 @@ export const colors = {
   accentFg: '#2E9384',
   /** `accentFg` at low opacity: a soft teal wash behind teal text (tonal buttons). */
   accentTint: '#2E938429',
+  /** Android's press ripple over an `accent` fill. */
+  rippleOnAccent: '#FFFFFF33',
 
   include: '#8FB57E',
   exclude: '#D9706A',

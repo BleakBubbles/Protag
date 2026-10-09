@@ -1,7 +1,16 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 
 import { notifyLibraryChanged } from '@/db/changes';
 import {
@@ -27,6 +36,7 @@ import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
 import { ColorSheet } from '@/ui/ColorSheet';
 import { EmptyState } from '@/ui/EmptyState';
+import { Fab, useFabClearance } from '@/ui/Fab';
 import { plural } from '@/ui/format';
 import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
@@ -53,6 +63,19 @@ export default function TagScreen() {
   /** The song whose long-press options are open. */
   const [songMenu, setSongMenu] = useState<number | null>(null);
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
+  const fabClearance = useFabClearance();
+
+  // The add button folds to just its icon while scrolling down through the
+  // songs, and unfolds on the way back up or near the top.
+  const [fabExtended, setFabExtended] = useState(true);
+  const lastScrollY = useRef(0);
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const dy = y - lastScrollY.current;
+    lastScrollY.current = y;
+    if (y < 48 || dy < -6) setFabExtended(true);
+    else if (dy > 6) setFabExtended(false);
+  }, []);
 
   const { data } = useLibraryQuery(
     async (db) => {
@@ -204,6 +227,9 @@ export default function TagScreen() {
         data={data?.songs ?? []}
         keyExtractor={(song) => String(song.id)}
         getItemLayout={getItemLayout}
+        onScroll={onScroll}
+        scrollEventThrottle={32}
+        contentContainerStyle={songCount > 0 ? { paddingBottom: fabClearance } : undefined}
         renderItem={({ item }) => (
           <SongRow
             id={item.id}
@@ -256,19 +282,7 @@ export default function TagScreen() {
             ))}
             <View style={styles.block}>
               <Button label="Add subtag" variant="secondary" onPress={() => setDialog('add-subtag')} />
-              <View style={styles.sectionRow}>
-                {/* The row carries the top margin, so the label and its action line up. */}
-                <Text style={[styles.sectionLabel, styles.inRow]}>Songs</Text>
-                {songCount > 0 && (
-                  <Button
-                    label="Add songs"
-                    icon="add"
-                    variant="tonal"
-                    size="small"
-                    onPress={() => openAddSongs(id)}
-                  />
-                )}
-              </View>
+              <Text style={styles.sectionLabel}>Songs</Text>
             </View>
           </View>
         }
@@ -285,6 +299,11 @@ export default function TagScreen() {
         }
       />
 
+      {/* Adding songs is a main way to tag, so it stays in reach anywhere in a
+          long list. An empty tag has the same call to action in its empty state. */}
+      {songCount > 0 && (
+        <Fab label="Add songs" icon="add" extended={fabExtended} onPress={() => openAddSongs(id)} />
+      )}
       <ActionSheet
         visible={menuSong !== undefined}
         title={menuSong?.title}
@@ -389,14 +408,5 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginTop: spacing.sm,
-  },
-  sectionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.sm,
-  },
-  inRow: {
-    marginTop: 0,
   },
 });
