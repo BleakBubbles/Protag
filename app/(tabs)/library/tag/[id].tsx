@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
@@ -9,8 +10,6 @@ import {
   StyleSheet,
   Text,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
 } from 'react-native';
 
 import { notifyLibraryChanged } from '@/db/changes';
@@ -39,7 +38,7 @@ import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
 import { ColorSheet } from '@/ui/ColorSheet';
 import { EmptyState } from '@/ui/EmptyState';
-import { Fab, FAB_CLEARANCE } from '@/ui/Fab';
+import { Fab, FAB_CLEARANCE, useFabFold } from '@/ui/Fab';
 import { plural } from '@/ui/format';
 import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
@@ -49,13 +48,12 @@ import { SONG_ROW_HEIGHT, SongRow } from '@/ui/library/SongRow';
 import { TagRow } from '@/ui/library/TagRow';
 import { LogoMark } from '@/ui/LogoMark';
 import { PromptDialog } from '@/ui/PromptDialog';
-import { colors, font, headerTitleStyle, spacing, tagColor } from '@/ui/theme';
+import { colors, font, headerTitleStyle, iconSize, spacing, tagColor } from '@/ui/theme';
 
 const NO_TAGS: readonly Tag[] = [];
-/** Scrolled further than this, the add button folds to its icon. */
-const FAB_FOLD_AT = 48;
+const SHUFFLE_SIZE = 52;
 
-type Dialog = 'menu' | 'rename' | 'color' | 'move' | 'add-subtag' | null;
+type Dialog = 'menu' | 'rename' | 'color' | 'move' | 'add' | 'add-subtag' | null;
 
 /** One tag: its subtags, every song under it (subtags included), and shuffle. */
 export default function TagScreen() {
@@ -72,14 +70,7 @@ export default function TagScreen() {
   const [picking, setPicking] = useState<'add' | 'move' | null>(null);
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
 
-  // The add button shows its label at the top of the page and folds to just the
-  // plus once the list is scrolled. It changes only when crossing that line, not
-  // with every change of scroll direction: a button that's always there shouldn't
-  // keep moving and pulling the eye away from the songs.
-  const [fabExtended, setFabExtended] = useState(true);
-  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    setFabExtended(e.nativeEvent.contentOffset.y < FAB_FOLD_AT);
-  }, []);
+  const fab = useFabFold();
 
   const { data } = useLibraryQuery(
     async (db) => {
@@ -202,6 +193,7 @@ export default function TagScreen() {
       : [];
 
   const songCount = data?.songs.length ?? 0;
+  const childCount = data?.children.length ?? 0;
 
   const done = () => {
     setSelection(null);
@@ -306,12 +298,7 @@ export default function TagScreen() {
         keyExtractor={(song) => String(song.id)}
         getItemLayout={getItemLayout}
         extraData={selection}
-        onScroll={onScroll}
-        scrollEventThrottle={32}
-        // Throttling can drop the event for where a short scroll actually stops;
-        // these two always report the final position.
-        onScrollEndDrag={onScroll}
-        onMomentumScrollEnd={onScroll}
+        {...fab.scrollProps}
         contentContainerStyle={songCount > 0 ? { paddingBottom: FAB_CLEARANCE } : undefined}
         renderItem={({ item }) => (
           <SongRow
@@ -343,17 +330,28 @@ export default function TagScreen() {
                   ))}
                 </View>
               )}
-              {/* Shuffle once there's something to play. Until then, the empty
-                  state below carries the one call to action: add songs. */}
-              {songCount > 0 && (
-                <Button
-                  label={`Shuffle · ${plural(songCount, 'song')}`}
-                  onPress={() => playQuery({ type: 'tag', tagId: id, includeDescendants: true })}
-                />
-              )}
-              <Text style={styles.sectionLabel}>Subtags</Text>
+              {/* What's inside, and shuffle once there's something to play. Until
+                  then, the empty state below carries the calls to action. */}
+              <View style={styles.summaryRow}>
+                <Text style={styles.summary}>
+                  {[childCount > 0 ? plural(childCount, 'subtag') : null, plural(songCount, 'song')]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+                {songCount > 0 && (
+                  <Pressable
+                    onPress={() => playQuery({ type: 'tag', tagId: id, includeDescendants: true })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Shuffle ${plural(songCount, 'song')}`}
+                    android_ripple={{ color: colors.rippleOnAccent, foreground: true }}
+                    style={styles.shuffle}
+                  >
+                    <Ionicons name="shuffle" size={iconSize.md} color={colors.onAccent} />
+                  </Pressable>
+                )}
+              </View>
             </View>
-            {/* Full-width rows, like the Tags view — outside the padded blocks. */}
+            {/* Full-width rows, like the Tags view: outside the padded block. */}
             {data?.children.map((child) => (
               <TagRow
                 key={child.id}
@@ -364,10 +362,8 @@ export default function TagScreen() {
                 onPress={() => openTag(child.id)}
               />
             ))}
-            <View style={styles.block}>
-              <Button label="Add subtag" variant="secondary" onPress={() => setDialog('add-subtag')} />
-              <Text style={styles.sectionLabel}>Songs</Text>
-            </View>
+            {/* Folders first, then songs, like any file browser. */}
+            {childCount > 0 && songCount > 0 && <View style={styles.divider} />}
           </View>
         }
         ListEmptyComponent={
@@ -378,6 +374,7 @@ export default function TagScreen() {
               body={`Add songs to "${tag.name}" here, or tag them from the player as you listen.`}
             >
               <Button label="Add songs" icon="add" variant="tonal" onPress={() => openAddSongs(id)} />
+              <Button label="New subtag" variant="secondary" onPress={() => setDialog('add-subtag')} />
             </EmptyState>
           ) : null
         }
@@ -395,7 +392,7 @@ export default function TagScreen() {
         />
       ) : (
         songCount > 0 && (
-          <Fab label="Add songs" icon="add" extended={fabExtended} onPress={() => openAddSongs(id)} />
+          <Fab label="Add" icon="add" extended={fab.extended} onPress={() => setDialog('add')} />
         )
       )}
       <ActionSheet
@@ -403,6 +400,15 @@ export default function TagScreen() {
         title={`${picking === 'move' ? 'Move' : 'Add'} ${plural(selected.length, 'song')} to`}
         actions={targets.length > 0 ? targets : [{ label: 'No other tags yet', disabled: true, onPress: () => {} }]}
         onClose={() => setPicking(null)}
+      />
+      {/* Like a file browser's "New": songs are the files, subtags the folders. */}
+      <ActionSheet
+        visible={dialog === 'add'}
+        actions={[
+          { label: 'Add songs', onPress: () => openAddSongs(id) },
+          { label: 'New subtag', onPress: () => setDialog('add-subtag') },
+        ]}
+        onClose={() => setDialog(null)}
       />
       <ActionSheet visible={dialog === 'menu'} title={tag?.name} actions={menu} onClose={() => setDialog(null)} />
       <ActionSheet
@@ -475,12 +481,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     flexShrink: 1,
   },
+  // No gap between children: folder rows sit flush, like the song rows below.
   header: {
-    paddingVertical: spacing.lg,
-    gap: spacing.md,
+    paddingTop: spacing.lg,
   },
   block: {
     paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
     gap: spacing.md,
   },
   breadcrumb: {
@@ -496,11 +503,31 @@ const styles = StyleSheet.create({
     ...font.label,
     color: colors.accentFg,
   },
-  sectionLabel: {
-    ...font.caption,
-    color: colors.textFaint,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginTop: spacing.sm,
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: SHUFFLE_SIZE,
+  },
+  summary: {
+    ...font.label,
+    color: colors.textDim,
+  },
+  // Round, like a play button in other music apps: the page's main action
+  // without a full-width block of text.
+  shuffle: {
+    width: SHUFFLE_SIZE,
+    height: SHUFFLE_SIZE,
+    borderRadius: SHUFFLE_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+    overflow: 'hidden',
+  },
+  divider: {
+    height: 1,
+    marginHorizontal: spacing.lg,
+    marginVertical: spacing.xs,
+    backgroundColor: colors.border,
   },
 });

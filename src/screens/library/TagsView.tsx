@@ -6,8 +6,8 @@ import { notifyLibraryChanged } from '../../db/changes';
 import { ensureTagPath, listTagsWithCounts, parseTagPath } from '../../db/tags';
 import { usePlaylistImport } from '../../library/usePlaylistImport';
 import { openTag } from '../../navigation';
-import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
+import { Fab, FAB_CLEARANCE, useFabFold } from '../../ui/Fab';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
 import { ImportPrompt, ImportStatus } from '../../ui/library/ImportCards';
@@ -15,13 +15,14 @@ import { TAG_ROW_HEIGHT, TagRow } from '../../ui/library/TagRow';
 import { PromptDialog } from '../../ui/PromptDialog';
 import { spacing } from '../../ui/theme';
 
-/** Top-level tags, directory style. Tapping one drills into it. */
+/** Top-level tags as folders: the library's root directory. Tapping one opens it. */
 export function TagsView() {
   const db = useSQLiteContext();
   const { data: tags } = useLibraryQuery((db) => listTagsWithCounts(db, null), []);
   const imports = usePlaylistImport();
   const [creating, setCreating] = useState(false);
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(TAG_ROW_HEIGHT);
+  const fab = useFabFold();
 
   // Opens the new tag straight away: the next step is almost always adding songs
   // to it, and an empty tag's screen leads with exactly that.
@@ -37,6 +38,8 @@ export function TagsView() {
         data={tags ?? []}
         keyExtractor={(tag) => String(tag.id)}
         getItemLayout={getItemLayout}
+        {...fab.scrollProps}
+        contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}
         renderItem={({ item }) => (
           <TagRow
             name={item.name}
@@ -47,9 +50,9 @@ export function TagsView() {
           />
         )}
         ListHeaderComponent={
-          <View style={styles.header} onLayout={onHeaderLayout}>
+          // Only takes room while an import has something to report.
+          <View style={imports.state.kind !== 'idle' && styles.header} onLayout={onHeaderLayout}>
             <ImportStatus state={imports.state} />
-            <Button label="New tag" variant="secondary" onPress={() => setCreating(true)} />
           </View>
         }
         ListEmptyComponent={
@@ -71,6 +74,7 @@ export function TagsView() {
           )
         }
       />
+      <Fab label="New tag" icon="add" extended={fab.extended} onPress={() => setCreating(true)} />
       <PromptDialog
         visible={creating}
         title="New tag"

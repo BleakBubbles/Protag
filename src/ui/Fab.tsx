@@ -1,6 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 
 import type { IconName } from './IconButton';
 import { colors, font, radius, spacing } from './theme';
@@ -11,6 +19,33 @@ const ICON = 24;
 
 /** Room to leave at the bottom of a list so its last row can scroll clear of the button. */
 export const FAB_CLEARANCE = FAB_SIZE + spacing.lg * 2;
+
+/** Scrolled further than this, the button folds to its icon. */
+const FOLD_AT = 48;
+
+/**
+ * Whether a list's button should show its label, plus the scroll props that
+ * drive it: label at the top of the list, folded once scrolled past it. It
+ * changes only when crossing that line, never with scroll direction, so a
+ * button that's always there doesn't keep moving and pulling the eye.
+ */
+export function useFabFold() {
+  const [extended, setExtended] = useState(true);
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setExtended(e.nativeEvent.contentOffset.y < FOLD_AT);
+  }, []);
+  return {
+    extended,
+    scrollProps: {
+      onScroll,
+      scrollEventThrottle: 32,
+      // Throttling can drop the event for where a short scroll actually stops;
+      // these two always report the final position.
+      onScrollEndDrag: onScroll,
+      onMomentumScrollEnd: onScroll,
+    },
+  };
+}
 
 export interface FabProps {
   label: string;
