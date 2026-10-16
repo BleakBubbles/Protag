@@ -244,19 +244,26 @@ export default function TagScreen() {
         }))
     : [];
 
+  const allSelected = selected.length > 0 && selected.length === songCount;
+
   const selectionHeader = {
     title: `${plural(selected.length, 'song')} selected`,
     headerTitle: undefined,
     headerLeft: () => (
       <IconButton icon="close" label="Stop selecting" onPress={() => setSelection(null)} />
     ),
-    headerRight: () => (
-      <IconButton
-        icon="checkmark-done"
-        label="Select all"
-        onPress={() => setSelection(new Set(data?.songs.map((s) => s.id)))}
-      />
-    ),
+    // A circle like the rows' own: empty while anything is unselected, filled
+    // once everything is. Clearing everything also leaves selection mode.
+    headerRight: () =>
+      allSelected ? (
+        <IconButton icon="checkmark-circle" label="Deselect all" color={colors.accentFg} onPress={() => setSelection(null)} />
+      ) : (
+        <IconButton
+          icon="ellipse-outline"
+          label="Select all"
+          onPress={() => setSelection(new Set(data?.songs.map((s) => s.id)))}
+        />
+      ),
   };
 
   const tagHeader = {
