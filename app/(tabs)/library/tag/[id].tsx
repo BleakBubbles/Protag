@@ -33,7 +33,7 @@ import {
 import type { TagRow as Tag } from '@/db/types';
 import { albumArtUri } from '@/library/assets';
 import { buildTagIndex } from '@/library/tagTree';
-import { openAddSongs, openSongTags, openTag } from '@/navigation';
+import { openAddSongs, openTag } from '@/navigation';
 import { useNowPlaying, usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
 import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
@@ -318,7 +318,6 @@ export default function TagScreen() {
             selected={selection?.has(item.id) ?? false}
             onPress={selecting ? toggle : playFrom}
             onLongPress={toggle}
-            onEditTags={openSongTags}
           />
         )}
         ListHeaderComponent={

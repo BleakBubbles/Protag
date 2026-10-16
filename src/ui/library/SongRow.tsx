@@ -4,9 +4,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { TagRow as Tag } from '../../db/types';
 import { IconButton } from '../IconButton';
-import { Artwork } from '../player/Artwork';
+import { Artwork, artworkRadius } from '../player/Artwork';
 import { TagChip } from '../TagChip';
-import { colors, font, iconSize, spacing, touchTarget } from '../theme';
+import { colors, font, iconSize, spacing } from '../theme';
 
 /**
  * Fixed so the list can compute row positions instead of measuring each one,
@@ -25,8 +25,8 @@ export interface SongRowProps {
   /** Highlights the row, e.g. the song currently playing. */
   active?: boolean;
   /**
-   * In a list's selection mode: the tag button becomes a check circle in the
-   * same spot (so nothing shifts), and taps are the list's to interpret.
+   * In a list's selection mode: a check shows over the artwork (so nothing
+   * moves when selection starts), and taps are the list's to interpret.
    */
   selecting?: boolean;
   selected?: boolean;
@@ -35,9 +35,10 @@ export interface SongRowProps {
    * callback to every row and memo actually skips re-rendering unchanged rows.
    */
   onPress: (id: number) => void;
-  /** More options for the song, e.g. removing it from the tag being viewed. */
+  /** Starts a list's selection mode. */
   onLongPress?: (id: number) => void;
-  onEditTags: (id: number) => void;
+  /** Shows a tag button on the right. Lists with their own way to tag leave it out. */
+  onEditTags?: (id: number) => void;
 }
 
 export const SongRow = memo(function SongRow({
@@ -56,45 +57,51 @@ export const SongRow = memo(function SongRow({
   const hidden = tags.length - MAX_CHIPS;
 
   return (
-    <View style={[styles.row, selected && styles.selected]}>
-      <Pressable
-        onPress={() => onPress(id)}
-        onLongPress={onLongPress && (() => onLongPress(id))}
-        accessibilityRole="button"
-        accessibilityLabel={
-          selecting
-            ? `${selected ? 'Deselect' : 'Select'} ${title}`
-            : `Play ${title}${artist ? ` by ${artist}` : ''}`
-        }
-        accessibilityState={selecting ? { selected } : undefined}
-        style={({ pressed }) => [styles.main, pressed && styles.pressed]}
-      >
+    // One touch area for the whole row. While selecting, the selection colour
+    // is the feedback; a pressed highlight on top would linger (Android holds a
+    // quick tap "pressed" for 130 ms) and briefly disagree with it.
+    <Pressable
+      onPress={() => onPress(id)}
+      onLongPress={onLongPress && (() => onLongPress(id))}
+      accessibilityRole="button"
+      accessibilityLabel={
+        selecting ? `${selected ? 'Deselect' : 'Select'} ${title}` : `Play ${title}${artist ? ` by ${artist}` : ''}`
+      }
+      accessibilityState={selecting ? { selected } : undefined}
+      style={({ pressed }) => [
+        styles.row,
+        !onEditTags && styles.rowWithoutButton,
+        selected ? styles.selected : pressed && !selecting && styles.pressed,
+      ]}
+    >
+      <View>
         <Artwork uri={artworkUri} size={THUMB} />
-        <View style={styles.text}>
-          <Text style={[styles.title, active && styles.active]} numberOfLines={1}>
-            {title}
-          </Text>
-          <Text style={styles.artist} numberOfLines={1}>
-            {artist ?? ' '}
-          </Text>
-          {/* Always present, so every row is the same height whether tagged or not. */}
-          <View style={styles.chips}>
-            {tags.slice(0, MAX_CHIPS).map((tag) => (
-              <TagChip key={tag.id} name={tag.name} color={tag.color} compact />
-            ))}
-            {hidden > 0 && <Text style={styles.more}>+{hidden}</Text>}
+        {selecting && (
+          <View style={[styles.check, selected && styles.checkOn]} pointerEvents="none">
+            <Ionicons
+              name={selected ? 'checkmark' : 'ellipse-outline'}
+              size={selected ? iconSize.md : iconSize.sm}
+              color={colors.text}
+            />
           </View>
+        )}
+      </View>
+      <View style={styles.text}>
+        <Text style={[styles.title, active && styles.active]} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={styles.artist} numberOfLines={1}>
+          {artist ?? ' '}
+        </Text>
+        {/* Always present, so every row is the same height whether tagged or not. */}
+        <View style={styles.chips}>
+          {tags.slice(0, MAX_CHIPS).map((tag) => (
+            <TagChip key={tag.id} name={tag.name} color={tag.color} compact />
+          ))}
+          {hidden > 0 && <Text style={styles.more}>+{hidden}</Text>}
         </View>
-      </Pressable>
-      {selecting ? (
-        <View style={styles.check} pointerEvents="none">
-          <Ionicons
-            name={selected ? 'checkmark-circle' : 'ellipse-outline'}
-            size={iconSize.md}
-            color={selected ? colors.accentFg : colors.textFaint}
-          />
-        </View>
-      ) : (
+      </View>
+      {onEditTags && (
         <IconButton
           icon={tags.length > 0 ? 'pricetags' : 'pricetag-outline'}
           label={`Edit tags for ${title}`}
@@ -102,7 +109,7 @@ export const SongRow = memo(function SongRow({
           onPress={() => onEditTags(id)}
         />
       )}
-    </View>
+    </Pressable>
   );
 });
 
@@ -111,27 +118,33 @@ const styles = StyleSheet.create({
     height: SONG_ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.md,
+    paddingLeft: spacing.lg,
     paddingRight: spacing.sm,
+  },
+  rowWithoutButton: {
+    paddingRight: spacing.lg,
+  },
+  pressed: {
+    backgroundColor: colors.surface,
   },
   selected: {
     backgroundColor: colors.accentTint,
   },
+  // Over the artwork: a dark veil with an empty ring, or the accent with a tick.
   check: {
-    width: touchTarget,
-    height: touchTarget,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: artworkRadius(THUMB),
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
-  main: {
-    flex: 1,
-    height: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingLeft: spacing.lg,
-  },
-  pressed: {
-    backgroundColor: colors.surface,
+  checkOn: {
+    backgroundColor: `${colors.accent}D9`,
   },
   text: {
     flex: 1,

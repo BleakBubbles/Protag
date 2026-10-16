@@ -17,14 +17,18 @@ export interface ArtworkProps {
  * checked, so it may point at nothing — a load error falls back to the
  * placeholder rather than an empty box.
  */
+/** Corners scale with size: a thumbnail with the full radius would look like a pill. */
+export function artworkRadius(size: number): number {
+  return Math.min(radius.lg, size * 0.15);
+}
+
 export function Artwork({ uri, size, cornerRadius }: ArtworkProps) {
   // Keyed by uri so a new song gets a fresh chance to load.
   const [failedUri, setFailedUri] = useState<string | null>(null);
   const showImage = uri !== null && failedUri !== uri;
 
   return (
-    // Corners scale with size: a thumbnail with the full radius would look like a pill.
-    <View style={[styles.frame, { width: size, height: size, borderRadius: cornerRadius ?? Math.min(radius.lg, size * 0.15) }]}>
+    <View style={[styles.frame, { width: size, height: size, borderRadius: cornerRadius ?? artworkRadius(size) }]}>
       {showImage ? (
         <Image
           source={{ uri }}
