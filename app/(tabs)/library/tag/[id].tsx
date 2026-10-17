@@ -38,7 +38,8 @@ import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
 import { ColorSheet } from '@/ui/ColorSheet';
 import { EmptyState } from '@/ui/EmptyState';
-import { Fab, FAB_CLEARANCE, useFabFold } from '@/ui/Fab';
+import { FAB_CLEARANCE, useFabFold } from '@/ui/Fab';
+import { FabMenu } from '@/ui/FabMenu';
 import { plural } from '@/ui/format';
 import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
@@ -53,7 +54,7 @@ import { colors, font, headerTitleStyle, iconSize, spacing, tagColor } from '@/u
 const NO_TAGS: readonly Tag[] = [];
 const SHUFFLE_SIZE = 52;
 
-type Dialog = 'menu' | 'rename' | 'color' | 'move' | 'add' | 'add-subtag' | null;
+type Dialog = 'menu' | 'rename' | 'color' | 'move' | 'add-subtag' | null;
 
 /** One tag: its subtags, every song under it (subtags included), and shuffle. */
 export default function TagScreen() {
@@ -392,7 +393,16 @@ export default function TagScreen() {
         />
       ) : (
         songCount > 0 && (
-          <Fab label="Add" icon="add" extended={fab.extended} onPress={() => setDialog('add')} />
+          // Like a file browser's "New": songs are the files, subtags the folders.
+          <FabMenu
+            label="Add"
+            icon="add"
+            extended={fab.extended}
+            items={[
+              { label: 'Add songs', icon: 'musical-notes-outline', onPress: () => openAddSongs(id) },
+              { label: 'New subtag', icon: 'folder-outline', onPress: () => setDialog('add-subtag') },
+            ]}
+          />
         )
       )}
       <ActionSheet
@@ -400,15 +410,6 @@ export default function TagScreen() {
         title={`${picking === 'move' ? 'Move' : 'Add'} ${plural(selected.length, 'song')} to`}
         actions={targets.length > 0 ? targets : [{ label: 'No other tags yet', disabled: true, onPress: () => {} }]}
         onClose={() => setPicking(null)}
-      />
-      {/* Like a file browser's "New": songs are the files, subtags the folders. */}
-      <ActionSheet
-        visible={dialog === 'add'}
-        actions={[
-          { label: 'Add songs', onPress: () => openAddSongs(id) },
-          { label: 'New subtag', onPress: () => setDialog('add-subtag') },
-        ]}
-        onClose={() => setDialog(null)}
       />
       <ActionSheet visible={dialog === 'menu'} title={tag?.name} actions={menu} onClose={() => setDialog(null)} />
       <ActionSheet
