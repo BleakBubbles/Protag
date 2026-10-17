@@ -7,6 +7,12 @@ import { Fab, FAB_SIZE } from './Fab';
 import type { IconName } from './IconButton';
 import { colors, font, iconSize, radius, spacing } from './theme';
 
+/**
+ * Pill size. The rest of the screen is dimmed while the menu is open, so the
+ * pills can afford a big footprint. Tune here.
+ */
+const PILL = { height: 64, minWidth: 200, icon: iconSize.md };
+
 export interface FabMenuItem {
   label: string;
   icon: IconName;
@@ -79,7 +85,7 @@ export function FabMenu({ label, icon, extended, items }: FabMenuProps) {
             // which spread to the pill's square corners.
             style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
           >
-            <Ionicons name={item.icon} size={iconSize.sm} color={colors.accentFg} />
+            <Ionicons name={item.icon} size={PILL.icon} color={colors.accentFg} />
             <Text style={styles.itemLabel}>{item.label}</Text>
           </Pressable>
         ))}
@@ -117,10 +123,10 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    // As tall as the button itself: a generous target.
-    height: FAB_SIZE,
-    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+    height: PILL.height,
+    minWidth: PILL.minWidth,
+    paddingHorizontal: spacing.xl,
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
@@ -133,6 +139,8 @@ const styles = StyleSheet.create({
   },
   itemLabel: {
     ...font.listTitle,
+    fontSize: 17,
+    lineHeight: 22,
     color: colors.text,
   },
 });
