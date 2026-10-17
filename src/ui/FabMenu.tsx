@@ -75,8 +75,9 @@ export function FabMenu({ label, icon, extended, items }: FabMenuProps) {
             }}
             accessibilityRole="menuitem"
             accessibilityLabel={item.label}
-            android_ripple={{ color: colors.border }}
-            style={styles.item}
+            // A pressed colour on the pill itself rather than Android's ripple,
+            // which spread to the pill's square corners.
+            style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
           >
             <Ionicons name={item.icon} size={iconSize.sm} color={colors.accentFg} />
             <Text style={styles.itemLabel}>{item.label}</Text>
@@ -126,6 +127,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     overflow: 'hidden',
     elevation: 6,
+  },
+  itemPressed: {
+    backgroundColor: colors.border,
   },
   itemLabel: {
     ...font.listTitle,
