@@ -109,14 +109,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: spacing.lg,
     bottom: spacing.lg + FAB_SIZE + spacing.md,
-    alignItems: 'flex-end',
+    // The column is as wide as its widest pill, and every pill stretches to it.
+    alignItems: 'stretch',
     gap: spacing.sm,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    height: 48,
+    // As tall as the button itself: a generous target.
+    height: FAB_SIZE,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceAlt,
