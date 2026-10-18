@@ -16,6 +16,7 @@ import {
   reparentTag,
   setTagColor,
   TagError,
+  updateSongsOfTag,
 } from '../src/db/tags.ts';
 import { nextTagColor, TAG_COLOR_CYCLE } from '../src/db/tagColors.ts';
 
@@ -231,5 +232,29 @@ test('batch edits: remove from a tag tree, add to many, move between tags', asyn
   assert.deepEqual(await tagsOf(c), [bts, chill], 'moving into a subtag keeps that link');
   await moveSongsToTag(db as never, [c], kpop, chill);
   assert.deepEqual(await tagsOf(c), [chill]);
+  db.close();
+});
+
+test("the picker's changes apply together, and only to the tag's direct links", async () => {
+  const db = await freshDatabase();
+  const kpop = await createTag(db as never, 'kpop', null);
+  const bts = await createTag(db as never, 'bts', kpop);
+  const [a, b, c] = await Promise.all(['A', 'B', 'C'].map((t) => insertSong(db, t)));
+  await addTagToSong(db as never, a, kpop);
+  await addTagToSong(db as never, b, kpop);
+  await addTagToSong(db as never, b, bts);
+
+  await updateSongsOfTag(db as never, kpop, { add: [c], remove: [a, b] });
+
+  const tagsOf = async (song: number) =>
+    (await db.getAllAsync<{ tag_id: number }>('SELECT tag_id FROM song_tags WHERE song_id = ? ORDER BY tag_id', song)).map(
+      (r) => r.tag_id
+    );
+  assert.deepEqual(await tagsOf(a), []);
+  assert.deepEqual(await tagsOf(b), [bts], 'a link through a subtag is not the picker\'s to remove');
+  assert.deepEqual(await tagsOf(c), [kpop]);
+
+  await updateSongsOfTag(db as never, kpop, { add: [], remove: [] });
+  assert.deepEqual(await tagsOf(c), [kpop], 'no changes, no effect');
   db.close();
 });

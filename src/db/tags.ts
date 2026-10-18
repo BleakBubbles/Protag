@@ -494,3 +494,33 @@ export async function moveSongsToTag(
     }
   });
 }
+
+/**
+ * Apply the add-songs picker's staged changes to one tag as a single step:
+ * songs to tag with it directly, and songs to take it off. Only direct links
+ * are touched, so a song that's under the tag through a subtag stays there.
+ */
+export async function updateSongsOfTag(
+  db: SQLiteDatabase,
+  tagId: number,
+  changes: { add: readonly number[]; remove: readonly number[] }
+): Promise<void> {
+  const now = Date.now();
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    if (changes.remove.length > 0) {
+      await txn.runAsync(
+        `DELETE FROM song_tags WHERE tag_id = ? AND song_id IN (${placeholders(changes.remove)})`,
+        tagId,
+        ...changes.remove
+      );
+    }
+    for (const songId of changes.add) {
+      await txn.runAsync(
+        'INSERT OR IGNORE INTO song_tags (song_id, tag_id, added_at) VALUES (?, ?, ?)',
+        songId,
+        tagId,
+        now
+      );
+    }
+  });
+}

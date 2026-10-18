@@ -1,4 +1,5 @@
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
+import { usePreventRemove, type NavigationAction } from 'expo-router/react-navigation';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
@@ -6,12 +7,11 @@ import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import { notifyLibraryChanged } from '@/db/changes';
 import { listAllSongs } from '@/db/songs';
 import {
-  addTagToSong,
   listAllSongTags,
   listDirectSongIds,
   listTags,
-  removeTagFromSong,
   suggestSongsForTag,
+  updateSongsOfTag,
 } from '@/db/tags';
 import type { SongRow } from '@/db/types';
 import { albumArtUri } from '@/library/assets';
@@ -30,9 +30,11 @@ import { colors, font, spacing } from '@/ui/theme';
 const SUGGESTION_LIMIT = 20;
 
 /**
- * Add songs to one tag. One tap toggles a song in or out — no save step and no
- * selection mode, so tagging ten songs is ten taps. Same-artist suggestions sit
- * on top, because the songs already in a tag are the best hint at what else fits.
+ * Add songs to one tag. One tap toggles a song in or out, with no selection
+ * mode, so tagging ten songs is ten taps. Taps only stage changes: Save applies
+ * them all at once, and leaving with unsaved changes asks first. Same-artist
+ * suggestions sit on top, because the songs already in a tag are the best hint
+ * at what else fits.
  */
 export default function AddSongsScreen() {
   const { tagId: rawId } = useLocalSearchParams<{ tagId: string }>();
@@ -62,60 +64,86 @@ export default function AddSongsScreen() {
         const sub = applied.find((t) => below.has(t.id));
         if (sub) viaSubtag.set(songId, sub.name);
       }
-      // Snapshotted on open, like everything here: a song tagged in this picker
-      // stays in the "not tagged yet" list rather than vanishing from under the finger.
+      // From the library as it was when this opened (nothing is written until
+      // Save), so picking a song never makes it vanish from "Not tagged yet".
       const tagged = new Set(songTags.keys());
       return { index, songs, direct, viaSubtag, suggestions, tagged };
     },
     [tagId]
   );
 
-  // Membership is tracked locally so taps feel instant, and the rest of the app is
-  // told once on the way out — notifying per tap would reload this whole list each time.
-  const [selected, setSelected] = useState<Set<number> | null>(null);
-  const initial = useRef<Set<number> | null>(null);
-  // Source of truth for toggling: updated synchronously on each tap, so fast
-  // double-taps can't both read the same stale state and both try to add.
-  const selectedRef = useRef<Set<number>>(new Set());
+  // Taps only stage changes. `selected` is which songs will carry the tag and
+  // `initial` which do now, so the difference between them is what Save applies.
+  const [selected, setSelected] = useState<ReadonlySet<number> | null>(null);
+  const initial = useRef<ReadonlySet<number>>(new Set());
   useEffect(() => {
     if (data && selected === null) {
       initial.current = new Set(data.direct);
-      selectedRef.current = new Set(data.direct);
       setSelected(new Set(data.direct));
     }
   }, [data, selected]);
 
-  const changed = useRef(false);
-  useEffect(
-    () => () => {
-      if (changed.current) notifyLibraryChanged();
-    },
-    []
-  );
+  const toggle = useCallback((songId: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(songId)) next.add(songId);
+      return next;
+    });
+  }, []);
 
-  const toggle = useCallback(
-    async (songId: number) => {
-      const set = (adding: boolean) => {
-        const next = new Set(selectedRef.current);
-        if (adding) next.add(songId);
-        else next.delete(songId);
-        selectedRef.current = next;
-        setSelected(next);
-      };
-      const adding = !selectedRef.current.has(songId);
-      set(adding);
-      changed.current = true;
-      try {
-        // Writes run in order on the one connection, so a quick add-then-remove lands correctly.
-        if (adding) await addTagToSong(db, songId, tagId);
-        else await removeTagFromSong(db, songId, tagId);
-      } catch (error) {
-        set(!adding); // put it back
-        Alert.alert("Couldn't update the tag", String(error));
-      }
-    },
-    [db, tagId]
-  );
+  const changes = useMemo(() => {
+    const add: number[] = [];
+    const remove: number[] = [];
+    if (selected) {
+      for (const id of selected) if (!initial.current.has(id)) add.push(id);
+      for (const id of initial.current) if (!selected.has(id)) remove.push(id);
+    }
+    return { add, remove };
+  }, [selected]);
+  const dirty = changes.add.length + changes.remove.length > 0;
+
+  // Leaving with unsaved changes asks first. Saving, or choosing to discard,
+  // sets `leaving`, which lifts the guard; the effect then goes back once the
+  // guard is down (an action blocked by the guard is re-run, not forgotten).
+  const navigation = useNavigation();
+  const [leaving, setLeaving] = useState(false);
+  const blockedAction = useRef<NavigationAction | null>(null);
+  usePreventRemove(dirty && !leaving, ({ data: blocked }) => {
+    Alert.alert('Discard changes?', "Your changes to this tag haven't been saved.", [
+      { text: 'Keep editing', style: 'cancel' },
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: () => {
+          blockedAction.current = blocked.action;
+          setLeaving(true);
+        },
+      },
+    ]);
+  });
+  useEffect(() => {
+    if (!leaving) return;
+    if (blockedAction.current) navigation.dispatch(blockedAction.current);
+    else router.back();
+  }, [leaving, navigation]);
+
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    if (saving) return;
+    if (!dirty) {
+      setLeaving(true);
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateSongsOfTag(db, tagId, changes);
+      notifyLibraryChanged();
+      setLeaving(true);
+    } catch (error) {
+      setSaving(false);
+      Alert.alert("Couldn't save your changes", String(error));
+    }
+  };
 
   const searchable = useMemo(
     () => (data?.songs ?? []).map((song) => ({ song, key: searchKey([song.title, song.artist, song.album]) })),
@@ -145,10 +173,6 @@ export default function AddSongsScreen() {
     );
   }
 
-  const added = selected && initial.current
-    ? [...selected].filter((id) => !initial.current!.has(id)).length
-    : 0;
-
   const renderRow = (song: SongRow) => (
     <PickSongRow
       key={song.id}
@@ -169,7 +193,7 @@ export default function AddSongsScreen() {
       <Stack.Screen
         options={{
           title: tag ? `Add to ${tag.name}` : '',
-          headerRight: () => <Button label="Done" variant="secondary" onPress={() => router.back()} />,
+          headerRight: () => <Button label="Save" onPress={save} disabled={saving} />,
         }}
       />
       <FlatList
@@ -202,9 +226,16 @@ export default function AddSongsScreen() {
                 />
               </View>
               {/* Always one line, so the first tap doesn't push the list down: it
-                  explains the toggle until there's a count to show instead. */}
-              <Text style={[styles.status, added > 0 && styles.added]} numberOfLines={1}>
-                {added > 0 ? `${plural(added, 'song')} added` : 'Tap a song to add it. Tap again to take it out.'}
+                  explains how this works until there are pending changes to show. */}
+              <Text style={[styles.status, dirty && styles.pending]} numberOfLines={1}>
+                {dirty
+                  ? [
+                      changes.add.length > 0 && `${plural(changes.add.length, 'song')} to add`,
+                      changes.remove.length > 0 && `${plural(changes.remove.length, 'song')} to remove`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  : 'Tap songs to add or remove them, then Save.'}
               </Text>
             </View>
             {suggestions.length > 0 && (
@@ -249,7 +280,7 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.textFaint,
   },
-  added: {
+  pending: {
     color: colors.accentFg,
   },
   sectionLabel: {
