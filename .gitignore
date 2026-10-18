@@ -45,3 +45,4 @@ NOTES.md
 # generated native folders
 /ios
 /android
+.scratch/
