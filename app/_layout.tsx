@@ -40,11 +40,6 @@ export default function RootLayout() {
         <PlayerProvider>
           <Stack screenOptions={stackScreenOptions}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            {/* Slides up from the mini-player and back down, like other music apps. */}
-            <Stack.Screen
-              name="player"
-              options={{ headerShown: false, animation: 'slide_from_bottom' }}
-            />
             {/* Focused tasks cover everything, the mini-player included. */}
             <Stack.Screen name="song/[id]/tags" options={{ presentation: 'modal', title: 'Tags' }} />
             <Stack.Screen name="add-songs/[tagId]" options={{ presentation: 'modal', title: '' }} />

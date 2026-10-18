@@ -2,12 +2,13 @@ import { useRef, type ReactNode } from 'react';
 import { Animated, Dimensions, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { albumArtUri } from '../../library/assets';
-import { openPlayer, openSongTags } from '../../navigation';
+import { openSongTags } from '../../navigation';
 import { useNowPlaying, usePlaybackStatus, usePlayerActions } from '../../player/PlayerProvider';
 import { IconButton } from '../IconButton';
 import { colors, font, iconSize, radius, spacing } from '../theme';
 import { Artwork } from './Artwork';
 import { useMiniPlayerVisibility } from './MiniPlayerVisibility';
+import { usePlayerSheet, type PlayerSheetControls } from './PlayerSheet';
 
 export const MINI_PLAYER_HEIGHT = 64;
 const THUMB = 44;
@@ -15,8 +16,6 @@ const THUMB = 44;
 const HIDE_DISTANCE = 64;
 const VERTICAL_DISTANCE = 32;
 const HIDE_VELOCITY = 0.5;
-/** How far the card follows an upward drag before it stops. */
-const EXPAND_PULL = 24;
 /** Slide-out distance: the card ends up past the screen edge. */
 const SLIDE_OUT = Dimensions.get('window').width;
 
@@ -28,6 +27,7 @@ const SLIDE_OUT = Dimensions.get('window').width;
 export function MiniPlayer() {
   const { song } = useNowPlaying();
   const { visible, hintVisible, hide } = useMiniPlayerVisibility();
+  const sheet = usePlayerSheet();
 
   if (hintVisible) {
     return (
@@ -39,9 +39,9 @@ export function MiniPlayer() {
   if (!visible || !song) return null;
 
   return (
-    <SwipeGestures onHide={hide} onExpand={openPlayer}>
+    <SwipeGestures onHide={hide} sheet={sheet}>
       <Pressable
-        onPress={openPlayer}
+        onPress={sheet.expand}
         accessibilityRole="button"
         accessibilityLabel={`Now playing: ${song.title}. Open player`}
         accessibilityHint="Swipe up to expand, or down, left or right to hide"
@@ -100,20 +100,21 @@ function Progress({ fallbackDurationSec }: { fallbackDurationSec: number }) {
 
 /**
  * Swipe down, left or right and the card follows your finger, then slides out
- * and hides (or springs back if you let go early). Swipe up and it springs back
- * while the full player opens. The axis is locked when the drag starts.
+ * and hides (or springs back if you let go early). Swipe up and the full player
+ * follows your finger instead, growing out of the card. The direction is locked
+ * when the drag starts.
  */
 function SwipeGestures({
   onHide,
-  onExpand,
+  sheet,
   children,
 }: {
   onHide: () => void;
-  onExpand: () => void;
+  sheet: PlayerSheetControls;
   children: ReactNode;
 }) {
   const offset = useRef(new Animated.ValueXY()).current;
-  const horizontal = useRef(false);
+  const direction = useRef<'sideways' | 'down' | 'up'>('down');
   const springBack = () => Animated.spring(offset, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
   const slideOut = (x: number, y: number) =>
     Animated.timing(offset, { toValue: { x, y }, duration: 150, useNativeDriver: true }).start(onHide);
@@ -124,28 +125,29 @@ function SwipeGestures({
       // phase); taps still reach them.
       onMoveShouldSetPanResponderCapture: (_, g) => {
         if (Math.max(Math.abs(g.dx), Math.abs(g.dy)) <= 8) return false;
-        horizontal.current = Math.abs(g.dx) > Math.abs(g.dy);
+        direction.current = Math.abs(g.dx) > Math.abs(g.dy) ? 'sideways' : g.dy > 0 ? 'down' : 'up';
         return true;
       },
-      onPanResponderMove: (_, g) =>
-        horizontal.current
-          ? offset.setValue({ x: g.dx, y: 0 })
-          : offset.setValue({ x: 0, y: g.dy > 0 ? g.dy : Math.max(g.dy, -EXPAND_PULL) }),
-      onPanResponderRelease: (_, g) => {
-        if (horizontal.current) {
-          if (Math.abs(g.dx) > HIDE_DISTANCE || Math.abs(g.vx) > HIDE_VELOCITY) {
-            slideOut(g.dx > 0 ? SLIDE_OUT : -SLIDE_OUT, 0);
-            return;
-          }
-        } else if (g.dy > VERTICAL_DISTANCE || g.vy > HIDE_VELOCITY) {
-          slideOut(0, MINI_PLAYER_HEIGHT);
-          return;
-        } else if (-g.dy > VERTICAL_DISTANCE || -g.vy > HIDE_VELOCITY) {
-          onExpand();
-        }
-        springBack();
+      onPanResponderGrant: () => {
+        if (direction.current === 'up') sheet.beginDrag();
       },
-      onPanResponderTerminate: springBack,
+      onPanResponderMove: (_, g) => {
+        if (direction.current === 'up') sheet.dragBy(g.dy);
+        else if (direction.current === 'sideways') offset.setValue({ x: g.dx, y: 0 });
+        else offset.setValue({ x: 0, y: Math.max(0, g.dy) });
+      },
+      onPanResponderRelease: (_, g) => {
+        if (direction.current === 'up') {
+          sheet.endDrag(g.vy);
+        } else if (direction.current === 'sideways' && (Math.abs(g.dx) > HIDE_DISTANCE || Math.abs(g.vx) > HIDE_VELOCITY)) {
+          slideOut(g.dx > 0 ? SLIDE_OUT : -SLIDE_OUT, 0);
+        } else if (direction.current === 'down' && (g.dy > VERTICAL_DISTANCE || g.vy > HIDE_VELOCITY)) {
+          slideOut(0, MINI_PLAYER_HEIGHT);
+        } else {
+          springBack();
+        }
+      },
+      onPanResponderTerminate: () => (direction.current === 'up' ? sheet.endDrag(0) : springBack()),
     })
   ).current;
 

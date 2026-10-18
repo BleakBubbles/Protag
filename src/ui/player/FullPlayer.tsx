@@ -1,6 +1,4 @@
-import { router } from 'expo-router';
-import { useRef } from 'react';
-import { Animated, PanResponder, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type GestureResponderHandlers } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { SongRow } from '@/db/types';
@@ -11,21 +9,23 @@ import type { QueueState } from '@/player/queue';
 import { EmptyState } from '@/ui/EmptyState';
 import { formatCount } from '@/ui/format';
 import { IconButton } from '@/ui/IconButton';
-import { ArtworkSlot } from '@/ui/player/ArtworkSlot';
-import { SeekBar } from '@/ui/player/SeekBar';
-import { TrackInfo } from '@/ui/player/TrackInfo';
-import { TransportControls } from '@/ui/player/TransportControls';
 import { colors, font, spacing } from '@/ui/theme';
+import { ArtworkSlot } from './ArtworkSlot';
+import { SeekBar } from './SeekBar';
+import { TrackInfo } from './TrackInfo';
+import { TransportControls } from './TransportControls';
 
-/** How far, or how fast, a downward drag must go to close the player. */
-const CLOSE_DISTANCE = 120;
-const CLOSE_VELOCITY = 1;
+export interface FullPlayerProps {
+  onClose: () => void;
+  /** Drag-to-close, attached to the top half only so it never fights the seek bar. */
+  dragHandlers: GestureResponderHandlers;
+}
 
 /**
- * The full player. Composition only: playback lives in PlayerProvider and the
- * pieces live in src/ui/player, so the layout can be rearranged freely.
+ * The full player. Composition only: playback lives in PlayerProvider, the
+ * pieces live alongside this file, and PlayerSheet moves it on and off screen.
  */
-export default function PlayerScreen() {
+export function FullPlayer(props: FullPlayerProps) {
   const { song, queue } = useNowPlaying();
   const insets = useSafeAreaInsets();
 
@@ -36,10 +36,10 @@ export default function PlayerScreen() {
       </View>
     );
   }
-  return <NowPlaying song={song} queue={queue} />;
+  return <NowPlaying song={song} queue={queue} {...props} />;
 }
 
-function NowPlaying({ song, queue }: { song: SongRow; queue: QueueState }) {
+function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { song: SongRow; queue: QueueState }) {
   const status = usePlaybackStatus();
   const actions = usePlayerActions();
   const insets = useSafeAreaInsets();
@@ -47,35 +47,19 @@ function NowPlaying({ song, queue }: { song: SongRow; queue: QueueState }) {
   const durationSec = status.durationSec > 0 ? status.durationSec : song.duration_ms / 1000;
   const sourceLabel = queue.source?.label ?? 'Songs';
 
-  // Drag down from the top half to close, the way it slid up. Only the top half,
-  // so it never fights the seek bar.
-  const offset = useRef(new Animated.Value(0)).current;
-  const responder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 10 && Math.abs(g.dy) > Math.abs(g.dx),
-      onPanResponderMove: (_, g) => offset.setValue(Math.max(0, g.dy)),
-      onPanResponderRelease: (_, g) => {
-        if (g.dy > CLOSE_DISTANCE || g.vy > CLOSE_VELOCITY) router.back();
-        else Animated.spring(offset, { toValue: 0, useNativeDriver: true }).start();
-      },
-      onPanResponderTerminate: () => Animated.spring(offset, { toValue: 0, useNativeDriver: true }).start(),
-    })
-  ).current;
-
   return (
     // Not a ScrollView: everything but the artwork has a fixed height, and the
     // artwork takes the rest, so the screen always fits exactly.
-    <Animated.View
+    <View
       style={[
         styles.screen,
         styles.nowPlaying,
         { paddingTop: insets.top + spacing.sm, paddingBottom: insets.bottom + spacing.xl },
-        { transform: [{ translateY: offset }] },
       ]}
     >
-      <View style={styles.dragArea} {...responder.panHandlers}>
+      <View style={styles.dragArea} {...dragHandlers}>
         <View style={styles.topRow}>
-          <IconButton icon="chevron-down" label="Close player" onPress={() => router.back()} />
+          <IconButton icon="chevron-down" label="Close player" onPress={onClose} />
           <Text style={styles.source} numberOfLines={1}>
             {queue.shuffled ? 'Shuffling' : 'Playing'} · {sourceLabel}
             <Text style={styles.position}>
@@ -103,7 +87,7 @@ function NowPlaying({ song, queue }: { song: SongRow; queue: QueueState }) {
       />
 
       {status.error && <Text style={styles.error}>Couldn't play this song: {status.error}</Text>}
-    </Animated.View>
+    </View>
   );
 }
 

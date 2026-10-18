@@ -18,5 +18,4 @@ export const openManageLibrary = () => router.push('/library/manage');
 
 export const openLibrary = () => router.navigate('/library');
 
-/** The full-screen player, sliding up over everything. */
-export const openPlayer = () => router.push('/player');
+// The full player isn't a route: it's a sheet over the tabs (usePlayerSheet).
