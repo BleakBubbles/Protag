@@ -25,7 +25,7 @@ import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { PICK_ROW_HEIGHT, PickSongRow } from '@/ui/library/PickSongRow';
 import { SearchField } from '@/ui/SearchField';
-import { colors, font, spacing } from '@/ui/theme';
+import { colors, font, radius, spacing } from '@/ui/theme';
 
 const SUGGESTION_LIMIT = 20;
 
@@ -193,7 +193,18 @@ export default function AddSongsScreen() {
       <Stack.Screen
         options={{
           title: tag ? `Add to ${tag.name}` : '',
-          headerRight: () => <Button label="Save" onPress={save} disabled={saving} />,
+          // Quiet until there's something to save, then filled. Only the fill
+          // changes, never the label or size, so nothing shifts as you tap.
+          headerRight: () => (
+            <Button
+              label="Save"
+              size="small"
+              variant={dirty ? 'primary' : 'tonal'}
+              onPress={save}
+              disabled={saving}
+              style={styles.save}
+            />
+          ),
         }}
       />
       <FlatList
@@ -282,6 +293,10 @@ const styles = StyleSheet.create({
   },
   pending: {
     color: colors.accentFg,
+  },
+  // A pill in both states, so switching between tonal and filled keeps its shape.
+  save: {
+    borderRadius: radius.pill,
   },
   sectionLabel: {
     ...font.caption,
