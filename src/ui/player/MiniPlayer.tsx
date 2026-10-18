@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from 'react';
-import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { albumArtUri } from '../../library/assets';
 import { openPlayer, openSongTags } from '../../navigation';
@@ -11,14 +11,19 @@ import { useMiniPlayerVisibility } from './MiniPlayerVisibility';
 
 export const MINI_PLAYER_HEIGHT = 64;
 const THUMB = 44;
-/** How far, or how fast, a downward swipe must go to put the mini-player away. */
-const HIDE_DISTANCE = 32;
+/** How far, or how fast, a swipe must go to count: sideways needs more room than vertical. */
+const HIDE_DISTANCE = 64;
+const VERTICAL_DISTANCE = 32;
 const HIDE_VELOCITY = 0.5;
+/** How far the card follows an upward drag before it stops. */
+const EXPAND_PULL = 24;
+/** Slide-out distance: the card ends up past the screen edge. */
+const SLIDE_OUT = Dimensions.get('window').width;
 
 /**
- * What's playing, from anywhere in the app: tap for the full player, tag the
- * song in place, or play/pause. Swipe it down to put it away while tagging;
- * the music keeps playing.
+ * What's playing, from anywhere in the app: tap for the full player, play/pause,
+ * skip, or tag the song in place. Swipe it down, left or right to put it away
+ * while tagging (the music keeps playing); swipe up for the full player.
  */
 export function MiniPlayer() {
   const { song } = useNowPlaying();
@@ -34,12 +39,12 @@ export function MiniPlayer() {
   if (!visible || !song) return null;
 
   return (
-    <SwipeToHide onHide={hide}>
+    <SwipeGestures onHide={hide} onExpand={openPlayer}>
       <Pressable
         onPress={openPlayer}
         accessibilityRole="button"
         accessibilityLabel={`Now playing: ${song.title}. Open player`}
-        accessibilityHint="Swipe down to hide"
+        accessibilityHint="Swipe up to expand, or down, left or right to hide"
         android_ripple={{ color: colors.border }}
         style={styles.row}
       >
@@ -52,12 +57,13 @@ export function MiniPlayer() {
             {song.artist ?? ' '}
           </Text>
         </View>
+        <PlayPause />
+        <NextTrack />
         {/* Tagging what's playing, from any screen, is the point of ProTag. */}
         <IconButton icon="pricetag-outline" label="Edit tags for this song" onPress={() => openSongTags(song.id)} />
-        <PlayPause />
       </Pressable>
       <Progress fallbackDurationSec={song.duration_ms / 1000} />
-    </SwipeToHide>
+    </SwipeGestures>
   );
 }
 
@@ -76,6 +82,11 @@ function PlayPause() {
   );
 }
 
+function NextTrack() {
+  const { next } = usePlayerActions();
+  return <IconButton icon="play-skip-forward" label="Next track" size={iconSize.md} color={colors.text} onPress={next} />;
+}
+
 function Progress({ fallbackDurationSec }: { fallbackDurationSec: number }) {
   const { positionSec, durationSec } = usePlaybackStatus();
   const total = durationSec > 0 ? durationSec : fallbackDurationSec;
@@ -87,36 +98,71 @@ function Progress({ fallbackDurationSec }: { fallbackDurationSec: number }) {
   );
 }
 
-/** Follows a downward drag, then either slides out and hides or springs back. */
-function SwipeToHide({ onHide, children }: { onHide: () => void; children: ReactNode }) {
-  const offset = useRef(new Animated.Value(0)).current;
+/**
+ * Swipe down, left or right and the card follows your finger, then slides out
+ * and hides (or springs back if you let go early). Swipe up and it springs back
+ * while the full player opens. The axis is locked when the drag starts.
+ */
+function SwipeGestures({
+  onHide,
+  onExpand,
+  children,
+}: {
+  onHide: () => void;
+  onExpand: () => void;
+  children: ReactNode;
+}) {
+  const offset = useRef(new Animated.ValueXY()).current;
+  const horizontal = useRef(false);
+  const springBack = () => Animated.spring(offset, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
+  const slideOut = (x: number, y: number) =>
+    Animated.timing(offset, { toValue: { x, y }, duration: 150, useNativeDriver: true }).start(onHide);
+
   const responder = useRef(
     PanResponder.create({
-      // Only clearly vertical, downward drags, taken from the row and buttons
-      // underneath (capture phase); taps still reach them.
-      onMoveShouldSetPanResponderCapture: (_, g) => g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx),
-      onPanResponderMove: (_, g) => offset.setValue(Math.max(0, g.dy)),
-      onPanResponderRelease: (_, g) => {
-        if (g.dy > HIDE_DISTANCE || g.vy > HIDE_VELOCITY) {
-          Animated.timing(offset, { toValue: MINI_PLAYER_HEIGHT, duration: 150, useNativeDriver: true }).start(onHide);
-        } else {
-          Animated.spring(offset, { toValue: 0, useNativeDriver: true }).start();
-        }
+      // Any clear drag, taken from the row and buttons underneath (capture
+      // phase); taps still reach them.
+      onMoveShouldSetPanResponderCapture: (_, g) => {
+        if (Math.max(Math.abs(g.dx), Math.abs(g.dy)) <= 8) return false;
+        horizontal.current = Math.abs(g.dx) > Math.abs(g.dy);
+        return true;
       },
-      onPanResponderTerminate: () => Animated.spring(offset, { toValue: 0, useNativeDriver: true }).start(),
+      onPanResponderMove: (_, g) =>
+        horizontal.current
+          ? offset.setValue({ x: g.dx, y: 0 })
+          : offset.setValue({ x: 0, y: g.dy > 0 ? g.dy : Math.max(g.dy, -EXPAND_PULL) }),
+      onPanResponderRelease: (_, g) => {
+        if (horizontal.current) {
+          if (Math.abs(g.dx) > HIDE_DISTANCE || Math.abs(g.vx) > HIDE_VELOCITY) {
+            slideOut(g.dx > 0 ? SLIDE_OUT : -SLIDE_OUT, 0);
+            return;
+          }
+        } else if (g.dy > VERTICAL_DISTANCE || g.vy > HIDE_VELOCITY) {
+          slideOut(0, MINI_PLAYER_HEIGHT);
+          return;
+        } else if (-g.dy > VERTICAL_DISTANCE || -g.vy > HIDE_VELOCITY) {
+          onExpand();
+        }
+        springBack();
+      },
+      onPanResponderTerminate: springBack,
     })
   ).current;
+
+  // Fade out as the card leaves in any direction.
+  const opacity = Animated.multiply(
+    offset.x.interpolate({ inputRange: [-SLIDE_OUT, 0, SLIDE_OUT], outputRange: [0, 1, 0] }),
+    offset.y.interpolate({
+      inputRange: [0, MINI_PLAYER_HEIGHT],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    })
+  );
 
   return (
     <Animated.View
       {...responder.panHandlers}
-      style={[
-        styles.card,
-        {
-          transform: [{ translateY: offset }],
-          opacity: offset.interpolate({ inputRange: [0, MINI_PLAYER_HEIGHT], outputRange: [1, 0] }),
-        },
-      ]}
+      style={[styles.card, { transform: offset.getTranslateTransform(), opacity }]}
     >
       {children}
     </Animated.View>
