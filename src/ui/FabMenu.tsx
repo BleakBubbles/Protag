@@ -120,8 +120,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     // As tall as the button itself: a generous target.
     height: FAB_SIZE,
-    // Wider than the labels need: a bigger target without bigger text.
-    minWidth: 180,
     paddingHorizontal: spacing.lg,
     // The same corners as the button, so the menu reads as part of it.
     borderRadius: radius.lg,
