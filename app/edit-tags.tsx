@@ -3,7 +3,6 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { notifyLibraryChanged } from '@/db/changes';
 import { getSong } from '@/db/songs';
 import { applyBulkTagEdit, listAllSongTags, listRecentTags, listTags, parseTagPath } from '@/db/tags';
 import type { TagRow } from '@/db/types';
@@ -122,7 +121,6 @@ export default function EditTagsScreen() {
   const { save, saving } = useStagedSave(dirty, async () => {
     if (!data) return;
     await applyBulkTagEdit(db, songIds, planBulkEdit(songIds, data.tagsOf, changed), newPaths);
-    notifyLibraryChanged();
   });
 
   // Search, and what typing a new name would create.
