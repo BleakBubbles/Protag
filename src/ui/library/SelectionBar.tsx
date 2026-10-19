@@ -17,16 +17,19 @@ export interface SelectionAction {
 /**
  * What can be done to the selected items, floating where the list's add
  * button sits. Big, evenly split targets with an icon over a short label.
+ * `disabled` dims it and ignores taps, e.g. while nothing is selected.
  */
-export function SelectionBar({ actions }: { actions: readonly SelectionAction[] }) {
+export function SelectionBar({ actions, disabled }: { actions: readonly SelectionAction[]; disabled?: boolean }) {
   return (
-    <View style={styles.bar}>
+    <View style={[styles.bar, disabled && styles.disabled]}>
       {actions.map((action) => {
         const color = action.destructive ? colors.danger : colors.text;
         return (
           <Pressable
             key={action.label}
             onPress={action.onPress}
+            disabled={disabled}
+            accessibilityState={{ disabled }}
             accessibilityRole="button"
             accessibilityLabel={action.label}
             android_ripple={{ color: colors.border, borderless: false }}
@@ -57,6 +60,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
     overflow: 'hidden',
     elevation: 8,
+  },
+  disabled: {
+    opacity: 0.4,
   },
   action: {
     flex: 1,

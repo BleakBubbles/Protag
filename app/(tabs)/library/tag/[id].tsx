@@ -89,15 +89,16 @@ export default function TagScreen() {
   const tag = data?.index.byId.get(id);
   const ancestors = data && tag ? data.index.path(id).slice(0, -1) : [];
 
-  // Long-press starts selecting; then taps toggle. Deselecting the last song,
-  // the header's close button, or back leaves selection mode.
+  // Long-press starts selecting; then taps toggle. Only the header's close
+  // button or back leaves selection mode: deselecting everything (one by one or
+  // all at once) keeps it, so the next pick is still one tap.
   const toggle = useCallback(
     (songId: number) =>
       setSelection((prev) => {
         const next = new Set(prev);
         if (next.has(songId)) next.delete(songId);
         else next.add(songId);
-        return next.size > 0 ? next : null;
+        return next;
       }),
     []
   );
@@ -240,16 +241,16 @@ export default function TagScreen() {
   const allSelected = selected.length > 0 && selected.length === songCount;
 
   const selectionHeader = {
-    title: `${plural(selected.length, 'song')} selected`,
+    title: selected.length > 0 ? `${plural(selected.length, 'song')} selected` : 'Select songs',
     headerTitle: undefined,
     headerLeft: () => (
       <IconButton icon="close" label="Stop selecting" onPress={() => setSelection(null)} />
     ),
     // A circle like the rows' own: empty while anything is unselected, filled
-    // once everything is. Clearing everything also leaves selection mode.
+    // once everything is.
     headerRight: () =>
       allSelected ? (
-        <IconButton icon="checkmark-circle" label="Deselect all" color={colors.accentFg} onPress={() => setSelection(null)} />
+        <IconButton icon="checkmark-circle" label="Deselect all" color={colors.accentFg} onPress={() => setSelection(new Set())} />
       ) : (
         <IconButton
           icon="ellipse-outline"
@@ -385,6 +386,7 @@ export default function TagScreen() {
           long list. An empty tag has the same call to action in its empty state. */}
       {selecting ? (
         <SelectionBar
+          disabled={selected.length === 0}
           actions={[
             { label: 'Add to…', icon: 'pricetag-outline', onPress: () => setPicking('add') },
             { label: 'Move to…', icon: 'arrow-redo-outline', onPress: () => setPicking('move') },
