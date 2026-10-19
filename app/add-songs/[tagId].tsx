@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
+import { notifyLibraryChanged } from '@/db/changes';
 import { listAllSongs } from '@/db/songs';
 import {
   listAllSongTags,
@@ -104,6 +105,7 @@ export default function AddSongsScreen() {
 
   const { save, saving } = useStagedSave(dirty, async () => {
     await updateSongsOfTag(db, tagId, changes);
+    notifyLibraryChanged();
   });
 
   const searchable = useMemo(
