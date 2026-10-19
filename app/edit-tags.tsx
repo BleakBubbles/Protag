@@ -4,7 +4,9 @@ import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { notifyLibraryChanged } from '@/db/changes';
-import { applyBulkTagEdit, listAllSongTags, listTags, parseTagPath } from '@/db/tags';
+import { getSong } from '@/db/songs';
+import { applyBulkTagEdit, listAllSongTags, listRecentTags, listTags, parseTagPath } from '@/db/tags';
+import type { TagRow } from '@/db/types';
 import { countTags, markFor, nextMark, planBulkEdit, type TagMark } from '@/library/bulkTags';
 import { matchesQuery, searchKey } from '@/library/search';
 import { buildTagIndex } from '@/library/tagTree';
@@ -17,13 +19,20 @@ import { SaveButton } from '@/ui/SaveButton';
 import { SearchField } from '@/ui/SearchField';
 import { colors, font, spacing } from '@/ui/theme';
 
+const RECENT_LIMIT = 12;
+
 const lower = (names: readonly string[]) => names.map((n) => n.toLowerCase()).join('/');
 
 /**
- * The tags of several songs at once (from a tag page's selection). Each tag
- * shows whether every selected song has it, some do, or none do; tapping
- * cycles that, and only tags you touch change. Changes are staged and applied
- * by Save. Typing a name that doesn't exist offers to create it.
+ * The tags of one song (from the player or a song list) or several at once
+ * (from a tag page's selection): the same screen either way. Each tag shows
+ * whether every song has it, some do, or none do; tapping cycles that, and only
+ * tags you touch change. Changes are staged and applied by Save.
+ *
+ * Built for speed, since per-song effort decides whether anyone tags a whole
+ * library: suggestions (the song's genre, recently used tags) sit right under
+ * the tags it already has, and Enter ticks the best match or creates what was
+ * typed, with "parent/child" making nested tags in one go.
  */
 export default function EditTagsScreen() {
   const { songs: rawSongs } = useLocalSearchParams<{ songs: string }>();
@@ -37,15 +46,39 @@ export default function EditTagsScreen() {
 
   const { data } = useLibraryQuery(
     async (db) => {
-      const [tags, songTags] = await Promise.all([listTags(db), listAllSongTags(db)]);
+      const [tags, songTags, recent, song] = await Promise.all([
+        listTags(db),
+        listAllSongTags(db),
+        listRecentTags(db, RECENT_LIMIT),
+        songIds.length === 1 ? getSong(db, songIds[0]) : null,
+      ]);
       const index = buildTagIndex(tags);
       const tagsOf = new Map(songIds.map((id) => [id, (songTags.get(id) ?? []).map((t) => t.id)]));
       const counts = countTags(songIds, tagsOf);
-      // Tags the songs already have first, then the rest. Fixed for the visit,
-      // so ticking a tag never makes the list reshuffle under the finger.
+
+      // One song's genre is only ever a suggestion. A top-level tag of that
+      // name is offered near the top; if there isn't one, creating it is.
+      const genre = song?.genre ?? null;
+      const genreTag = genre ? index.children(null).find((t) => t.name.toLowerCase() === genre.toLowerCase()) : undefined;
+
+      // The songs' tags, then suggestions (genre, recently used), then the rest.
+      // Fixed for the visit, so ticking a tag never reshuffles the list.
       const all = index.all();
-      const ordered = [...all.filter((t) => counts.has(t.id)), ...all.filter((t) => !counts.has(t.id))];
-      return { index, tagsOf, counts, ordered };
+      const ordered: TagRow[] = [];
+      const seen = new Set<number>();
+      const push = (id: number) => {
+        const tag = index.byId.get(id);
+        if (tag && !seen.has(id)) {
+          seen.add(id);
+          ordered.push(tag);
+        }
+      };
+      all.filter((t) => counts.has(t.id)).forEach((t) => push(t.id));
+      if (genreTag) push(genreTag.id);
+      recent.forEach((t) => push(t.id));
+      all.forEach((t) => push(t.id));
+
+      return { index, tagsOf, counts, ordered, song, genreToCreate: genre && !genreTag ? genre : null };
     },
     [rawSongs]
   );
@@ -100,15 +133,29 @@ export default function EditTagsScreen() {
     const words = path.join(' ');
     return data.ordered.filter((t) => matchesQuery(searchKey([data.index.label(t.id)]), words));
   }, [data, path.join('/')]);
-  const exists =
-    path.length === 0 ||
-    Boolean(data?.index.all().some((t) => lower(data.index.path(t.id).map((p) => p.name)) === lower(path))) ||
-    newPaths.some((p) => lower(p) === lower(path));
+  const exact =
+    path.length === 0
+      ? undefined
+      : data?.index.all().find((t) => lower(data.index.path(t.id).map((p) => p.name)) === lower(path));
+  const exists = path.length === 0 || Boolean(exact) || newPaths.some((p) => lower(p) === lower(path));
+  const addNew = (names: string[]) => {
+    if (!newPaths.some((p) => lower(p) === lower(names))) setNewPaths((paths) => [...paths, names]);
+  };
   const create = () => {
     if (exists) return;
-    setNewPaths((paths) => [...paths, path]);
+    addNew(path);
     setQuery('');
   };
+  /** Enter: tick the exact match, else the only match, else create what was typed. */
+  const submit = () => {
+    if (path.length === 0) return;
+    const target = exact ?? (visible.length === 1 ? visible[0] : undefined);
+    if (!target) return create();
+    setMarks((prev) => new Map(prev).set(target.id, 'all'));
+    setQuery('');
+  };
+  const genre = data?.genreToCreate;
+  const showGenre = path.length === 0 && genre != null && !newPaths.some((p) => lower(p) === lower([genre]));
 
   const n = songIds.length;
   const noteFor = (tagId: number) => {
@@ -121,7 +168,7 @@ export default function EditTagsScreen() {
     <View style={styles.screen}>
       <Stack.Screen
         options={{
-          title: `Tags for ${plural(n, 'song')}`,
+          title: n === 1 && data?.song ? data.song.title : `Tags for ${plural(n, 'song')}`,
           headerRight: () => <SaveButton dirty={dirty} saving={saving} onPress={save} />,
         }}
       />
@@ -151,7 +198,7 @@ export default function EditTagsScreen() {
                 icon="pricetag-outline"
                 placeholder="Find or create a tag — use / to nest"
                 returnKeyType="done"
-                onSubmitEditing={create}
+                onSubmitEditing={submit}
               />
               {/* Always one line, so the first tap doesn't push the list down. */}
               <Text style={[styles.status, dirty && styles.pending]} numberOfLines={1}>
@@ -162,13 +209,22 @@ export default function EditTagsScreen() {
                     ]
                       .filter(Boolean)
                       .join(' · ')
-                  : 'Tap a tag to put it on every song, again to take it off.'}
+                  : n === 1
+                    ? 'Tap a tag to add it, again to remove it.'
+                    : 'Tap a tag to put it on every song, again to take it off.'}
               </Text>
             </View>
             {!exists && (
               <Pressable onPress={create} accessibilityRole="button" style={styles.createRow}>
                 <Text style={styles.createText} numberOfLines={1}>
                   Create "{path.join('/')}"
+                </Text>
+              </Pressable>
+            )}
+            {showGenre && (
+              <Pressable onPress={() => addNew([genre])} accessibilityRole="button" style={styles.createRow}>
+                <Text style={styles.createText} numberOfLines={1}>
+                  Create "{genre}" <Text style={styles.createNote}>· from this song's genre</Text>
                 </Text>
               </Pressable>
             )}
@@ -207,5 +263,8 @@ const styles = StyleSheet.create({
   createText: {
     ...font.name,
     color: colors.accentFg,
+  },
+  createNote: {
+    color: colors.textDim,
   },
 });

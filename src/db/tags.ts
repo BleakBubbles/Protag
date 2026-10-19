@@ -209,14 +209,6 @@ export async function addTagToSong(
   );
 }
 
-export async function removeTagFromSong(
-  db: SQLiteDatabase,
-  songId: number,
-  tagId: number
-): Promise<void> {
-  await db.runAsync('DELETE FROM song_tags WHERE song_id = ? AND tag_id = ?', songId, tagId);
-}
-
 /** Direct tags for many songs at once, so list rows don't each fire their own query. */
 export async function getTagsForSongs(
   db: SQLiteDatabase,

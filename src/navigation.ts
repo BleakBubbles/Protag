@@ -8,8 +8,8 @@ import { router } from 'expo-router';
 export const openTag = (id: number) =>
   router.push({ pathname: '/library/tag/[id]', params: { id: String(id) } });
 
-export const openSongTags = (id: number) =>
-  router.push({ pathname: '/song/[id]/tags', params: { id: String(id) } });
+/** One song's tags: the same editor as for several songs. */
+export const openSongTags = (id: number) => openEditTags([id]);
 
 export const openAddSongs = (tagId: number) =>
   router.push({ pathname: '/add-songs/[tagId]', params: { tagId: String(tagId) } });
