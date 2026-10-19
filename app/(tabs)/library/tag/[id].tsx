@@ -1,18 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  BackHandler,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { notifyLibraryChanged, useLibraryVersion } from '@/db/changes';
+import { notifyLibraryChanged } from '@/db/changes';
 import {
   deleteTag,
   ensureTagPath,
@@ -30,7 +22,7 @@ import {
 import type { TagRow as Tag } from '@/db/types';
 import { albumArtUri } from '@/library/assets';
 import { buildTagIndex } from '@/library/tagTree';
-import { openAddSongs, openEditTags, openTag } from '@/navigation';
+import { openAddSongs, openTag } from '@/navigation';
 import { useNowPlaying, usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
 import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
@@ -40,6 +32,7 @@ import { FAB_CLEARANCE, useFabFold } from '@/ui/Fab';
 import { FabMenu } from '@/ui/FabMenu';
 import { plural } from '@/ui/format';
 import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
+import { useSongSelection } from '@/ui/hooks/useSongSelection';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { IconButton } from '@/ui/IconButton';
 import { SelectionBar } from '@/ui/library/SelectionBar';
@@ -63,19 +56,6 @@ export default function TagScreen() {
   const { playQueue } = usePlayerActions();
   const { song: current, queue } = useNowPlaying();
   const [dialog, setDialog] = useState<Dialog>(null);
-  /** Selection mode: the selected song ids, or null when not selecting. */
-  const [selection, setSelection] = useState<ReadonlySet<number> | null>(null);
-  // Editing the selection's tags happens on its own screen. If that saves (the
-  // library changes while it's open), the job is done and selection ends; if
-  // it's discarded, the selection is still here to try again.
-  const libraryVersion = useLibraryVersion();
-  const versionAtEdit = useRef<number | null>(null);
-  useEffect(() => {
-    if (versionAtEdit.current !== null && libraryVersion !== versionAtEdit.current) {
-      versionAtEdit.current = null;
-      setSelection(null);
-    }
-  }, [libraryVersion]);
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
 
   const fab = useFabFold();
@@ -96,35 +76,8 @@ export default function TagScreen() {
   const tag = data?.index.byId.get(id);
   const ancestors = data && tag ? data.index.path(id).slice(0, -1) : [];
 
-  // Long-press starts selecting; then taps toggle. Only the header's close
-  // button or back leaves selection mode: deselecting everything (one by one or
-  // all at once) keeps it, so the next pick is still one tap.
-  const toggle = useCallback(
-    (songId: number) =>
-      setSelection((prev) => {
-        const next = new Set(prev);
-        if (next.has(songId)) next.delete(songId);
-        else next.add(songId);
-        return next;
-      }),
-    []
-  );
-  const selecting = selection !== null;
-  useFocusEffect(
-    useCallback(() => {
-      if (!selecting) return;
-      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        setSelection(null);
-        return true;
-      });
-      return () => sub.remove();
-    }, [selecting])
-  );
-  // Songs can leave the list under a selection (e.g. retagged elsewhere).
-  const selected = useMemo(
-    () => (selection && data ? data.songs.filter((s) => selection.has(s.id)).map((s) => s.id) : []),
-    [selection, data]
-  );
+  const songIds = useMemo(() => data?.songs.map((s) => s.id), [data]);
+  const { selection, selecting, selected, toggle, clear, editTags, header: selectionHeader } = useSongSelection(songIds);
 
   const playFrom = useCallback(
     (songId: number) =>
@@ -205,7 +158,7 @@ export default function TagScreen() {
   const childCount = data?.children.length ?? 0;
 
   const done = () => {
-    setSelection(null);
+    clear();
     notifyLibraryChanged();
   };
 
@@ -229,27 +182,6 @@ export default function TagScreen() {
     );
   };
 
-  const allSelected = selected.length > 0 && selected.length === songCount;
-
-  const selectionHeader = {
-    title: selected.length > 0 ? `${plural(selected.length, 'song')} selected` : 'Select songs',
-    headerTitle: undefined,
-    headerLeft: () => (
-      <IconButton icon="close" label="Stop selecting" onPress={() => setSelection(null)} />
-    ),
-    // A circle like the rows' own: empty while anything is unselected, filled
-    // once everything is.
-    headerRight: () =>
-      allSelected ? (
-        <IconButton icon="checkmark-circle" label="Deselect all" color={colors.accentFg} onPress={() => setSelection(new Set())} />
-      ) : (
-        <IconButton
-          icon="ellipse-outline"
-          label="Select all"
-          onPress={() => setSelection(new Set(data?.songs.map((s) => s.id)))}
-        />
-      ),
-  };
 
   const tagHeader = {
     headerLeft: undefined,
@@ -384,10 +316,7 @@ export default function TagScreen() {
             {
               label: 'Tags…',
               icon: 'tags',
-              onPress: () => {
-                versionAtEdit.current = libraryVersion;
-                openEditTags(selected);
-              },
+              onPress: editTags,
             },
             { label: 'Remove', icon: 'remove-circle-outline', destructive: true, onPress: confirmRemove },
           ]}

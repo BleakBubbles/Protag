@@ -1,17 +1,29 @@
-import { useState } from 'react';
+import { Stack } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { countSongs } from '@/db/songs';
 import { useLibraryScan } from '@/library/useLibraryScan';
+import { openManageLibrary } from '@/navigation';
 import { SongsView } from '@/screens/library/SongsView';
 import { TagsView } from '@/screens/library/TagsView';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
+import { useSongSelection } from '@/ui/hooks/useSongSelection';
+import { IconButton } from '@/ui/IconButton';
 import { ScanCard } from '@/ui/library/ScanCard';
 import { LogoMark } from '@/ui/LogoMark';
 import { SegmentedControl } from '@/ui/SegmentedControl';
 import { colors, font, spacing } from '@/ui/theme';
 
 type LibraryView = 'tags' | 'songs';
+
+/** Set in full (not just the parts that differ), so it replaces the selection header cleanly. */
+const libraryHeader = {
+  title: 'Library',
+  headerTitle: undefined,
+  headerLeft: undefined,
+  headerRight: () => <IconButton icon="settings-outline" label="Manage library" onPress={openManageLibrary} />,
+};
 
 const SEGMENTS = [
   { value: 'tags', label: 'Tags' },
@@ -26,10 +38,23 @@ export default function LibraryScreen() {
   const { data: songCount } = useLibraryQuery(countSongs, []);
   const scan = useLibraryScan();
   const [view, setView] = useState<LibraryView>('tags');
+  // Selecting "Not tagged yet" songs in the Tags view. It lives here because
+  // the header is this screen's; switching to Songs ends it.
+  const [looseIds, setLooseIds] = useState<readonly number[]>();
+  const selection = useSongSelection(view === 'tags' ? looseIds : undefined);
+  const switchView = useCallback(
+    (next: LibraryView) => {
+      selection.clear();
+      setView(next);
+    },
+    [selection.clear]
+  );
+  const header = selection.selecting ? selection.header : libraryHeader;
 
   if (songCount === undefined) {
     return (
       <View style={[styles.screen, styles.centered]}>
+        <Stack.Screen options={header} />
         <ActivityIndicator color={colors.accentFg} />
       </View>
     );
@@ -38,6 +63,7 @@ export default function LibraryScreen() {
   if (songCount === 0) {
     return (
       <ScrollView style={styles.screen} contentContainerStyle={styles.onboarding}>
+        <Stack.Screen options={header} />
         {/* The one place the app introduces itself; everywhere else the music is the focus. */}
         <View style={styles.welcome}>
           <View style={styles.logo}>
@@ -53,10 +79,11 @@ export default function LibraryScreen() {
 
   return (
     <View style={styles.screen}>
+      <Stack.Screen options={header} />
       <View style={styles.segments}>
-        <SegmentedControl segments={SEGMENTS} value={view} onChange={setView} />
+        <SegmentedControl segments={SEGMENTS} value={view} onChange={switchView} />
       </View>
-      {view === 'tags' ? <TagsView /> : <SongsView />}
+      {view === 'tags' ? <TagsView selection={selection} onLooseSongs={setLooseIds} /> : <SongsView />}
     </View>
   );
 }

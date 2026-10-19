@@ -1,7 +1,5 @@
 import { Stack } from 'expo-router';
 
-import { openManageLibrary } from '@/navigation';
-import { IconButton } from '@/ui/IconButton';
 import { stackScreenOptions } from '@/ui/stackOptions';
 
 /**
@@ -11,15 +9,8 @@ import { stackScreenOptions } from '@/ui/stackOptions';
 export default function LibraryLayout() {
   return (
     <Stack screenOptions={stackScreenOptions}>
-      <Stack.Screen
-        name="index"
-        options={{
-          title: 'Library',
-          headerRight: () => (
-            <IconButton icon="settings-outline" label="Manage library" onPress={openManageLibrary} />
-          ),
-        }}
-      />
+      {/* The index sets its own header: it changes while selecting songs. */}
+      <Stack.Screen name="index" options={{ title: 'Library' }} />
       <Stack.Screen name="tag/[id]" options={{ title: '' }} />
       <Stack.Screen name="manage" options={{ title: 'Manage library' }} />
     </Stack>
