@@ -14,6 +14,10 @@ export const openSongTags = (id: number) =>
 export const openAddSongs = (tagId: number) =>
   router.push({ pathname: '/add-songs/[tagId]', params: { tagId: String(tagId) } });
 
+/** Edit the tags of several songs at once. */
+export const openEditTags = (songIds: readonly number[]) =>
+  router.push({ pathname: '/edit-tags', params: { songs: songIds.join(',') } });
+
 export const openManageLibrary = () => router.push('/library/manage');
 
 export const openLibrary = () => router.navigate('/library');

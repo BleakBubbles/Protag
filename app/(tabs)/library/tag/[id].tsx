@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   BackHandler,
@@ -12,9 +12,8 @@ import {
   View,
 } from 'react-native';
 
-import { notifyLibraryChanged } from '@/db/changes';
+import { notifyLibraryChanged, useLibraryVersion } from '@/db/changes';
 import {
-  addTagToSongs,
   deleteTag,
   ensureTagPath,
   getTagDeletionImpact,
@@ -22,7 +21,6 @@ import {
   listTags,
   listSongsInTag,
   listTagsWithCounts,
-  moveSongsToTag,
   parseTagPath,
   removeSongsFromTag,
   renameTag,
@@ -32,7 +30,7 @@ import {
 import type { TagRow as Tag } from '@/db/types';
 import { albumArtUri } from '@/library/assets';
 import { buildTagIndex } from '@/library/tagTree';
-import { openAddSongs, openTag } from '@/navigation';
+import { openAddSongs, openEditTags, openTag } from '@/navigation';
 import { useNowPlaying, usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
 import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
@@ -67,8 +65,17 @@ export default function TagScreen() {
   const [dialog, setDialog] = useState<Dialog>(null);
   /** Selection mode: the selected song ids, or null when not selecting. */
   const [selection, setSelection] = useState<ReadonlySet<number> | null>(null);
-  /** Which tag picker is open for the selection. */
-  const [picking, setPicking] = useState<'add' | 'move' | null>(null);
+  // Editing the selection's tags happens on its own screen. If that saves (the
+  // library changes while it's open), the job is done and selection ends; if
+  // it's discarded, the selection is still here to try again.
+  const libraryVersion = useLibraryVersion();
+  const versionAtEdit = useRef<number | null>(null);
+  useEffect(() => {
+    if (versionAtEdit.current !== null && libraryVersion !== versionAtEdit.current) {
+      versionAtEdit.current = null;
+      setSelection(null);
+    }
+  }, [libraryVersion]);
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
 
   const fab = useFabFold();
@@ -222,22 +229,6 @@ export default function TagScreen() {
     );
   };
 
-  // Every other tag, by path. A picked tag gets the selection (and, for a move,
-  // this tag gives it up).
-  const targets: SheetAction[] = data
-    ? data.index
-        .all()
-        .filter((t) => t.id !== id)
-        .map((t) => ({
-          label: data.index.label(t.id),
-          onPress: async () => {
-            if (picking === 'move') await moveSongsToTag(db, selected, id, t.id);
-            else await addTagToSongs(db, selected, t.id);
-            done();
-          },
-        }))
-    : [];
-
   const allSelected = selected.length > 0 && selected.length === songCount;
 
   const selectionHeader = {
@@ -388,8 +379,16 @@ export default function TagScreen() {
         <SelectionBar
           disabled={selected.length === 0}
           actions={[
-            { label: 'Add to…', icon: 'pricetag-outline', onPress: () => setPicking('add') },
-            { label: 'Move to…', icon: 'arrow-redo-outline', onPress: () => setPicking('move') },
+            // One place for adding, moving and removing other tags: moving is
+            // "uncheck this tag, check that one".
+            {
+              label: 'Tags…',
+              icon: 'pricetags-outline',
+              onPress: () => {
+                versionAtEdit.current = libraryVersion;
+                openEditTags(selected);
+              },
+            },
             { label: 'Remove', icon: 'remove-circle-outline', destructive: true, onPress: confirmRemove },
           ]}
         />
@@ -407,12 +406,6 @@ export default function TagScreen() {
           />
         )
       )}
-      <ActionSheet
-        visible={picking !== null}
-        title={`${picking === 'move' ? 'Move' : 'Add'} ${plural(selected.length, 'song')} to`}
-        actions={targets.length > 0 ? targets : [{ label: 'No other tags yet', disabled: true, onPress: () => {} }]}
-        onClose={() => setPicking(null)}
-      />
       <ActionSheet visible={dialog === 'menu'} title={tag?.name} actions={menu} onClose={() => setDialog(null)} />
       <ActionSheet
         visible={dialog === 'move'}

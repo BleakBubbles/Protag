@@ -443,58 +443,6 @@ export async function removeSongsFromTag(
   );
 }
 
-/** Apply a tag to several songs; ones that already have it are left as they are. */
-export async function addTagToSongs(
-  db: SQLiteDatabase,
-  songIds: readonly number[],
-  tagId: number
-): Promise<void> {
-  const now = Date.now();
-  await db.withExclusiveTransactionAsync(async (txn) => {
-    for (const songId of songIds) {
-      await txn.runAsync(
-        'INSERT OR IGNORE INTO song_tags (song_id, tag_id, added_at) VALUES (?, ?, ?)',
-        songId,
-        tagId,
-        now
-      );
-    }
-  });
-}
-
-/**
- * Move songs out of one tag (subtags included) and into another, as one step.
- * Moving into one of the source's own subtags works: that link is the one
- * that's kept.
- */
-export async function moveSongsToTag(
-  db: SQLiteDatabase,
-  songIds: readonly number[],
-  fromTagId: number,
-  toTagId: number
-): Promise<void> {
-  if (songIds.length === 0) return;
-  const now = Date.now();
-  await db.withExclusiveTransactionAsync(async (txn) => {
-    await txn.runAsync(
-      `${SUBTREE}
-       DELETE FROM song_tags
-       WHERE tag_id IN (SELECT id FROM sub) AND tag_id != ? AND song_id IN (${placeholders(songIds)})`,
-      fromTagId,
-      toTagId,
-      ...songIds
-    );
-    for (const songId of songIds) {
-      await txn.runAsync(
-        'INSERT OR IGNORE INTO song_tags (song_id, tag_id, added_at) VALUES (?, ?, ?)',
-        songId,
-        toTagId,
-        now
-      );
-    }
-  });
-}
-
 /**
  * Apply the add-songs picker's staged changes to one tag as a single step:
  * songs to tag with it directly, and songs to take it off. Only direct links
@@ -515,6 +463,38 @@ export async function updateSongsOfTag(
       );
     }
     for (const songId of changes.add) {
+      await txn.runAsync(
+        'INSERT OR IGNORE INTO song_tags (song_id, tag_id, added_at) VALUES (?, ?, ?)',
+        songId,
+        tagId,
+        now
+      );
+    }
+  });
+}
+
+/**
+ * Apply a multi-song tag edit (see `library/bulkTags.ts`) as one step: the
+ * links to add and remove, plus any tags typed in as new, created and given to
+ * every song in `songIds`. All or nothing.
+ */
+export async function applyBulkTagEdit(
+  db: SQLiteDatabase,
+  songIds: readonly number[],
+  edit: { add: readonly (readonly [number, number])[]; remove: readonly (readonly [number, number])[] },
+  newTagPaths: readonly (readonly string[])[] = []
+): Promise<void> {
+  const now = Date.now();
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    for (const [songId, tagId] of edit.remove) {
+      await txn.runAsync('DELETE FROM song_tags WHERE song_id = ? AND tag_id = ?', songId, tagId);
+    }
+    const links: (readonly [number, number])[] = [...edit.add];
+    for (const path of newTagPaths) {
+      const tagId = await ensureTagPath(txn, path);
+      for (const songId of songIds) links.push([songId, tagId]);
+    }
+    for (const [songId, tagId] of links) {
       await txn.runAsync(
         'INSERT OR IGNORE INTO song_tags (song_id, tag_id, added_at) VALUES (?, ?, ?)',
         songId,

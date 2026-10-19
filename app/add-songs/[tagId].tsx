@@ -1,8 +1,7 @@
-import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
-import { usePreventRemove, type NavigationAction } from 'expo-router/react-navigation';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { notifyLibraryChanged } from '@/db/changes';
 import { listAllSongs } from '@/db/songs';
@@ -23,9 +22,11 @@ import { FilterChip } from '@/ui/FilterChip';
 import { plural } from '@/ui/format';
 import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
+import { useStagedSave } from '@/ui/hooks/useStagedSave';
 import { PICK_ROW_HEIGHT, PickSongRow } from '@/ui/library/PickSongRow';
+import { SaveButton } from '@/ui/SaveButton';
 import { SearchField } from '@/ui/SearchField';
-import { colors, font, radius, spacing } from '@/ui/theme';
+import { colors, font, spacing } from '@/ui/theme';
 
 const SUGGESTION_LIMIT = 20;
 
@@ -102,48 +103,10 @@ export default function AddSongsScreen() {
   }, [selected]);
   const dirty = changes.add.length + changes.remove.length > 0;
 
-  // Leaving with unsaved changes asks first. Saving, or choosing to discard,
-  // sets `leaving`, which lifts the guard; the effect then goes back once the
-  // guard is down (an action blocked by the guard is re-run, not forgotten).
-  const navigation = useNavigation();
-  const [leaving, setLeaving] = useState(false);
-  const blockedAction = useRef<NavigationAction | null>(null);
-  usePreventRemove(dirty && !leaving, ({ data: blocked }) => {
-    Alert.alert('Discard changes?', "Your changes to this tag haven't been saved.", [
-      { text: 'Keep editing', style: 'cancel' },
-      {
-        text: 'Discard',
-        style: 'destructive',
-        onPress: () => {
-          blockedAction.current = blocked.action;
-          setLeaving(true);
-        },
-      },
-    ]);
+  const { save, saving } = useStagedSave(dirty, async () => {
+    await updateSongsOfTag(db, tagId, changes);
+    notifyLibraryChanged();
   });
-  useEffect(() => {
-    if (!leaving) return;
-    if (blockedAction.current) navigation.dispatch(blockedAction.current);
-    else router.back();
-  }, [leaving, navigation]);
-
-  const [saving, setSaving] = useState(false);
-  const save = async () => {
-    if (saving) return;
-    if (!dirty) {
-      setLeaving(true);
-      return;
-    }
-    setSaving(true);
-    try {
-      await updateSongsOfTag(db, tagId, changes);
-      notifyLibraryChanged();
-      setLeaving(true);
-    } catch (error) {
-      setSaving(false);
-      Alert.alert("Couldn't save your changes", String(error));
-    }
-  };
 
   const searchable = useMemo(
     () => (data?.songs ?? []).map((song) => ({ song, key: searchKey([song.title, song.artist, song.album]) })),
@@ -193,18 +156,7 @@ export default function AddSongsScreen() {
       <Stack.Screen
         options={{
           title: tag ? `Add to ${tag.name}` : '',
-          // Quiet until there's something to save, then filled. Only the fill
-          // changes, never the label or size, so nothing shifts as you tap.
-          headerRight: () => (
-            <Button
-              label="Save"
-              size="small"
-              variant={dirty ? 'primary' : 'tonal'}
-              onPress={save}
-              disabled={saving}
-              style={styles.save}
-            />
-          ),
+          headerRight: () => <SaveButton dirty={dirty} saving={saving} onPress={save} />,
         }}
       />
       <FlatList
@@ -293,10 +245,6 @@ const styles = StyleSheet.create({
   },
   pending: {
     color: colors.accentFg,
-  },
-  // A pill in both states, so switching between tonal and filled keeps its shape.
-  save: {
-    borderRadius: radius.pill,
   },
   sectionLabel: {
     ...font.caption,

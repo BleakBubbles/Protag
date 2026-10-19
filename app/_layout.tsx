@@ -43,6 +43,7 @@ export default function RootLayout() {
             {/* Focused tasks cover everything, the mini-player included. */}
             <Stack.Screen name="song/[id]/tags" options={{ presentation: 'modal', title: 'Tags' }} />
             <Stack.Screen name="add-songs/[tagId]" options={{ presentation: 'modal', title: '' }} />
+            <Stack.Screen name="edit-tags" options={{ presentation: 'modal', title: '' }} />
           </Stack>
         </PlayerProvider>
       </SQLiteProvider>
