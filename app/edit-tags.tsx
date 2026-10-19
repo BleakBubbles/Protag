@@ -195,7 +195,7 @@ export default function EditTagsScreen() {
               <SearchField
                 value={query}
                 onChangeText={setQuery}
-                icon="pricetag-outline"
+                icon="tag"
                 placeholder="Find or create a tag — use / to nest"
                 returnKeyType="done"
                 onSubmitEditing={submit}

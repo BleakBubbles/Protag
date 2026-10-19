@@ -68,7 +68,7 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
             </Text>
           </Text>
           {/* Tag while listening — the moment the opinion is fresh. */}
-          <IconButton icon="pricetag-outline" label="Edit tags for this song" onPress={() => openSongTags(song.id)} />
+          <IconButton icon="tag" label="Edit tags for this song" onPress={() => openSongTags(song.id)} />
         </View>
         <ArtworkSlot uri={albumArtUri(song.album_id)} />
       </View>

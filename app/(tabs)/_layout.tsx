@@ -1,7 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBar, Tabs, type BottomTabBarProps } from 'expo-router/tabs';
 import { View } from 'react-native';
 
+import { Icon } from '@/ui/Icon';
 import { MiniPlayer } from '@/ui/player/MiniPlayer';
 import { MiniPlayerVisibilityProvider } from '@/ui/player/MiniPlayerVisibility';
 import { PlayerSheet, usePlayerSheet } from '@/ui/player/PlayerSheet';
@@ -36,7 +36,10 @@ export default function TabsLayout() {
             name="index"
             options={{
               title: 'Play',
-              tabBarIcon: ({ color, size }) => <Ionicons name="play-circle-outline" color={color} size={size} />,
+              // Filled when selected, outlined otherwise: the usual Android tab pattern.
+              tabBarIcon: ({ color, size, focused }) => (
+                <Icon name={focused ? 'play-circle' : 'play-circle-outline'} color={color} size={size} />
+              ),
             }}
           />
           <Tabs.Screen
@@ -45,7 +48,7 @@ export default function TabsLayout() {
               title: 'Library',
               // The Library tab's own stack draws its headers.
               headerShown: false,
-              tabBarIcon: ({ color, size }) => <Ionicons name="pricetags-outline" color={color} size={size} />,
+              tabBarIcon: ({ color, size, focused }) => <Icon name={focused ? 'tags-filled' : 'tags'} color={color} size={size} />,
             }}
           />
         </Tabs>

@@ -60,7 +60,7 @@ export function MiniPlayer() {
         <PlayPause />
         <NextTrack />
         {/* Tagging what's playing, from any screen, is the point of ProTag. */}
-        <IconButton icon="pricetag-outline" label="Edit tags for this song" onPress={() => openSongTags(song.id)} />
+        <IconButton icon="tag" label="Edit tags for this song" onPress={() => openSongTags(song.id)} />
       </Pressable>
       <Progress fallbackDurationSec={song.duration_ms / 1000} />
     </SwipeGestures>

@@ -1,10 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
-import type { ComponentProps, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Icon, type IconName } from './Icon';
 import { colors, iconSize, radius, touchTarget } from './theme';
-
-export type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export interface IconButtonProps {
   icon: IconName;
@@ -41,7 +39,7 @@ export function IconButton({
       hitSlop={Math.max(0, (touchTarget - size) / 2)}
       style={({ pressed }) => [styles.button, (pressed || disabled) && styles.dimmed]}
     >
-      <Ionicons name={icon} size={size} color={tint} />
+      <Icon name={icon} size={size} color={tint} />
       {badge != null && <View style={styles.badge}>{badge}</View>}
     </Pressable>
   );

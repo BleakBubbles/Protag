@@ -66,7 +66,7 @@ export function TagsView() {
                 />
               )}
               <EmptyState
-                icon="pricetags-outline"
+                icon="tags"
                 title="No tags yet"
                 body="Tag songs from the Songs tab, or from the player while a song plays. Type parent/child to make a nested tag."
               />

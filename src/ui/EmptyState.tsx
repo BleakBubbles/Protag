@@ -1,8 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { IconName } from './IconButton';
+import { Icon, type IconName } from './Icon';
 import { colors, font, spacing } from './theme';
 
 export interface EmptyStateProps {
@@ -18,7 +17,7 @@ export interface EmptyStateProps {
 export function EmptyState({ icon, art, title, body, children }: EmptyStateProps) {
   return (
     <View style={styles.container}>
-      {art ?? (icon ? <Ionicons name={icon} size={48} color={colors.textFaint} /> : null)}
+      {art ?? (icon ? <Icon name={icon} size={48} color={colors.textFaint} /> : null)}
       <Text style={styles.title}>{title}</Text>
       {body ? <Text style={styles.body}>{body}</Text> : null}
       {/* A row, so buttons centre here whatever their own alignSelf. */}

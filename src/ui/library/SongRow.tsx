@@ -103,7 +103,7 @@ export const SongRow = memo(function SongRow({
       </View>
       {onEditTags && (
         <IconButton
-          icon={tags.length > 0 ? 'pricetags' : 'pricetag-outline'}
+          icon={tags.length > 0 ? 'tag-filled' : 'tag'}
           label={`Edit tags for ${title}`}
           color={tags.length > 0 ? colors.textDim : colors.textFaint}
           onPress={() => onEditTags(id)}

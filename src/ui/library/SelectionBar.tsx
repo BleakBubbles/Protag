@@ -1,7 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { IconName } from '../IconButton';
+import { Icon, type IconName } from '../Icon';
 import { colors, font, iconSize, radius, spacing } from '../theme';
 
 /** Fits in the room a list already leaves at the bottom for its floating button. */
@@ -35,7 +34,7 @@ export function SelectionBar({ actions, disabled }: { actions: readonly Selectio
             android_ripple={{ color: colors.border, borderless: false }}
             style={styles.action}
           >
-            <Ionicons name={action.icon} size={iconSize.sm} color={color} />
+            <Icon name={action.icon} size={iconSize.sm} color={color} />
             <Text style={[styles.label, { color }]} numberOfLines={1}>
               {action.label}
             </Text>

@@ -1,8 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
 import { forwardRef } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
-import { IconButton, type IconName } from './IconButton';
+import { Icon, type IconName } from './Icon';
+import { IconButton } from './IconButton';
 import { colors, font, iconSize, radius, spacing, touchTarget } from './theme';
 
 export interface SearchFieldProps extends Omit<TextInputProps, 'style'> {
@@ -18,7 +18,7 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
 ) {
   return (
     <View style={styles.field}>
-      <Ionicons name={icon} size={iconSize.sm} color={colors.textFaint} />
+      <Icon name={icon} size={iconSize.sm} color={colors.textFaint} />
       <TextInput
         ref={ref}
         value={value}

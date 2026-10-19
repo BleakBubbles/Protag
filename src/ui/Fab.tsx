@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -10,7 +9,7 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 
-import type { IconName } from './IconButton';
+import { Icon, type IconName } from './Icon';
 import { colors, font, radius, spacing } from './theme';
 
 /** The button's height, and its width with the label folded away. */
@@ -97,7 +96,7 @@ export function Fab({ label, icon, extended, onPress }: FabProps) {
         android_ripple={{ color: colors.rippleOnAccent, foreground: true }}
         style={styles.fab}
       >
-        <Ionicons name={icon} size={ICON} color={colors.onAccent} />
+        <Icon name={icon} size={ICON} color={colors.onAccent} />
         <Animated.View
           style={{
             width: progress.interpolate({ inputRange: [0, 1], outputRange: [0, labelWidth] }),

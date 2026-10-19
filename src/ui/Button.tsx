@@ -1,7 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 
-import type { IconName } from './IconButton';
+import { Icon, type IconName } from './Icon';
 import { colors, font, iconSize, radius, spacing, touchTarget } from './theme';
 
 /**
@@ -58,7 +57,7 @@ export function Button({
         style,
       ]}
     >
-      {icon && <Ionicons name={icon} size={size === 'small' ? iconSize.sm - 4 : iconSize.sm} color={color} />}
+      {icon && <Icon name={icon} size={size === 'small' ? iconSize.sm - 4 : iconSize.sm} color={color} />}
       <Text style={[styles.label, { color }]}>{label}</Text>
     </Pressable>
   );

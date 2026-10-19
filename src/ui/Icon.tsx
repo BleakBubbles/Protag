@@ -1,0 +1,32 @@
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import type { ComponentProps } from 'react';
+import type { ColorValue } from 'react-native';
+
+/**
+ * ProTag's own icons, drawn from another icon set where Ionicons' version
+ * didn't suit. The tag: Ionicons' is thin and angular; this one is rounder and
+ * sturdier. Changing a glyph here changes it everywhere.
+ */
+const OWN = {
+  tag: 'tag-outline',
+  'tag-filled': 'tag',
+  tags: 'tag-multiple-outline',
+  'tags-filled': 'tag-multiple',
+} as const satisfies Record<string, ComponentProps<typeof MaterialCommunityIcons>['name']>;
+
+type OwnIconName = keyof typeof OWN;
+
+/** Any Ionicons name, or one of ProTag's own (`tag`, `tags`, and their `-filled` forms). */
+export type IconName = ComponentProps<typeof Ionicons>['name'] | OwnIconName;
+
+export interface IconProps {
+  name: IconName;
+  size: number;
+  color: ColorValue;
+}
+
+/** An icon by name, from whichever set it belongs to. */
+export function Icon({ name, size, color }: IconProps) {
+  if (name in OWN) return <MaterialCommunityIcons name={OWN[name as OwnIconName]} size={size} color={color} />;
+  return <Ionicons name={name as ComponentProps<typeof Ionicons>['name']} size={size} color={color} />;
+}

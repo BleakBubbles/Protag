@@ -1,10 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, BackHandler, Pressable, StyleSheet, Text } from 'react-native';
 
 import { Fab, FAB_SIZE } from './Fab';
-import type { IconName } from './IconButton';
+import { Icon, type IconName } from './Icon';
 import { colors, font, iconSize, radius, spacing } from './theme';
 
 export interface FabMenuItem {
@@ -79,7 +78,7 @@ export function FabMenu({ label, icon, extended, items }: FabMenuProps) {
             // which spread to the pill's square corners.
             style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
           >
-            <Ionicons name={item.icon} size={iconSize.sm} color={colors.accentFg} />
+            <Icon name={item.icon} size={iconSize.sm} color={colors.accentFg} />
             <Text style={styles.itemLabel}>{item.label}</Text>
           </Pressable>
         ))}

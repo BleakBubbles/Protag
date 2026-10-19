@@ -141,7 +141,7 @@ export default function TagScreen() {
     return (
       <View style={styles.screen}>
         <Stack.Screen options={{ title: '' }} />
-        <EmptyState icon="pricetag-outline" title="This tag no longer exists">
+        <EmptyState icon="tag" title="This tag no longer exists">
           <Button label="Go back" onPress={() => router.back()} />
         </EmptyState>
       </View>
@@ -383,7 +383,7 @@ export default function TagScreen() {
             // "uncheck this tag, check that one".
             {
               label: 'Tags…',
-              icon: 'pricetags-outline',
+              icon: 'tags',
               onPress: () => {
                 versionAtEdit.current = libraryVersion;
                 openEditTags(selected);
