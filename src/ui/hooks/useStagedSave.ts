@@ -1,4 +1,4 @@
-import { router, useNavigation } from 'expo-router';
+import { useNavigation } from 'expo-router';
 // SDK 58: usePreventRemove moves to `expo-router` itself, with a `repeat()` callback (see NOTES.md, task 5b).
 import { usePreventRemove, type NavigationAction } from 'expo-router/react-navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -48,10 +48,17 @@ export function useStagedSave(dirty: boolean, apply: () => Promise<void>) {
     ]);
   });
 
+  // Exactly once, and from this screen's own navigation. The effect can run
+  // again after the screen leaves its stack (its `navigation` is replaced),
+  // and a second "back" popped the screen underneath mid-animation, which
+  // crashed react-native-screens ("ScreenStackFragment added into a non-stack
+  // container") on every save.
+  const left = useRef(false);
   useEffect(() => {
-    if (!leaving) return;
+    if (!leaving || left.current) return;
+    left.current = true;
     if (blockedAction.current) navigation.dispatch(blockedAction.current);
-    else router.back();
+    else navigation.goBack();
   }, [leaving, navigation]);
 
   const save = async () => {
