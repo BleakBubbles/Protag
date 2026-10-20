@@ -22,4 +22,10 @@ export const openManageLibrary = () => router.push('/library/manage');
 
 export const openLibrary = () => router.navigate('/library');
 
+/** The Play tab; with a mix id, that mix opens in the pot for editing. */
+export const openPlay = (editMixId?: number) =>
+  router.navigate(
+    editMixId === undefined ? '/play' : { pathname: '/play', params: { edit: String(editMixId) } }
+  );
+
 // The full player isn't a route: it's a sheet over the tabs (usePlayerSheet).

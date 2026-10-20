@@ -8,7 +8,8 @@ import { PlayerSheet, usePlayerSheet } from '@/ui/player/PlayerSheet';
 import { colors, headerTitleStyle } from '@/ui/theme';
 
 /**
- * Two tabs: Play (start something) and Library (organise it). The full player
+ * Three tabs: Mixes (play what you've saved; the app opens here), Play (build
+ * something new from tags) and Library (organise it). The full player
  * isn't a tab; it's a sheet that grows out of the mini-player, which sits on
  * the tab bar. Rendering it inside the tab bar slot means every screen above
  * automatically ends where the mini-player begins, with no per-screen padding.
@@ -35,8 +36,17 @@ export default function TabsLayout() {
           <Tabs.Screen
             name="index"
             options={{
-              title: 'Play',
+              title: 'Mixes',
               // Filled when selected, outlined otherwise: the usual Android tab pattern.
+              tabBarIcon: ({ color, size, focused }) => (
+                <Icon name={focused ? 'albums' : 'albums-outline'} color={color} size={size} />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="play"
+            options={{
+              title: 'Play',
               tabBarIcon: ({ color, size, focused }) => (
                 <Icon name={focused ? 'play-circle' : 'play-circle-outline'} color={color} size={size} />
               ),

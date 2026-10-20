@@ -8,20 +8,14 @@ import { formatCount, plural } from '../format';
 import { Icon } from '../Icon';
 import { IconButton } from '../IconButton';
 import { colors, font, iconSize, radius, spacing, touchTarget } from '../theme';
-import { MIX_CARD_HEIGHT } from './MixCard';
 import { useDraggable, useDropTarget, usePotDragState } from './PotDrag';
 import { withAlpha } from './TagTile';
 
 const TOP = 24;
 const CHIP = 36;
-/** Two rows of mix cards, or about three of chips: the same either way, so the pot never changes height. */
-export const POT_CONTENT_HEIGHT = MIX_CARD_HEIGHT * 2 + spacing.sm;
+/** Two rows of chips; more scroll. Fixed, so the pot never changes height. */
+const CONTENT = CHIP * 2 + spacing.sm;
 const ACTIONS = 44;
-const MARGIN = spacing.sm;
-const BORDER = 1;
-
-/** The width inside the pot, for laying out what goes in it. */
-export const potInnerWidth = (screenWidth: number) => screenWidth - (MARGIN + BORDER + spacing.md) * 2;
 
 /** Songs the whole pot would play, with whether the pot was empty when counted. */
 export interface ShuffleCount {
@@ -41,8 +35,6 @@ export interface PotProps {
   ingredientCounts: ReadonlyMap<string, number>;
   /** The latest finished count; the Shuffle button shows it as one change. */
   counted: ShuffleCount | null;
-  /** Saved mixes, shown while the pot is empty; `null` when there are none. */
-  shelf: ReactNode;
   /** The name of the mix opened for editing, if any. */
   editing: string | null;
   onSave: () => void;
@@ -59,8 +51,7 @@ export interface PotProps {
  * Tags dropped in are ingredients, and a song plays if it's in any of them;
  * drag one onto another and they combine into one ingredient that needs both.
  * While anything is being dragged, a Keep out zone covers the buttons: drop a
- * tag there and its songs never play. Empty, the pot offers your saved mixes,
- * which are pots you've kept.
+ * tag there and its songs never play.
  *
  * Pinned and a fixed height, so it's always there to drop into and nothing in
  * it or below it moves as it fills.
@@ -71,7 +62,6 @@ export function Pot({
   hues,
   ingredientCounts,
   counted,
-  shelf,
   editing,
   onSave,
   onShuffle,
@@ -91,7 +81,7 @@ export function Pot({
     <View ref={pot.ref} style={[styles.pot, pot.hovered && active?.kind !== 'ingredient' && styles.potHovered]}>
       <View style={styles.top}>
         <Text style={styles.hint} numberOfLines={1}>
-          {hintFor(draft, active, hover, shelf !== null, editing)}
+          {hintFor(draft, active, hover, editing)}
         </Text>
         <View style={styles.clearSlot}>
           {!empty && (
@@ -102,7 +92,7 @@ export function Pot({
 
       <View style={styles.content}>
         {!empty ? (
-          <FadeIn key="chips">
+          <FadeIn>
             <ScrollView scrollEnabled={active === null} contentContainerStyle={styles.chips}>
               {draft.ingredients.map((tags, index) => (
                 <IngredientChip
@@ -126,10 +116,7 @@ export function Pot({
               ))}
             </ScrollView>
           </FadeIn>
-        ) : shelf !== null && active === null ? (
-          <FadeIn key="shelf">{shelf}</FadeIn>
         ) : (
-          // No mixes yet, or a tag is on its way in: an empty well to drop into.
           <View style={styles.well}>
             <Text style={styles.wellText}>Tap or drag tags here</Text>
           </View>
@@ -172,7 +159,6 @@ function hintFor(
   draft: QueryDraft,
   active: PotItem | null,
   hover: string,
-  hasMixes: boolean,
   editing: string | null
 ): string {
   if (active) {
@@ -183,7 +169,7 @@ function hintFor(
     return 'Let go to take it out';
   }
   if (draft.ingredients.length === 0 && draft.exclude.length === 0) {
-    return hasMixes ? 'Play a mix, or tap tags below' : 'Tap tags below, or hold one to drag it';
+    return 'Tap tags below, or hold one to drag it';
   }
   if (editing) return `Editing “${editing}”`;
   if (draft.ingredients.some((tags) => tags.length > 1)) return 'Tap a combined one to split it';
@@ -191,7 +177,7 @@ function hintFor(
   return 'Tap one here to send it back';
 }
 
-/** Fades its children in when it mounts: how the mixes give way to chips, and back. */
+/** Fades its children in when it mounts: how the first chips replace the empty well. */
 function FadeIn({ children }: { children: ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -309,11 +295,11 @@ function KeepOut({ shown }: { shown: boolean }) {
 
 const styles = StyleSheet.create({
   pot: {
-    margin: MARGIN,
+    margin: spacing.sm,
     padding: spacing.md,
     gap: spacing.sm,
     borderRadius: radius.lg,
-    borderWidth: BORDER,
+    borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
   },
@@ -338,7 +324,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    height: POT_CONTENT_HEIGHT,
+    height: CONTENT,
   },
   fill: {
     flex: 1,

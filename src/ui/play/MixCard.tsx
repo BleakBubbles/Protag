@@ -3,8 +3,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, font, radius, spacing } from '../theme';
 import { ArtMosaic } from './ArtMosaic';
 
-export const MIX_CARD_HEIGHT = 56;
-
 export interface MixCardProps {
   name: string;
   /** What the mix is, in words: "kpop × chill, not sad". */
@@ -13,15 +11,16 @@ export interface MixCardProps {
   albumIds: readonly string[];
   /** For a mix with no artwork: the colour of its first tag. */
   color: string;
+  /** The card is this wide and its artwork square. */
   width: number;
   onPress: () => void;
   onLongPress: () => void;
 }
 
 /**
- * A saved mix as a compact shortcut, artwork first and the name beside it,
- * like the quick-start grid at the top of other music apps. One tap shuffles
- * it; a long press offers edit, rename, delete.
+ * A saved mix, led by its artwork so it's recognisable at a glance. One tap
+ * shuffles it; a long press offers edit, rename, delete. Fixed height, so
+ * cards line up whatever their text.
  */
 export function MixCard({ name, description, albumIds, color, width, onPress, onLongPress }: MixCardProps) {
   return (
@@ -33,39 +32,33 @@ export function MixCard({ name, description, albumIds, color, width, onPress, on
       accessibilityHint="Long press for more options"
       style={({ pressed }) => [styles.card, { width }, pressed && styles.pressed]}
     >
-      <ArtMosaic albumIds={albumIds} size={MIX_CARD_HEIGHT} fallbackColor={color} />
-      <View style={styles.text}>
-        <Text style={styles.name} numberOfLines={1}>
-          {name}
-        </Text>
-        <Text style={styles.description} numberOfLines={1}>
-          {description}
-        </Text>
+      <View style={styles.art}>
+        <ArtMosaic albumIds={albumIds} size={width} fallbackColor={color} />
       </View>
+      <Text style={styles.name} numberOfLines={1}>
+        {name}
+      </Text>
+      <Text style={styles.description} numberOfLines={1}>
+        {description}
+      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    height: MIX_CARD_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-    backgroundColor: colors.surface,
+    gap: 2,
   },
   pressed: {
     opacity: 0.7,
   },
-  text: {
-    flex: 1,
-    gap: 2,
-    paddingRight: spacing.sm,
+  art: {
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    marginBottom: spacing.xs,
   },
   name: {
-    ...font.label,
+    ...font.listTitle,
     color: colors.text,
   },
   description: {
