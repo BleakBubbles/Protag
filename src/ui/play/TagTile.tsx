@@ -39,7 +39,7 @@ export interface TagTileProps {
 }
 
 /**
- * A tag in the Play tab's builder: a big, forgiving target that's coloured
+ * A tag in the Shuffle tab's builder: a big, forgiving target that's coloured
  * like the tag. A tap drops it into the pot (or takes it back out); holding it
  * lifts it, to drag onto something in the pot. Each state is unmistakable:
  * off is a soft wash, in the pot lights up in full colour with a check,

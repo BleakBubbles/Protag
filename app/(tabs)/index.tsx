@@ -8,7 +8,7 @@ import { deleteMix, listMixes, renameMix, type Mix } from '@/db/mixes';
 import { countSongs } from '@/db/songs';
 import { buildDescendantMap, listAllTagsWithCounts } from '@/db/tags';
 import { loadMixArt } from '@/library/mixArt';
-import { openLibrary, openPlay } from '@/navigation';
+import { openLibrary, openShuffle } from '@/navigation';
 import { usePlayQuery } from '@/player/PlayerProvider';
 import { describeQuery } from '@/query/describe';
 import { buildQuery, pruneDraft } from '@/query/types';
@@ -29,7 +29,7 @@ const NEW_MIX = 'new';
 
 /**
  * Mixes tab, where the app opens: your saved mixes, one tap to shuffle. Making
- * and changing them happens in Play; this tab only plays and keeps them, so
+ * and changing them happens in Shuffle; this tab only plays and keeps them, so
  * neither page has to explain the other.
  */
 export default function MixesScreen() {
@@ -74,9 +74,9 @@ export default function MixesScreen() {
         <EmptyState
           icon="albums-outline"
           title="Your mixes live here"
-          body="Pick tags in Play, then save them with the bookmark. A mix keeps up as you tag more songs."
+          body="Pick tags in Shuffle, then save them with the bookmark. A mix keeps up as you tag more songs."
         >
-          <Button label="Make a mix" icon="add" variant="tonal" onPress={() => openPlay()} />
+          <Button label="Make a mix" icon="add" variant="tonal" onPress={() => openShuffle()} />
         </EmptyState>
       </View>
     );
@@ -133,7 +133,7 @@ export default function MixesScreen() {
         actions={
           menuMix
             ? [
-                { label: 'Edit', onPress: () => openPlay(menuMix.id) },
+                { label: 'Edit', onPress: () => openShuffle(menuMix.id) },
                 { label: 'Rename', onPress: () => setRenaming(menuMix) },
                 { label: 'Delete', destructive: true, onPress: () => confirmDelete(menuMix) },
               ]
@@ -160,7 +160,7 @@ export default function MixesScreen() {
 function NewMixCard({ width }: { width: number }) {
   return (
     <Pressable
-      onPress={() => openPlay()}
+      onPress={() => openShuffle()}
       accessibilityRole="button"
       accessibilityLabel="New mix"
       style={({ pressed }) => [{ width }, pressed && styles.pressed]}

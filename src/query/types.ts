@@ -16,7 +16,7 @@ export type TagQuery =
 export const MATCH_ALL: TagQuery = { type: 'all' };
 
 /**
- * What the Play tab's builder edits: the pot. Compiles to a `TagQuery` via
+ * What the Shuffle tab's builder edits: the pot. Compiles to a `TagQuery` via
  * `buildQuery`.
  *
  * Each ingredient is one or more tags. A song plays if it matches any

@@ -25,14 +25,14 @@ import { PromptDialog } from '@/ui/PromptDialog';
 import { colors, font, spacing, tagColor } from '@/ui/theme';
 
 /**
- * Play tab: build something to shuffle. The pot sits on top like a text field
+ * Shuffle tab: build something to shuffle. The pot sits on top like a text field
  * over its keyboard; the tag tiles below go into it by tap or by drag, with a
  * live count. Saved mixes live in their own tab; "Edit" there opens one here
  * (the `edit` param, a mix id).
  */
-export default function PlayScreen() {
+export default function ShuffleScreen() {
   const { show } = useMiniPlayerVisibility();
-  // Opening Play is one way a hidden mini-player comes back.
+  // Opening Shuffle is one way a hidden mini-player comes back.
   useFocusEffect(useCallback(() => show(), [show]));
   const { edit } = useLocalSearchParams<{ edit?: string }>();
 

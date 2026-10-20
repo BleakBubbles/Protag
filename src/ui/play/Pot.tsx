@@ -45,7 +45,7 @@ export interface PotProps {
 }
 
 /**
- * The pot: what's going into the shuffle, at the top of the Play tab like a
+ * The pot: what's going into the shuffle, at the top of the Shuffle tab like a
  * text field over its keyboard, with the tags to put in it below.
  *
  * Tags dropped in are ingredients, and a song plays if it's in any of them;

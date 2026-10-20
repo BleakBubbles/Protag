@@ -51,7 +51,7 @@ const measure = (ref: RefObject<View | null>) =>
 const inside = (r: Rect, x: number, y: number) => x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
 
 /**
- * Drag and drop for the Play tab's pot, on React Native's own touch system.
+ * Drag and drop for the Shuffle tab's pot, on React Native's own touch system.
  * Hold a tile or a chip for a moment and it lifts; while it's up, scrolling is
  * off (`active` tells the screen), so the page holds still under the finger
  * and the drop targets stay where they were measured.

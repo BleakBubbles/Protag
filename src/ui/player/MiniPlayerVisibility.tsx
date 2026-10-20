@@ -19,7 +19,7 @@ const HINT_MS = 4000;
 
 /**
  * Whether the mini-player is on screen. The user can swipe it away to focus on
- * tagging while music keeps playing. It comes back when they open the Play tab
+ * tagging while music keeps playing. It comes back when they open the Mixes or Shuffle tab
  * or start something new; not on a track change, which would defeat the point.
  */
 export function MiniPlayerVisibilityProvider({ children }: { children: ReactNode }) {
