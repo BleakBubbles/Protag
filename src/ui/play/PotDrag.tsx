@@ -12,7 +12,7 @@ import type { PotItem, PotSpot } from '../../query/pot';
 import { colors, font, radius, spacing } from '../theme';
 
 /** How long a finger rests on a tag before it lifts. Shorter fights scrolling; longer feels stuck. */
-const HOLD_MS = 150;
+const HOLD_MS = 100;
 /** How far a finger can wander during the hold and still lift (or still count as a tap). */
 const SLOP = 8;
 const GHOST_WIDTH = 280;
