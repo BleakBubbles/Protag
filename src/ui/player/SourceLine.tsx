@@ -24,7 +24,7 @@ export interface SourceLineProps {
 }
 
 /**
- * "Shuffling · kpop × chill  3 of 114": what's playing, scrolling sideways
+ * "Shuffling · kpop × chill  3 of 114": what's playing, the label scrolling sideways
  * when it's too long to fit. Often you only know a combination is good once
  * you've heard it, so when the queue came from tags, the line sits in a soft
  * pill that can be tapped: save it as a mix, or open it in Shuffle to tweak it.
@@ -43,14 +43,20 @@ export function SourceLine({ queue, onClose }: SourceLineProps) {
   const tappable = !!draft && !isEmptyDraft(draft);
   const saved = tappable ? (mixes?.find((m) => sameDraft(m.draft, draft)) ?? null) : null;
 
+  /** The position's own width, so the label scrolls in whatever room it leaves. */
+  const [positionWidth, setPositionWidth] = useState(0);
+
+  // The label scrolls when it's too long; the position, which changes every
+  // track, stays put at the end, so a skip never restarts the scroll.
   const line = (
-    <Marquee style={styles.source} maxWidth={room - PILL_PADDING * 2}>
-      {queue.shuffled ? 'Shuffling' : 'Playing'} · {label}
-      <Text style={styles.position}>
-        {'  '}
+    <View style={styles.line}>
+      <Marquee style={styles.source} maxWidth={room - PILL_PADDING * 2 - positionWidth - spacing.sm}>
+        {queue.shuffled ? 'Shuffling' : 'Playing'} · {label}
+      </Marquee>
+      <Text style={styles.position} onLayout={(e) => setPositionWidth(Math.ceil(e.nativeEvent.layout.width))}>
         {formatCount(queue.index + 1)} of {formatCount(queue.order.length)}
       </Text>
-    </Marquee>
+    </View>
   );
 
   return (
@@ -108,6 +114,11 @@ const styles = StyleSheet.create({
   slot: {
     flex: 1,
     alignItems: 'center',
+  },
+  line: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   pill: {
     height: PILL_HEIGHT,
