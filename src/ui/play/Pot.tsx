@@ -17,15 +17,24 @@ const ACTIONS = 44;
 /** Fixed, so the screen can leave exactly this much room for it. */
 export const POT_HEIGHT = spacing.md * 2 + ROW + HINT + ACTIONS + spacing.sm * 2;
 
+/** Songs the whole pot would play, with whether the pot was empty when counted. */
+export interface ShuffleCount {
+  empty: boolean;
+  count: number;
+}
+
+/** How `ingredientCounts` names an ingredient: by its tags, not its place. */
+export const ingredientKey = (tags: readonly number[]) => tags.join();
+
 export interface PotProps {
   draft: QueryDraft;
   names: ReadonlyMap<number, string>;
   /** Each tag's colour as hex. */
   hues: ReadonlyMap<number, string>;
-  /** Songs per ingredient, in the draft's order, once counted. */
-  ingredientCounts: readonly (number | null)[];
-  /** Songs the whole pot would play. */
-  count: number | null;
+  /** Songs per ingredient, by `ingredientKey`, once counted. */
+  ingredientCounts: ReadonlyMap<string, number>;
+  /** The latest finished count; the Shuffle button shows it as one change. */
+  counted: ShuffleCount | null;
   saveLabel: string;
   onSave: () => void;
   onShuffle: () => void;
@@ -48,7 +57,7 @@ export function Pot({
   names,
   hues,
   ingredientCounts,
-  count,
+  counted,
   saveLabel,
   onSave,
   onShuffle,
@@ -79,12 +88,12 @@ export function Pot({
           >
             {draft.ingredients.map((tags, index) => (
               <IngredientChip
-                key={tags.join()}
+                key={ingredientKey(tags)}
                 index={index}
                 tags={tags}
                 names={names}
                 hues={hues}
-                count={ingredientCounts[index] ?? null}
+                count={ingredientCounts.get(ingredientKey(tags)) ?? null}
                 onTap={() => onTapIngredient(index)}
               />
             ))}
@@ -126,10 +135,10 @@ export function Pot({
           style={styles.action}
         />
         <Button
-          label={shuffleLabel(empty, count)}
+          label={shuffleLabel(counted)}
           icon="shuffle"
           onPress={onShuffle}
-          disabled={count === 0}
+          disabled={counted?.count === 0}
           style={[styles.action, styles.shuffle]}
         />
         <KeepOut shown={canKeepOut} />
@@ -138,8 +147,9 @@ export function Pot({
   );
 }
 
-function shuffleLabel(empty: boolean, count: number | null): string {
-  if (count === null) return 'Shuffle';
+function shuffleLabel(counted: ShuffleCount | null): string {
+  if (counted === null) return 'Shuffle';
+  const { empty, count } = counted;
   if (empty) return `Shuffle all · ${formatCount(count)}`;
   return count === 0 ? 'No songs match' : `Shuffle ${plural(count, 'song')}`;
 }

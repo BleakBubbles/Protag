@@ -15,12 +15,12 @@ import { usePlayQuery } from '@/player/PlayerProvider';
 import { describeQuery } from '@/query/describe';
 import { dropInPot, tapExcluded, tapIngredient, tapTag, type PotItem, type PotSpot } from '@/query/pot';
 import { countMatching } from '@/query/run';
-import { buildQuery, EMPTY_DRAFT, pruneDraft, tagChoice, type QueryDraft } from '@/query/types';
+import { buildQuery, EMPTY_DRAFT, isEmptyDraft, pruneDraft, tagChoice, type QueryDraft } from '@/query/types';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { MixCard } from '@/ui/play/MixCard';
-import { POT_HEIGHT, Pot } from '@/ui/play/Pot';
+import { ingredientKey, POT_HEIGHT, Pot, type ShuffleCount } from '@/ui/play/Pot';
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
@@ -99,17 +99,25 @@ function Builder({ tags, descendants, mixes, mixArt }: LibraryData) {
   const current = useMemo(() => pruneDraft(draft, new Set(names.keys())), [draft, names]);
   const query = useMemo(() => buildQuery(current), [current]);
 
-  const [count, setCount] = useState<number | null>(null);
-  const [ingredientCounts, setIngredientCounts] = useState<(number | null)[]>([]);
+  // The Shuffle label changes once per tap, when the new count is in, rather
+  // than first showing the new pot with the old number.
+  const [counted, setCounted] = useState<ShuffleCount | null>(null);
+  const [ingredientCounts, setIngredientCounts] = useState<ReadonlyMap<string, number>>(new Map());
   useEffect(() => {
     let live = true;
-    countMatching(db, query, descendants).then((n) => live && setCount(n));
+    const empty = isEmptyDraft(current);
+    countMatching(db, query, descendants).then((count) => live && setCounted({ empty, count }));
     // Each ingredient on its own (exclusions aside), so combining visibly narrows.
+    // Keyed by its tags, so a count never shows on the wrong chip while they move.
     Promise.all(
-      current.ingredients.map((tags) =>
-        countMatching(db, buildQuery({ ...current, ingredients: [tags], exclude: [] }), descendants)
+      current.ingredients.map(
+        async (tags) =>
+          [
+            ingredientKey(tags),
+            await countMatching(db, buildQuery({ ...current, ingredients: [tags], exclude: [] }), descendants),
+          ] as const
       )
-    ).then((counts) => live && setIngredientCounts(counts));
+    ).then((entries) => live && setIngredientCounts(new Map(entries)));
     return () => {
       live = false;
     };
@@ -209,7 +217,7 @@ function Builder({ tags, descendants, mixes, mixArt }: LibraryData) {
           names={names}
           hues={hues}
           ingredientCounts={ingredientCounts}
-          count={count}
+          counted={counted}
           saveLabel={editing ? 'Save mix' : 'Save as mix'}
           onSave={() => setSaving(true)}
           onShuffle={() => playQuery(query)}
