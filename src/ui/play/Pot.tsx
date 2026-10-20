@@ -140,7 +140,7 @@ export function Pot({
 
 function shuffleLabel(empty: boolean, count: number | null): string {
   if (count === null) return 'Shuffle';
-  if (empty) return `Shuffle everything · ${formatCount(count)}`;
+  if (empty) return `Shuffle all · ${formatCount(count)}`;
   return count === 0 ? 'No songs match' : `Shuffle ${plural(count, 'song')}`;
 }
 
