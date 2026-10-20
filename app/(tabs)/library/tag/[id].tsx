@@ -24,6 +24,7 @@ import { albumArtUri } from '@/library/assets';
 import { buildTagIndex } from '@/library/tagTree';
 import { openAddSongs, openTag } from '@/navigation';
 import { useNowPlaying, usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
+import { buildQuery, EMPTY_DRAFT } from '@/query/types';
 import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
 import { ColorSheet } from '@/ui/ColorSheet';
@@ -265,7 +266,11 @@ export default function TagScreen() {
                 </Text>
                 {songCount > 0 && (
                   <Pressable
-                    onPress={() => playQuery({ type: 'tag', tagId: id, includeDescendants: true })}
+                    onPress={() => {
+                      // As a one-tag combination, so the player can offer to save it as a mix.
+                      const draft = { ...EMPTY_DRAFT, ingredients: [[id]] };
+                      playQuery(buildQuery(draft), { draft });
+                    }}
                     accessibilityRole="button"
                     accessibilityLabel={`Shuffle ${plural(songCount, 'song')}`}
                     android_ripple={{ color: colors.rippleOnAccent, foreground: true }}

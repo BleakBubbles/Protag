@@ -10,9 +10,12 @@ import { isEmptyDraft, sameDraft } from '@/query/types';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { formatCount, plural } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
-import { Icon } from '@/ui/Icon';
+import { Marquee } from '@/ui/Marquee';
 import { PromptDialog } from '@/ui/PromptDialog';
-import { colors, font, iconSize, spacing } from '@/ui/theme';
+import { colors, font, radius, spacing } from '@/ui/theme';
+
+const PILL_HEIGHT = 32;
+const PILL_PADDING = spacing.md;
 
 export interface SourceLineProps {
   queue: QueueState;
@@ -21,11 +24,10 @@ export interface SourceLineProps {
 }
 
 /**
- * "Shuffling · kpop × chill  3 of 114": what's playing, and the place to keep
- * it. Often you only know a combination is good once you've heard it, so when
- * the queue came from tags, tapping this line offers to save it as a mix, or
- * to open it in Shuffle and tweak it. A bookmark after it says so: outlined
- * while unsaved, filled once it's a saved mix.
+ * "Shuffling · kpop × chill  3 of 114": what's playing, scrolling sideways
+ * when it's too long to fit. Often you only know a combination is good once
+ * you've heard it, so when the queue came from tags, the line sits in a soft
+ * pill that can be tapped: save it as a mix, or open it in Shuffle to tweak it.
  */
 export function SourceLine({ queue, onClose }: SourceLineProps) {
   const db = useSQLiteContext();
@@ -33,79 +35,96 @@ export function SourceLine({ queue, onClose }: SourceLineProps) {
   const { data: mixes } = useLibraryQuery((db) => listMixes(db), []);
   const [menu, setMenu] = useState(false);
   const [saving, setSaving] = useState(false);
+  /** The room between the buttons either side. */
+  const [room, setRoom] = useState(0);
 
   const label = queue.source?.label ?? 'Songs';
-  const position = `${formatCount(queue.index + 1)} of ${formatCount(queue.order.length)}`;
-  const text = (
-    <Text style={styles.source} numberOfLines={1}>
+  // Only a tag combination can become a mix ("Shuffle all" is everything already).
+  const tappable = !!draft && !isEmptyDraft(draft);
+  const saved = tappable ? (mixes?.find((m) => sameDraft(m.draft, draft)) ?? null) : null;
+
+  const line = (
+    <Marquee style={styles.source} maxWidth={room - PILL_PADDING * 2}>
       {queue.shuffled ? 'Shuffling' : 'Playing'} · {label}
       <Text style={styles.position}>
         {'  '}
-        {position}
+        {formatCount(queue.index + 1)} of {formatCount(queue.order.length)}
       </Text>
-    </Text>
+    </Marquee>
   );
 
-  // Only a tag combination can become a mix ("Shuffle all" is everything already).
-  if (!draft || isEmptyDraft(draft)) return <View style={styles.line}>{text}</View>;
-  const saved = mixes?.find((m) => sameDraft(m.draft, draft)) ?? null;
-
   return (
-    <>
-      <Pressable
-        onPress={() => setMenu(true)}
-        accessibilityRole="button"
-        accessibilityHint={saved ? 'Saved as a mix. Opens options' : 'Opens options to save it as a mix'}
-        style={styles.line}
-      >
-        {text}
-        <Icon name={saved ? 'bookmark' : 'bookmark-outline'} size={iconSize.sm - 4} color={colors.accentFg} />
-      </Pressable>
+    <View style={styles.slot} onLayout={(e) => setRoom(e.nativeEvent.layout.width)}>
+      {tappable ? (
+        <Pressable
+          onPress={() => setMenu(true)}
+          accessibilityRole="button"
+          accessibilityHint={saved ? 'Opens options for this mix' : 'Opens options to save this as a mix'}
+          style={({ pressed }) => [styles.pill, styles.filled, pressed && styles.pressed]}
+        >
+          {line}
+        </Pressable>
+      ) : (
+        // Same box without the fill, so the text sits in the same place either way.
+        <View style={styles.pill}>{line}</View>
+      )}
 
-      <ActionSheet
-        visible={menu}
-        title={`${saved?.name ?? label} · ${plural(queue.order.length, 'song')}`}
-        actions={[
-          ...(saved ? [] : [{ label: 'Save as mix', onPress: () => setSaving(true) }]),
-          {
-            label: 'Edit in Shuffle',
-            onPress: () => {
-              onClose();
-              openShuffle(saved ? { mixId: saved.id } : { draft });
-            },
-          },
-        ]}
-        onClose={() => setMenu(false)}
-      />
-      <PromptDialog
-        visible={saving}
-        title="New mix"
-        message={label}
-        placeholder="Night drive"
-        confirmLabel="Save"
-        onSubmit={async (name) => {
-          await saveMixAs(db, name, draft, null);
-          notifyLibraryChanged();
-        }}
-        onClose={() => setSaving(false)}
-      />
-    </>
+      {tappable && (
+        <>
+          <ActionSheet
+            visible={menu}
+            title={`${saved?.name ?? label} · ${plural(queue.order.length, 'song')}`}
+            actions={[
+              ...(saved ? [] : [{ label: 'Save as mix', onPress: () => setSaving(true) }]),
+              {
+                label: 'Edit in Shuffle',
+                onPress: () => {
+                  onClose();
+                  openShuffle(saved ? { mixId: saved.id } : { draft });
+                },
+              },
+            ]}
+            onClose={() => setMenu(false)}
+          />
+          <PromptDialog
+            visible={saving}
+            title="New mix"
+            message={label}
+            placeholder="Night drive"
+            confirmLabel="Save"
+            onSubmit={async (name) => {
+              await saveMixAs(db, name, draft, null);
+              notifyLibraryChanged();
+            }}
+            onClose={() => setSaving(false)}
+          />
+        </>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  line: {
+  slot: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
+  },
+  pill: {
+    height: PILL_HEIGHT,
     justifyContent: 'center',
-    gap: spacing.xs,
+    paddingHorizontal: PILL_PADDING,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  filled: {
+    backgroundColor: colors.surfaceAlt,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   source: {
     ...font.label,
     color: colors.textDim,
-    flexShrink: 1,
-    textAlign: 'center',
   },
   position: {
     ...font.numeric,
