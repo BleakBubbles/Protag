@@ -19,8 +19,8 @@ import { buildQuery, EMPTY_DRAFT, isEmptyDraft, pruneDraft, tagChoice, type Quer
 import { ActionSheet } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
-import { MixCard } from '@/ui/play/MixCard';
-import { ingredientKey, POT_HEIGHT, Pot, type ShuffleCount } from '@/ui/play/Pot';
+import { MixShelf } from '@/ui/play/MixShelf';
+import { ingredientKey, Pot, potInnerWidth, type ShuffleCount } from '@/ui/play/Pot';
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
@@ -134,6 +134,16 @@ function Builder({ tags, descendants, mixes, mixArt }: LibraryData) {
   };
 
   const playMix = (mix: Mix) => playQuery(buildQuery(pruneDraft(mix.draft, new Set(names.keys()))), { label: mix.name });
+  const withMix = (id: number, act: (mix: Mix) => void) => {
+    const mix = mixes.find((m) => m.id === id);
+    if (mix) act(mix);
+  };
+
+  // An emptied pot is no longer the mix that was opened; it shows the mixes again.
+  const potEmpty = isEmptyDraft(current);
+  useEffect(() => {
+    if (potEmpty) setEditing(null);
+  }, [potEmpty]);
 
   const confirmDelete = (mix: Mix) =>
     Alert.alert(`Delete "${mix.name}"?`, 'The mix goes; its tags and songs stay.', [
@@ -168,32 +178,37 @@ function Builder({ tags, descendants, mixes, mixArt }: LibraryData) {
   return (
     <PotDragContext.Provider value={drag}>
       <View ref={drag.rootRef} style={styles.screen}>
-        <ScrollView style={styles.screen} contentContainerStyle={styles.content} scrollEnabled={still}>
-          {mixes.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Your mixes</Text>
-              <ScrollView
-                horizontal
-                scrollEnabled={still}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.mixes}
-                style={styles.bleed}
-              >
-                {mixes.map((mix) => (
-                  <MixCard
-                    key={mix.id}
-                    name={mix.name}
-                    description={describe(mix.draft)}
-                    albumIds={mixArt.get(mix.id) ?? []}
-                    color={hues.get(mix.draft.ingredients[0]?.[0] ?? -1) ?? tagColor(null)}
-                    onPress={() => playMix(mix)}
-                    onLongPress={() => setMenuMix(mix)}
-                  />
-                ))}
-              </ScrollView>
-            </View>
-          )}
+        <Pot
+          draft={current}
+          names={names}
+          hues={hues}
+          ingredientCounts={ingredientCounts}
+          counted={counted}
+          shelf={
+            mixes.length > 0 ? (
+              <MixShelf
+                mixes={mixes.map((mix) => ({
+                  id: mix.id,
+                  name: mix.name,
+                  description: describe(mix.draft),
+                  albumIds: mixArt.get(mix.id) ?? [],
+                  color: hues.get(mix.draft.ingredients[0]?.[0] ?? -1) ?? tagColor(null),
+                }))}
+                width={potInnerWidth(screenWidth)}
+                onPlay={(id) => withMix(id, playMix)}
+                onMenu={(id) => withMix(id, setMenuMix)}
+              />
+            ) : null
+          }
+          editing={editing}
+          onSave={() => setSaving(true)}
+          onShuffle={() => playQuery(query)}
+          onClear={clear}
+          onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
+          onTapExcluded={(tagId) => setDraft(tapExcluded(current, tagId))}
+        />
 
+        <ScrollView style={styles.screen} contentContainerStyle={styles.content} scrollEnabled={still}>
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Your tags</Text>
             {tags.length === 0 ? (
@@ -211,20 +226,6 @@ function Builder({ tags, descendants, mixes, mixArt }: LibraryData) {
             )}
           </View>
         </ScrollView>
-
-        <Pot
-          draft={current}
-          names={names}
-          hues={hues}
-          ingredientCounts={ingredientCounts}
-          counted={counted}
-          saveLabel={editing ? 'Save mix' : 'Save as mix'}
-          onSave={() => setSaving(true)}
-          onShuffle={() => playQuery(query)}
-          onClear={clear}
-          onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
-          onTapExcluded={(tagId) => setDraft(tapExcluded(current, tagId))}
-        />
 
         <ActionSheet
           visible={menuMix !== null}
@@ -294,10 +295,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   content: {
-    padding: spacing.lg,
-    gap: spacing.xl,
-    // Room for the pot, so the last tiles can scroll clear of it.
-    paddingBottom: POT_HEIGHT + spacing.lg * 2,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
   },
   section: {
     gap: spacing.md,
@@ -316,14 +316,6 @@ const styles = StyleSheet.create({
     color: colors.textFaint,
     textTransform: 'uppercase',
     letterSpacing: 1,
-  },
-  // The mix row scrolls edge to edge rather than stopping at the page padding.
-  bleed: {
-    marginHorizontal: -spacing.lg,
-  },
-  mixes: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
   },
   hint: {
     ...font.caption,
