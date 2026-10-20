@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { freshDatabase } from './helpers/db.ts';
-import { deleteMix, listMixes, MixError, parseDraft, renameMix, saveMix } from '../src/db/mixes.ts';
-import { EMPTY_DRAFT } from '../src/query/types.ts';
+import { deleteMix, listMixes, MixError, parseDraft, renameMix, saveMix, saveMixAs } from '../src/db/mixes.ts';
+import { EMPTY_DRAFT, sameDraft } from '../src/query/types.ts';
 
 const driving = { ...EMPTY_DRAFT, ingredients: [[1]], exclude: [2] };
 
@@ -25,6 +25,23 @@ test('saving to an existing name updates that mix instead of adding one', async 
   assert.equal(mixes.length, 1);
   assert.deepEqual(mixes[0].draft.ingredients, [[1], [3]]);
   db.close();
+});
+
+test('saving as a name refuses another mix, but updates the one being edited', async () => {
+  const db = await freshDatabase();
+  const gym = await saveMix(db as never, 'Gym', driving);
+  await assert.rejects(() => saveMixAs(db as never, 'gym ', driving, null), MixError);
+  const updated = { ...driving, ingredients: [[5]] };
+  assert.equal(await saveMixAs(db as never, 'GYM', updated, gym), gym);
+  assert.deepEqual((await listMixes(db as never))[0].draft, updated);
+  db.close();
+});
+
+test('the same draft in another order is the same mix', () => {
+  const a = { ...EMPTY_DRAFT, ingredients: [[1, 2], [3]], exclude: [5, 4] };
+  const b = { ...EMPTY_DRAFT, ingredients: [[3], [2, 1]], exclude: [4, 5] };
+  assert.ok(sameDraft(a, b));
+  assert.ok(!sameDraft(a, { ...b, ingredients: [[3], [2]] }));
 });
 
 test('renaming refuses a name another mix has; deleting removes it', async () => {

@@ -7,11 +7,11 @@ import { openSongTags } from '@/navigation';
 import { useNowPlaying, usePlaybackStatus, usePlayerActions } from '@/player/PlayerProvider';
 import type { QueueState } from '@/player/queue';
 import { EmptyState } from '@/ui/EmptyState';
-import { formatCount } from '@/ui/format';
 import { IconButton } from '@/ui/IconButton';
 import { colors, font, spacing } from '@/ui/theme';
 import { ArtworkSlot } from './ArtworkSlot';
 import { SeekBar } from './SeekBar';
+import { SourceLine } from './SourceLine';
 import { TrackInfo } from './TrackInfo';
 import { TransportControls } from './TransportControls';
 
@@ -45,7 +45,6 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
   const insets = useSafeAreaInsets();
   // Until the engine reports a duration, MediaStore's is close enough.
   const durationSec = status.durationSec > 0 ? status.durationSec : song.duration_ms / 1000;
-  const sourceLabel = queue.source?.label ?? 'Songs';
 
   return (
     // Not a ScrollView: everything but the artwork has a fixed height, and the
@@ -60,13 +59,7 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
       <View style={styles.dragArea} {...dragHandlers}>
         <View style={styles.topRow}>
           <IconButton icon="chevron-down" label="Close player" onPress={onClose} />
-          <Text style={styles.source} numberOfLines={1}>
-            {queue.shuffled ? 'Shuffling' : 'Playing'} · {sourceLabel}
-            <Text style={styles.position}>
-              {'  '}
-              {formatCount(queue.index + 1)} of {formatCount(queue.order.length)}
-            </Text>
-          </Text>
+          <SourceLine queue={queue} onClose={onClose} />
           {/* Tag while listening — the moment the opinion is fresh. */}
           <IconButton icon="tag" label="Edit tags for this song" onPress={() => openSongTags(song.id)} />
         </View>
@@ -111,16 +104,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'stretch',
-  },
-  source: {
-    ...font.label,
-    color: colors.textDim,
-    flex: 1,
-    textAlign: 'center',
-  },
-  position: {
-    ...font.numeric,
-    color: colors.textFaint,
   },
   error: {
     ...font.body,

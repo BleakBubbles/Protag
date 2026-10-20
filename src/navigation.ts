@@ -1,5 +1,7 @@
 import { router } from 'expo-router';
 
+import type { QueryDraft } from './query/types';
+
 /**
  * Every in-app navigation, in one place. Screens call these rather than
  * building paths themselves, so restructuring routes later means editing
@@ -22,10 +24,14 @@ export const openManageLibrary = () => router.push('/library/manage');
 
 export const openLibrary = () => router.navigate('/library');
 
-/** The Shuffle tab; with a mix id, that mix opens in the pot for editing. */
-export const openShuffle = (editMixId?: number) =>
+/** The Shuffle tab, optionally with a saved mix or a tag combination loaded into the pot. */
+export const openShuffle = (open?: { mixId: number } | { draft: QueryDraft }) =>
   router.navigate(
-    editMixId === undefined ? '/shuffle' : { pathname: '/shuffle', params: { edit: String(editMixId) } }
+    !open
+      ? '/shuffle'
+      : 'mixId' in open
+        ? { pathname: '/shuffle', params: { edit: String(open.mixId) } }
+        : { pathname: '/shuffle', params: { draft: JSON.stringify(open.draft) } }
   );
 
 // The full player isn't a route: it's a sheet over the tabs (usePlayerSheet).

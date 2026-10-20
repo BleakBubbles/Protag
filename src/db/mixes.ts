@@ -77,6 +77,25 @@ export async function saveMix(db: SQLiteDatabase, name: string, draft: QueryDraf
   return result.lastInsertRowId;
 }
 
+/**
+ * Save from the Shuffle tab or the player. A name another mix already has is
+ * refused, so a mix is never overwritten by accident; the name of the mix
+ * being edited (`editingId`) updates it.
+ */
+export async function saveMixAs(
+  db: SQLiteDatabase,
+  name: string,
+  draft: QueryDraft,
+  editingId: number | null
+): Promise<number> {
+  const clash = await db.getFirstAsync<{ id: number; name: string }>(
+    'SELECT id, name FROM saved_queries WHERE name = ? COLLATE NOCASE',
+    name.trim()
+  );
+  if (clash && clash.id !== editingId) throw new MixError(`There's already a mix called "${clash.name}".`);
+  return saveMix(db, name, draft);
+}
+
 export async function renameMix(db: SQLiteDatabase, id: number, name: string): Promise<void> {
   const clean = name.trim();
   if (!clean) throw new MixError('Give the mix a name.');

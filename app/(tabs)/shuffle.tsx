@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { notifyLibraryChanged } from '@/db/changes';
-import { listMixes, MixError, saveMix, type Mix } from '@/db/mixes';
+import { listMixes, parseDraft, saveMixAs, type Mix } from '@/db/mixes';
 import { countSongs } from '@/db/songs';
 import { buildDescendantMap, listAllTagsWithCounts } from '@/db/tags';
 import type { TagWithCounts } from '@/db/types';
@@ -14,7 +14,15 @@ import { usePlayQuery } from '@/player/PlayerProvider';
 import { describeQuery } from '@/query/describe';
 import { dropInPot, tapExcluded, tapIngredient, tapTag, type PotItem, type PotSpot } from '@/query/pot';
 import { countMatching } from '@/query/run';
-import { buildQuery, EMPTY_DRAFT, isEmptyDraft, pruneDraft, tagChoice, type QueryDraft } from '@/query/types';
+import {
+  buildQuery,
+  EMPTY_DRAFT,
+  isEmptyDraft,
+  pruneDraft,
+  sameDraft,
+  tagChoice,
+  type QueryDraft,
+} from '@/query/types';
 import { Button } from '@/ui/Button';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { ingredientKey, Pot, type ShuffleCount } from '@/ui/play/Pot';
@@ -28,13 +36,18 @@ import { colors, font, spacing, tagColor } from '@/ui/theme';
  * Shuffle tab: build something to shuffle. The pot sits on top like a text field
  * over its keyboard; the tag tiles below go into it by tap or by drag, with a
  * live count. Saved mixes live in their own tab; "Edit" there opens one here
- * (the `edit` param, a mix id).
+ * (the `edit` param, a mix id), and the player's "Edit in Shuffle" opens what's
+ * playing (the `draft` param, as JSON).
  */
 export default function ShuffleScreen() {
   const { show } = useMiniPlayerVisibility();
   // Opening Shuffle is one way a hidden mini-player comes back.
   useFocusEffect(useCallback(() => show(), [show]));
-  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const { edit, draft } = useLocalSearchParams<{ edit?: string; draft?: string }>();
+  const openRequest = useMemo<OpenRequest>(
+    () => (edit ? { mixId: Number(edit) } : draft ? { draft: parseDraft(draft) } : null),
+    [edit, draft]
+  );
 
   const { data } = useLibraryQuery(async (db) => {
     const [songs, tags, descendants, mixes] = await Promise.all([
@@ -60,18 +73,20 @@ export default function ShuffleScreen() {
     );
   }
 
-  return <Builder {...data} editRequest={edit ? Number(edit) : null} />;
+  return <Builder {...data} openRequest={openRequest} />;
 }
+
+/** Something to load into the pot, asked for by another screen. */
+type OpenRequest = { mixId: number } | { draft: QueryDraft } | null;
 
 type BuilderProps = {
   tags: TagWithCounts[];
   descendants: Map<number, number[]>;
   mixes: Mix[];
-  /** A mix to open in the pot, asked for by the Mixes tab. */
-  editRequest: number | null;
+  openRequest: OpenRequest;
 };
 
-function Builder({ tags, descendants, mixes, editRequest }: BuilderProps) {
+function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const playQuery = usePlayQuery();
@@ -90,17 +105,19 @@ function Builder({ tags, descendants, mixes, editRequest }: BuilderProps) {
     return map;
   }, [tags]);
 
-  // Opening a mix from the Mixes tab: load it, then drop the request so it
-  // isn't loaded again over later changes.
+  // Opening a mix, or what's playing: load it, then drop the request so it
+  // isn't loaded again over later changes. What's playing may be a saved mix
+  // already, and then saving updates that mix.
   useEffect(() => {
-    if (editRequest === null) return;
-    const mix = mixes.find((m) => m.id === editRequest);
-    if (mix) {
-      setDraft(mix.draft);
-      setEditingId(mix.id);
-    }
-    router.setParams({ edit: undefined });
-  }, [editRequest, mixes]);
+    if (openRequest === null) return;
+    const mix =
+      'mixId' in openRequest
+        ? mixes.find((m) => m.id === openRequest.mixId)
+        : mixes.find((m) => sameDraft(m.draft, openRequest.draft));
+    setDraft('draft' in openRequest ? openRequest.draft : (mix?.draft ?? EMPTY_DRAFT));
+    setEditingId(mix?.id ?? null);
+    router.setParams({ edit: undefined, draft: undefined });
+  }, [openRequest, mixes]);
 
   // Tags can be deleted (or emptied) while chosen here; quietly drop them.
   const current = useMemo(() => pruneDraft(draft, new Set(names.keys())), [draft, names]);
@@ -163,7 +180,13 @@ function Builder({ tags, descendants, mixes, editRequest }: BuilderProps) {
           counted={counted}
           editing={editingMix?.name ?? null}
           onSave={() => setSaving(true)}
-          onShuffle={() => playQuery(query)}
+          onShuffle={() =>
+            // An unchanged mix plays under its own name.
+            playQuery(query, {
+              draft: current,
+              label: editingMix && sameDraft(current, editingMix.draft) ? editingMix.name : undefined,
+            })
+          }
           onClear={() => setDraft(EMPTY_DRAFT)}
           onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
           onTapExcluded={(tagId) => setDraft(tapExcluded(current, tagId))}
@@ -196,11 +219,7 @@ function Builder({ tags, descendants, mixes, editRequest }: BuilderProps) {
           placeholder="Night drive"
           confirmLabel="Save"
           onSubmit={async (name) => {
-            const clash = mixes.find((m) => m.name.toLowerCase() === name.trim().toLowerCase());
-            if (clash && clash.id !== editingMix?.id) {
-              throw new MixError(`There's already a mix called "${clash.name}".`);
-            }
-            setEditingId(await saveMix(db, name, current));
+            setEditingId(await saveMixAs(db, name, current, editingMix?.id ?? null));
             notifyLibraryChanged();
           }}
           onClose={() => setSaving(false)}

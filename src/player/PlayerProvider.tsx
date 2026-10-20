@@ -13,7 +13,7 @@ import {
 import { getSong, recordPlay } from '../db/songs';
 import type { SongRow } from '../db/types';
 import { albumArtUri } from '../library/assets';
-import type { TagQuery } from '../query/types';
+import type { QueryDraft, TagQuery } from '../query/types';
 import type { EngineStatus, UseAudioEngine } from './engine';
 import { useExpoAudioEngine } from './expoAudioEngine';
 import {
@@ -40,7 +40,7 @@ export interface PlayerActions {
   /** Start a new queue. Returns false if there was nothing to play. */
   playQueue(
     ids: number[],
-    options?: { startId?: number; shuffle?: boolean; label?: string }
+    options?: { startId?: number; shuffle?: boolean; label?: string; draft?: QueryDraft }
   ): boolean;
   togglePlay(): void;
   next(): void;
@@ -72,15 +72,21 @@ export const usePlayerActions = () => useRequired(ActionsContext, 'usePlayerActi
 export const useNowPlaying = () => useRequired(NowPlayingContext, 'useNowPlaying');
 export const usePlaybackStatus = () => useRequired(StatusContext, 'usePlaybackStatus');
 
-/** "Shuffle this query" — the app's core action, in one call. */
+/**
+ * "Shuffle this query" — the app's core action, in one call. Pass the `draft`
+ * it was built from, and the player can offer to save it as a mix.
+ */
 export function usePlayQuery() {
   const db = useSQLiteContext();
   const { playQueue } = usePlayerActions();
   return useCallback(
-    async (query: TagQuery, { shuffle = true, label }: { shuffle?: boolean; label?: string } = {}) => {
+    async (
+      query: TagQuery,
+      { shuffle = true, label, draft }: { shuffle?: boolean; label?: string; draft?: QueryDraft } = {}
+    ) => {
       const request = await queueForQuery(db, query);
       // A mix plays under its own name; anything else is described from the query.
-      return playQueue(request.ids, { shuffle, label: label ?? request.label });
+      return playQueue(request.ids, { shuffle, label: label ?? request.label, draft });
     },
     [db, playQueue]
   );
@@ -155,11 +161,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const actions = useMemo<PlayerActions>(
     () => ({
-      playQueue(ids, { startId, shuffle = false, label } = {}) {
+      playQueue(ids, { startId, shuffle = false, label, draft } = {}) {
         const next = createQueue(ids, {
           startId,
           shuffle,
-          source: label ? { label } : null,
+          source: label ? { label, draft } : null,
           repeat: queueRef.current.repeat, // repeat is a preference, not per-queue
         });
         if (next.index < 0) return false;

@@ -87,7 +87,8 @@ export default function MixesScreen() {
   const cardWidth = (screenWidth - spacing.lg * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
 
   const queryOf = (mix: Mix) => buildQuery(pruneDraft(mix.draft, data.tagIds));
-  const play = (mix: Mix) => playQuery(queryOf(mix), { label: mix.name });
+  const play = (mix: Mix) =>
+    playQuery(queryOf(mix), { label: mix.name, draft: pruneDraft(mix.draft, data.tagIds) });
 
   const confirmDelete = (mix: Mix) =>
     Alert.alert(`Delete "${mix.name}"?`, 'The mix goes; its tags and songs stay.', [
@@ -133,7 +134,7 @@ export default function MixesScreen() {
         actions={
           menuMix
             ? [
-                { label: 'Edit', onPress: () => openShuffle(menuMix.id) },
+                { label: 'Edit', onPress: () => openShuffle({ mixId: menuMix.id }) },
                 { label: 'Rename', onPress: () => setRenaming(menuMix) },
                 { label: 'Delete', destructive: true, onPress: () => confirmDelete(menuMix) },
               ]

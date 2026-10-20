@@ -81,6 +81,21 @@ export function isEmptyDraft(draft: QueryDraft): boolean {
   return draft.ingredients.length === 0 && draft.exclude.length === 0;
 }
 
+/**
+ * Whether two drafts play the same songs as written: the same ingredients and
+ * exclusions, in any order. How the player knows what's playing is already a
+ * saved mix.
+ */
+export function sameDraft(a: QueryDraft, b: QueryDraft): boolean {
+  const key = (d: QueryDraft) =>
+    JSON.stringify([
+      d.ingredients.map((tags) => [...tags].sort((x, y) => x - y).join()).sort(),
+      [...d.exclude].sort((x, y) => x - y),
+      d.includeDescendants,
+    ]);
+  return key(a) === key(b);
+}
+
 /** Drop tags that no longer exist, e.g. from a mix saved before a tag was deleted. */
 export function pruneDraft(draft: QueryDraft, existing: ReadonlySet<number>): QueryDraft {
   return mapDraftTags(draft, (id) => (existing.has(id) ? id : null));

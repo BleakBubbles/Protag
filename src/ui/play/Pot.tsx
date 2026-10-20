@@ -3,7 +3,6 @@ import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 
 import type { PotItem } from '../../query/pot';
 import type { QueryDraft } from '../../query/types';
-import { Button } from '../Button';
 import { formatCount, plural } from '../format';
 import { Icon } from '../Icon';
 import { IconButton } from '../IconButton';
@@ -15,7 +14,7 @@ const TOP = 24;
 const CHIP = 36;
 /** Two rows of chips; more scroll. Fixed, so the pot never changes height. */
 const CONTENT = CHIP * 2 + spacing.sm;
-const ACTIONS = 44;
+const ACTIONS = 56;
 
 /** Songs the whole pot would play, with whether the pot was empty when counted. */
 export interface ShuffleCount {
@@ -72,6 +71,7 @@ export function Pot({
   const { active, hover } = usePotDragState();
   const pot = useDropTarget({ kind: 'pot' });
   const empty = draft.ingredients.length === 0 && draft.exclude.length === 0;
+  const shuffle = shuffleText(counted);
 
   // A combination can't be kept out (nobody means "not both"), so the zone stays away for it.
   const canKeepOut =
@@ -123,35 +123,48 @@ export function Pot({
         )}
       </View>
 
+      {/* The two ways to finish: keep it, or hear it. Equal in size; Shuffle,
+          the usual one, is filled and on the thumb side. */}
       <View style={styles.actions}>
         <Pressable
           onPress={onSave}
           disabled={empty}
           accessibilityRole="button"
-          accessibilityLabel={editing ? `Save mix ${editing}` : 'Save as mix'}
           accessibilityState={{ disabled: empty }}
-          style={({ pressed }) => [styles.save, (pressed || empty) && styles.dimmed]}
+          style={({ pressed }) => [styles.finish, styles.save, (pressed || empty) && styles.dimmed]}
         >
           <Icon name={editing ? 'bookmark' : 'bookmark-outline'} size={iconSize.sm} color={colors.accentFg} />
+          <Text style={styles.saveText} numberOfLines={1}>
+            {editing ? 'Save mix' : 'Save as mix'}
+          </Text>
         </Pressable>
-        <Button
-          label={shuffleLabel(counted)}
-          icon="shuffle"
+        <Pressable
           onPress={onShuffle}
-          disabled={counted?.count === 0}
-          style={styles.shuffle}
-        />
+          disabled={shuffle.none}
+          accessibilityRole="button"
+          accessibilityLabel={[shuffle.title, shuffle.count].filter(Boolean).join(', ')}
+          accessibilityState={{ disabled: shuffle.none }}
+          android_ripple={{ color: colors.rippleOnAccent }}
+          style={({ pressed }) => [styles.finish, styles.shuffle, (pressed || shuffle.none) && styles.dimmed]}
+        >
+          <Icon name="shuffle" size={iconSize.md} color={colors.onAccent} />
+          <View>
+            <Text style={styles.shuffleTitle}>{shuffle.title}</Text>
+            {shuffle.count !== '' && <Text style={styles.shuffleCount}>{shuffle.count}</Text>}
+          </View>
+        </Pressable>
         <KeepOut shown={canKeepOut} />
       </View>
     </View>
   );
 }
 
-function shuffleLabel(counted: ShuffleCount | null): string {
-  if (counted === null) return 'Shuffle';
+/** The Shuffle button's words: what it does, then how many songs (blank until counted). */
+function shuffleText(counted: ShuffleCount | null): { title: string; count: string; none: boolean } {
+  if (counted === null) return { title: 'Shuffle', count: '', none: false };
   const { empty, count } = counted;
-  if (empty) return `Shuffle all · ${formatCount(count)}`;
-  return count === 0 ? 'No songs match' : `Shuffle ${plural(count, 'song')}`;
+  if (count === 0) return { title: 'No songs match', count: '', none: true };
+  return { title: empty ? 'Shuffle all' : 'Shuffle', count: plural(count, 'song'), none: false };
 }
 
 /** The pot's top line: what letting go will do, what's being edited, or what to try next. */
@@ -413,21 +426,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
   },
-  // Saving is occasional, shuffling is why you're here: a small round button beside a wide one.
-  save: {
-    width: ACTIONS,
-    height: ACTIONS,
-    borderRadius: radius.pill,
+  finish: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.sm,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  save: {
+    flex: 1,
     backgroundColor: colors.accentTint,
+  },
+  saveText: {
+    ...font.label,
+    color: colors.accentFg,
   },
   dimmed: {
     opacity: 0.4,
   },
   shuffle: {
-    flex: 1,
-    borderRadius: radius.pill,
+    flex: 1.4,
+    backgroundColor: colors.accent,
+  },
+  shuffleTitle: {
+    ...font.listTitle,
+    color: colors.onAccent,
+  },
+  shuffleCount: {
+    ...font.caption,
+    color: colors.onAccent,
+    opacity: 0.8,
   },
   keepOut: {
     position: 'absolute',

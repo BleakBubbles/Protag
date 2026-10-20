@@ -6,11 +6,15 @@
  * audio engine underneath be swapped without touching queue behavior.
  */
 
+import type { QueryDraft } from '../query/types';
+
 export type RepeatMode = 'off' | 'all' | 'one';
 
 /** Where a queue came from, shown to the user: "Shuffling · kpop". */
 export interface QueueSource {
   label: string;
+  /** The tag combination behind it, when it came from one: what the player offers to save. */
+  draft?: QueryDraft;
 }
 
 /** Reorders song ids. Pluggable so smarter shuffles (artist spacing, play-count weighting) drop in later. */
