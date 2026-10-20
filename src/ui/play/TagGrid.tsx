@@ -17,7 +17,7 @@ export interface TagGridProps {
   childrenOf: ReadonlyMap<number | null, readonly TagWithCounts[]>;
   expanded: ReadonlySet<number>;
   choiceOf: (tagId: number) => TagChoice;
-  onCycle: (tagId: number) => void;
+  onTap: (tagId: number) => void;
   onToggleExpanded: (tagId: number) => void;
   /** The width this level has to fill. */
   width: number;
@@ -28,7 +28,7 @@ export interface TagGridProps {
  * *below its row*, not right after the tile, so expanding never moves the tile
  * beside it.
  */
-export function TagGrid({ tags, childrenOf, expanded, choiceOf, onCycle, onToggleExpanded, width }: TagGridProps) {
+export function TagGrid({ tags, childrenOf, expanded, choiceOf, onTap, onToggleExpanded, width }: TagGridProps) {
   const tileWidth = (width - GAP * (COLUMNS - 1)) / COLUMNS;
   const rows: TagWithCounts[][] = [];
   for (let i = 0; i < tags.length; i += COLUMNS) rows.push(tags.slice(i, i + COLUMNS));
@@ -43,12 +43,13 @@ export function TagGrid({ tags, childrenOf, expanded, choiceOf, onCycle, onToggl
               return (
                 <TagTile
                   key={tag.id}
+                  tagId={tag.id}
                   name={tag.name}
                   color={tag.color}
                   songCount={tag.song_count}
                   choice={choiceOf(tag.id)}
                   width={tileWidth}
-                  onPress={() => onCycle(tag.id)}
+                  onPress={() => onTap(tag.id)}
                   expanded={expanded.has(tag.id)}
                   onToggleExpanded={hasChildren ? () => onToggleExpanded(tag.id) : undefined}
                 />
@@ -64,7 +65,7 @@ export function TagGrid({ tags, childrenOf, expanded, choiceOf, onCycle, onToggl
                   childrenOf={childrenOf}
                   expanded={expanded}
                   choiceOf={choiceOf}
-                  onCycle={onCycle}
+                  onTap={onTap}
                   onToggleExpanded={onToggleExpanded}
                   width={width - INDENT}
                 />

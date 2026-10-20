@@ -5,7 +5,7 @@ import { freshDatabase, insertSong, type TestDatabase } from './helpers/db.ts';
 import { addTagToSong, buildDescendantMap, createTag } from '../src/db/tags.ts';
 import { compileCountSelect, compileSongSelect } from '../src/query/compile.ts';
 import { describeQuery } from '../src/query/describe.ts';
-import { buildQuery, cycleTag, EMPTY_DRAFT, isEmptyDraft, pruneDraft, tagChoice, type TagQuery } from '../src/query/types.ts';
+import { buildQuery, EMPTY_DRAFT, pruneDraft, type TagQuery } from '../src/query/types.ts';
 
 /**
  * Fixture tree:
@@ -104,12 +104,7 @@ test('NOT excludes, and untagged songs survive exclusion', async () => {
 
 test('exclusion narrows an inherited include', async () => {
   const { db, tags } = await seed();
-  const query = buildQuery({
-    include: [tags.asianPop],
-    exclude: [tags.sad],
-    includeDescendants: true,
-    mode: 'and',
-  });
+  const query = buildQuery({ ...EMPTY_DRAFT, ingredients: [[tags.asianPop]], exclude: [tags.sad] });
   assert.deepEqual(await titlesFor(db, query), ['Ditto', 'HypeBoy']);
   db.close();
 });
@@ -134,7 +129,7 @@ test('empty AND matches everything, empty OR matches nothing', async () => {
 
 test('an empty builder draft matches the whole library', async () => {
   const { db } = await seed();
-  const query = buildQuery({ include: [], exclude: [], includeDescendants: true, mode: 'and' });
+  const query = buildQuery(EMPTY_DRAFT);
   assert.deepEqual(await titlesFor(db, query), ['Alone', 'Ditto', 'HypeBoy', 'Lemon']);
   db.close();
 });
@@ -184,31 +179,35 @@ test('describeQuery renders a readable label', async () => {
 
   assert.equal(describeQuery({ type: 'all' }, names), 'Everything');
   assert.equal(describeQuery(tag(1), names), 'asian-pop');
+  assert.equal(describeQuery({ type: 'and', children: [tag(1), tag(2)] }, names), 'asian-pop × driving');
   assert.equal(
-    describeQuery({ type: 'and', children: [tag(1), tag(2)] }, names),
-    'asian-pop AND driving'
+    describeQuery(buildQuery({ ...EMPTY_DRAFT, ingredients: [[1, 2]], exclude: [3] }), names),
+    'asian-pop × driving, not sad'
+  );
+  // Either-ingredients need no parentheses, before or after the exclusions.
+  assert.equal(
+    describeQuery(buildQuery({ ...EMPTY_DRAFT, ingredients: [[1, 2], [3]] }), names),
+    'asian-pop × driving + sad'
   );
   assert.equal(
-    describeQuery(
-      buildQuery({ include: [1, 2], exclude: [3], includeDescendants: true, mode: 'and' }),
-      names
-    ),
-    'asian-pop AND driving, not sad'
+    describeQuery(buildQuery({ ...EMPTY_DRAFT, ingredients: [[1], [2]], exclude: [3] }), names),
+    'asian-pop + driving, not sad'
   );
 });
 
-test('tapping a tag cycles it include → exclude → off', () => {
-  let draft = cycleTag(EMPTY_DRAFT, 7);
-  assert.equal(tagChoice(draft, 7), 'include');
-  draft = cycleTag(draft, 7);
-  assert.equal(tagChoice(draft, 7), 'exclude');
-  assert.deepEqual(draft.include, [], 'never in both lists');
-  draft = cycleTag(draft, 7);
-  assert.equal(tagChoice(draft, 7), 'off');
-  assert.ok(isEmptyDraft(draft));
+test('pot ingredients: any ingredient plays, a combined one needs all its tags', async () => {
+  const { db, tags } = await seed();
+  const either = buildQuery({ ...EMPTY_DRAFT, ingredients: [[tags.kpop], [tags.sad]] });
+  assert.deepEqual(await titlesFor(db, either), ['Ditto', 'HypeBoy', 'Lemon']);
+  const both = buildQuery({ ...EMPTY_DRAFT, ingredients: [[tags.kpop, tags.driving]] });
+  assert.deepEqual(await titlesFor(db, both), ['HypeBoy']);
+  const ingredients = [[tags.kpop, tags.driving], [tags.jpop]];
+  const mixed = buildQuery({ ...EMPTY_DRAFT, ingredients, exclude: [tags.sad] });
+  assert.deepEqual(await titlesFor(db, mixed), ['HypeBoy']);
+  db.close();
 });
 
 test('a draft drops tags that no longer exist', () => {
-  const draft = { ...EMPTY_DRAFT, include: [1, 2], exclude: [3] };
-  assert.deepEqual(pruneDraft(draft, new Set([2])), { ...EMPTY_DRAFT, include: [2], exclude: [] });
+  const draft = { ...EMPTY_DRAFT, ingredients: [[1, 2], [4]], exclude: [3] };
+  assert.deepEqual(pruneDraft(draft, new Set([2])), { ...EMPTY_DRAFT, ingredients: [[2]], exclude: [] });
 });

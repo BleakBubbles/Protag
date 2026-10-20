@@ -22,19 +22,27 @@ export class MixError extends Error {}
 const ids = (value: unknown): number[] =>
   Array.isArray(value) ? value.filter((v): v is number => typeof v === 'number') : [];
 
-/** Read a stored draft defensively: a damaged row becomes an empty mix, never a crash. */
+/**
+ * Read a stored draft defensively: a damaged row becomes an empty mix, never a
+ * crash. Mixes saved before the pot (2026-10-20) kept a flat `include` list and
+ * a `mode`: "all of these" becomes one combined ingredient, "any of these" one
+ * ingredient per tag.
+ */
 export function parseDraft(json: string): QueryDraft {
   try {
-    const data = JSON.parse(json) as Partial<Record<keyof QueryDraft, unknown>>;
-    return {
-      include: ids(data.include),
-      exclude: ids(data.exclude),
-      includeDescendants: data.includeDescendants !== false,
-      mode: data.mode === 'or' ? 'or' : 'and',
-    };
+    const data = JSON.parse(json) as Record<string, unknown>;
+    const ingredients = Array.isArray(data.ingredients)
+      ? data.ingredients.map(ids).filter((tags) => tags.length > 0)
+      : legacyIngredients(ids(data.include), data.mode);
+    return { ingredients, exclude: ids(data.exclude), includeDescendants: data.includeDescendants !== false };
   } catch {
     return EMPTY_DRAFT;
   }
+}
+
+function legacyIngredients(include: number[], mode: unknown): number[][] {
+  if (include.length === 0) return [];
+  return mode === 'or' ? include.map((id) => [id]) : [include];
 }
 
 export async function listMixes(db: SQLiteDatabase): Promise<Mix[]> {

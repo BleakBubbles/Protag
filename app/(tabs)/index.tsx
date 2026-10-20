@@ -13,32 +13,25 @@ import { loadMixArt } from '@/library/mixArt';
 import { openLibrary } from '@/navigation';
 import { usePlayQuery } from '@/player/PlayerProvider';
 import { describeQuery } from '@/query/describe';
+import { dropInPot, tapExcluded, tapIngredient, tapTag, type PotItem, type PotSpot } from '@/query/pot';
 import { countMatching } from '@/query/run';
-import {
-  buildQuery,
-  cycleTag,
-  EMPTY_DRAFT,
-  isEmptyDraft,
-  MATCH_ALL,
-  pruneDraft,
-  tagChoice,
-  type QueryDraft,
-} from '@/query/types';
+import { buildQuery, EMPTY_DRAFT, pruneDraft, tagChoice, type QueryDraft } from '@/query/types';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
-import { plural } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
-import { MIX_BAR_HEIGHT, MixBar } from '@/ui/play/MixBar';
 import { MixCard } from '@/ui/play/MixCard';
+import { POT_HEIGHT, Pot } from '@/ui/play/Pot';
+import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { colors, font, spacing, tagColor } from '@/ui/theme';
 
 /**
- * Play tab: choose what to shuffle. Saved mixes on top for one tap; below,
- * the builder, where tags combine into a query with a live count. What's
- * playing lives in the mini-player and the full player it opens.
+ * Play tab: choose what to shuffle. Saved mixes on top for one tap; below, the
+ * builder: tag tiles that go into the pot at the bottom, by tap or by drag,
+ * with a live count. What's playing lives in the mini-player and the full
+ * player it opens.
  */
 export default function PlayScreen() {
   const { show } = useMiniPlayerVisibility();
@@ -81,7 +74,7 @@ type LibraryData = {
   mixArt: Map<number, string[]>;
 };
 
-function Builder({ songs, tags, descendants, mixes, mixArt }: LibraryData) {
+function Builder({ tags, descendants, mixes, mixArt }: LibraryData) {
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const playQuery = usePlayQuery();
@@ -95,7 +88,7 @@ function Builder({ songs, tags, descendants, mixes, mixArt }: LibraryData) {
   const [renaming, setRenaming] = useState<Mix | null>(null);
 
   const names = useMemo(() => new Map(tags.map((t) => [t.id, t.name])), [tags]);
-  const colorsById = useMemo(() => new Map(tags.map((t) => [t.id, t.color])), [tags]);
+  const hues = useMemo(() => new Map(tags.map((t) => [t.id, tagColor(t.color)])), [tags]);
   const children = useMemo(() => {
     const map = new Map<number | null, TagWithCounts[]>();
     for (const tag of tags) map.set(tag.parent_id, [...(map.get(tag.parent_id) ?? []), tag]);
@@ -105,16 +98,22 @@ function Builder({ songs, tags, descendants, mixes, mixArt }: LibraryData) {
   // Tags can be deleted (or emptied) while chosen here; quietly drop them.
   const current = useMemo(() => pruneDraft(draft, new Set(names.keys())), [draft, names]);
   const query = useMemo(() => buildQuery(current), [current]);
-  const empty = isEmptyDraft(current);
 
   const [count, setCount] = useState<number | null>(null);
+  const [ingredientCounts, setIngredientCounts] = useState<(number | null)[]>([]);
   useEffect(() => {
     let live = true;
     countMatching(db, query, descendants).then((n) => live && setCount(n));
+    // Each ingredient on its own (exclusions aside), so combining visibly narrows.
+    Promise.all(
+      current.ingredients.map((tags) =>
+        countMatching(db, buildQuery({ ...current, ingredients: [tags], exclude: [] }), descendants)
+      )
+    ).then((counts) => live && setIngredientCounts(counts));
     return () => {
       live = false;
     };
-  }, [db, query, descendants]);
+  }, [db, query, current, descendants]);
 
   const describe = useCallback(
     (d: QueryDraft) => describeQuery(buildQuery(pruneDraft(d, new Set(names.keys()))), names),
@@ -153,128 +152,125 @@ function Builder({ songs, tags, descendants, mixes, mixArt }: LibraryData) {
     []
   );
   const choiceOf = useCallback((id: number) => tagChoice(current, id), [current]);
-  const cycle = useCallback((id: number) => setDraft((d) => cycleTag(d, id)), []);
+  // Pot changes apply to the pruned draft: it's what's on screen, so its indices are the ones tapped.
+  const tap = useCallback((id: number) => setDraft(tapTag(current, id)), [current]);
+  const drag = usePotDragRoot((item: PotItem, spot: PotSpot) => setDraft(dropInPot(current, item, spot)));
+  const still = drag.active === null;
 
   return (
-    <View style={styles.screen}>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        {mixes.length > 0 && (
+    <PotDragContext.Provider value={drag}>
+      <View ref={drag.rootRef} style={styles.screen}>
+        <ScrollView style={styles.screen} contentContainerStyle={styles.content} scrollEnabled={still}>
+          {mixes.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Your mixes</Text>
+              <ScrollView
+                horizontal
+                scrollEnabled={still}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.mixes}
+                style={styles.bleed}
+              >
+                {mixes.map((mix) => (
+                  <MixCard
+                    key={mix.id}
+                    name={mix.name}
+                    description={describe(mix.draft)}
+                    albumIds={mixArt.get(mix.id) ?? []}
+                    color={hues.get(mix.draft.ingredients[0]?.[0] ?? -1) ?? tagColor(null)}
+                    onPress={() => playMix(mix)}
+                    onLongPress={() => setMenuMix(mix)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Your mixes</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.mixes}
-              style={styles.bleed}
-            >
-              {mixes.map((mix) => (
-                <MixCard
-                  key={mix.id}
-                  name={mix.name}
-                  description={describe(mix.draft)}
-                  albumIds={mixArt.get(mix.id) ?? []}
-                  color={tagColor(colorsById.get(mix.draft.include[0] ?? -1) ?? null)}
-                  onPress={() => playMix(mix)}
-                  onLongPress={() => setMenuMix(mix)}
-                />
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Always the same label, so it never changes size as tags are picked. */}
-        <Button
-          label={`Shuffle everything · ${plural(songs, 'song')}`}
-          icon="shuffle"
-          variant="secondary"
-          onPress={() => playQuery(MATCH_ALL)}
-          style={styles.shuffleAll}
-        />
-
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Your tags</Text>
-          {tags.length === 0 ? (
-            <Text style={styles.hint}>Tag some songs in the Library to mix them here.</Text>
-          ) : (
-            <>
+            <Text style={styles.sectionLabel}>Your tags</Text>
+            {tags.length === 0 ? (
+              <Text style={styles.hint}>Tag some songs in the Library to mix them here.</Text>
+            ) : (
               <TagGrid
                 tags={children.get(null) ?? []}
                 childrenOf={children}
                 expanded={expanded}
                 choiceOf={choiceOf}
-                onCycle={cycle}
+                onTap={tap}
                 onToggleExpanded={toggleExpanded}
                 width={screenWidth - spacing.lg * 2}
               />
-              <Text style={styles.hint}>Tap a tag to include it, again to exclude it.</Text>
-            </>
-          )}
-        </View>
-      </ScrollView>
+            )}
+          </View>
+        </ScrollView>
 
-      <MixBar
-        visible={!empty}
-        summary={describeQuery(query, names)}
-        count={count}
-        mode={current.include.length >= 2 ? current.mode : null}
-        onToggleMode={() => setDraft((d) => ({ ...d, mode: d.mode === 'and' ? 'or' : 'and' }))}
-        saveLabel={editing ? 'Save mix' : 'Save as mix'}
-        onSave={() => setSaving(true)}
-        onShuffle={() => playQuery(query)}
-        onClear={clear}
-      />
+        <Pot
+          draft={current}
+          names={names}
+          hues={hues}
+          ingredientCounts={ingredientCounts}
+          count={count}
+          saveLabel={editing ? 'Save mix' : 'Save as mix'}
+          onSave={() => setSaving(true)}
+          onShuffle={() => playQuery(query)}
+          onClear={clear}
+          onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
+          onTapExcluded={(tagId) => setDraft(tapExcluded(current, tagId))}
+        />
 
-      <ActionSheet
-        visible={menuMix !== null}
-        title={menuMix?.name}
-        actions={
-          menuMix
-            ? [
-                {
-                  label: 'Edit',
-                  onPress: () => {
-                    setDraft(menuMix.draft);
-                    setEditing(menuMix.name);
+        <ActionSheet
+          visible={menuMix !== null}
+          title={menuMix?.name}
+          actions={
+            menuMix
+              ? [
+                  {
+                    label: 'Edit',
+                    onPress: () => {
+                      setDraft(menuMix.draft);
+                      setEditing(menuMix.name);
+                    },
                   },
-                },
-                { label: 'Rename', onPress: () => setRenaming(menuMix) },
-                { label: 'Delete', destructive: true, onPress: () => confirmDelete(menuMix) },
-              ]
-            : []
-        }
-        onClose={() => setMenuMix(null)}
-      />
-      <PromptDialog
-        visible={saving}
-        title={editing ? 'Save mix' : 'New mix'}
-        message={describeQuery(query, names)}
-        initialValue={editing ?? ''}
-        placeholder="Night drive"
-        confirmLabel="Save"
-        onSubmit={async (name) => {
-          const clash = mixes.find((m) => m.name.toLowerCase() === name.trim().toLowerCase());
-          if (clash && clash.name.toLowerCase() !== editing?.toLowerCase()) {
-            throw new MixError(`There's already a mix called "${clash.name}".`);
+                  { label: 'Rename', onPress: () => setRenaming(menuMix) },
+                  { label: 'Delete', destructive: true, onPress: () => confirmDelete(menuMix) },
+                ]
+              : []
           }
-          await saveMix(db, name, current);
-          setEditing(name.trim());
-          notifyLibraryChanged();
-        }}
-        onClose={() => setSaving(false)}
-      />
-      <PromptDialog
-        visible={renaming !== null}
-        title="Rename mix"
-        initialValue={renaming?.name ?? ''}
-        onSubmit={async (name) => {
-          if (!renaming) return;
-          await renameMix(db, renaming.id, name);
-          if (editing?.toLowerCase() === renaming.name.toLowerCase()) setEditing(name.trim());
-          notifyLibraryChanged();
-        }}
-        onClose={() => setRenaming(null)}
-      />
-    </View>
+          onClose={() => setMenuMix(null)}
+        />
+        <PromptDialog
+          visible={saving}
+          title={editing ? 'Save mix' : 'New mix'}
+          message={describeQuery(query, names)}
+          initialValue={editing ?? ''}
+          placeholder="Night drive"
+          confirmLabel="Save"
+          onSubmit={async (name) => {
+            const clash = mixes.find((m) => m.name.toLowerCase() === name.trim().toLowerCase());
+            if (clash && clash.name.toLowerCase() !== editing?.toLowerCase()) {
+              throw new MixError(`There's already a mix called "${clash.name}".`);
+            }
+            await saveMix(db, name, current);
+            setEditing(name.trim());
+            notifyLibraryChanged();
+          }}
+          onClose={() => setSaving(false)}
+        />
+        <PromptDialog
+          visible={renaming !== null}
+          title="Rename mix"
+          initialValue={renaming?.name ?? ''}
+          onSubmit={async (name) => {
+            if (!renaming) return;
+            await renameMix(db, renaming.id, name);
+            if (editing?.toLowerCase() === renaming.name.toLowerCase()) setEditing(name.trim());
+            notifyLibraryChanged();
+          }}
+          onClose={() => setRenaming(null)}
+        />
+        <DragGhost />
+      </View>
+    </PotDragContext.Provider>
   );
 }
 
@@ -292,8 +288,8 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     gap: spacing.xl,
-    // Always room for the mix bar, so the page's scroll range doesn't change when it appears.
-    paddingBottom: MIX_BAR_HEIGHT + spacing.lg * 2,
+    // Room for the pot, so the last tiles can scroll clear of it.
+    paddingBottom: POT_HEIGHT + spacing.lg * 2,
   },
   section: {
     gap: spacing.md,
@@ -320,9 +316,6 @@ const styles = StyleSheet.create({
   mixes: {
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
-  },
-  shuffleAll: {
-    alignSelf: 'stretch',
   },
   hint: {
     ...font.caption,

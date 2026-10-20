@@ -5,7 +5,7 @@ import { freshDatabase } from './helpers/db.ts';
 import { deleteMix, listMixes, MixError, parseDraft, renameMix, saveMix } from '../src/db/mixes.ts';
 import { EMPTY_DRAFT } from '../src/query/types.ts';
 
-const driving = { ...EMPTY_DRAFT, include: [1], exclude: [2] };
+const driving = { ...EMPTY_DRAFT, ingredients: [[1]], exclude: [2] };
 
 test('a mix saves its draft and loads it back for editing', async () => {
   const db = await freshDatabase();
@@ -19,11 +19,11 @@ test('a mix saves its draft and loads it back for editing', async () => {
 test('saving to an existing name updates that mix instead of adding one', async () => {
   const db = await freshDatabase();
   const id = await saveMix(db as never, 'Gym', driving);
-  const again = await saveMix(db as never, 'gym', { ...driving, mode: 'or' });
+  const again = await saveMix(db as never, 'gym', { ...driving, ingredients: [[1], [3]] });
   assert.equal(again, id);
   const mixes = await listMixes(db as never);
   assert.equal(mixes.length, 1);
-  assert.equal(mixes[0].draft.mode, 'or');
+  assert.deepEqual(mixes[0].draft.ingredients, [[1], [3]]);
   db.close();
 });
 
@@ -41,5 +41,12 @@ test('renaming refuses a name another mix has; deleting removes it', async () =>
 
 test('a damaged stored draft loads as an empty mix rather than crashing', () => {
   assert.deepEqual(parseDraft('{oops'), EMPTY_DRAFT);
-  assert.deepEqual(parseDraft('{"include":[1,"x"],"mode":"weird"}'), { ...EMPTY_DRAFT, include: [1] });
+  assert.deepEqual(parseDraft('{"ingredients":[[1,"x"],[]],"exclude":"no"}'), { ...EMPTY_DRAFT, ingredients: [[1]] });
+});
+
+test('mixes saved before the pot open as ingredients', () => {
+  const all = '{"include":[1,2],"exclude":[3],"includeDescendants":true,"mode":"and"}';
+  assert.deepEqual(parseDraft(all), { ...EMPTY_DRAFT, ingredients: [[1, 2]], exclude: [3] });
+  assert.deepEqual(parseDraft('{"include":[1,2],"mode":"or"}'), { ...EMPTY_DRAFT, ingredients: [[1], [2]] });
+  assert.deepEqual(parseDraft('{"include":[1,"x"],"mode":"weird"}'), { ...EMPTY_DRAFT, ingredients: [[1]] });
 });

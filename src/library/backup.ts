@@ -2,7 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { listMixes, parseDraft } from '../db/mixes';
 import { isTagColor } from '../db/tagColors';
-import type { QueryDraft } from '../query/types';
+import { mapDraftTags, pruneDraft, type QueryDraft } from '../query/types';
 import { SongMatcher } from './match';
 
 /**
@@ -183,14 +183,9 @@ export function parseBackup(text: string): BackupFile {
   const mixes: BackupMix[] = [];
   for (const m of Array.isArray(data.mixes) ? data.mixes : []) {
     if (!isObject(m) || typeof m.name !== 'string' || !m.name.trim()) continue;
-    const draft = parseDraft(JSON.stringify(m.draft ?? {}));
     mixes.push({
       name: m.name.trim(),
-      draft: {
-        ...draft,
-        include: draft.include.filter((id) => tagIds.has(id)),
-        exclude: draft.exclude.filter((id) => tagIds.has(id)),
-      },
+      draft: pruneDraft(parseDraft(JSON.stringify(m.draft ?? {})), tagIds),
       createdAt: isNumber(m.createdAt) ? m.createdAt : Date.now(),
     });
   }
@@ -358,9 +353,8 @@ export async function applyImport(db: SQLiteDatabase, plan: ImportPlan): Promise
       }
     }
 
-    const toLibrary = (ids: number[]) => ids.map((id) => libraryIds.get(id)!);
     for (const mix of plan.newMixes) {
-      const draft = { ...mix.draft, include: toLibrary(mix.draft.include), exclude: toLibrary(mix.draft.exclude) };
+      const draft = mapDraftTags(mix.draft, (id) => libraryIds.get(id)!);
       // OR IGNORE: a mix of that name made while the summary was up wins.
       await txn.runAsync(
         'INSERT OR IGNORE INTO saved_queries (name, query_json, created_at) VALUES (?, ?, ?)',

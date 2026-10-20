@@ -177,25 +177,25 @@ test('mixes come along, pointing at the restored tags', async () => {
     (await db.getFirstAsync<{ id: number }>('SELECT id FROM tags WHERE name = ?', name))!.id;
   await saveMix(source as never, 'Night drive', {
     ...EMPTY_DRAFT,
-    include: [await ids(source, 'driving')],
+    ingredients: [[await ids(source, 'driving')]],
     exclude: [await ids(source, 'bts')],
   });
-  await saveMix(source as never, 'Gym', { ...EMPTY_DRAFT, include: [await ids(source, 'kpop')] });
+  await saveMix(source as never, 'Gym', { ...EMPTY_DRAFT, ingredients: [[await ids(source, 'kpop')]] });
 
   const target = await newPhone();
   // Something else already took this target's id numbers, so ids must be mapped, not copied.
   await createTag(target as never, 'unrelated', null);
-  await saveMix(target as never, 'gym', { ...EMPTY_DRAFT, mode: 'or' });
+  await saveMix(target as never, 'gym', { ...EMPTY_DRAFT, exclude: [99] });
 
   const plan = await exportInto(source, target);
   assert.deepEqual(plan.newMixes.map((m) => m.name), ['Night drive'], 'a mix already here by name is kept');
   await applyImport(target as never, plan);
 
   const night = (await listMixes(target as never)).find((m) => m.name === 'Night drive')!;
-  assert.deepEqual(night.draft.include, [await ids(target, 'driving')]);
+  assert.deepEqual(night.draft.ingredients, [[await ids(target, 'driving')]]);
   assert.deepEqual(night.draft.exclude, [await ids(target, 'bts')]);
   const gym = (await listMixes(target as never)).find((m) => m.name === 'gym')!;
-  assert.equal(gym.draft.mode, 'or', 'untouched');
+  assert.deepEqual(gym.draft.exclude, [99], 'untouched');
   source.close();
   target.close();
 });

@@ -4,7 +4,9 @@ import type { TagQuery } from './types';
 type Position = 'top' | 'and' | 'or' | 'not';
 
 /**
- * Render a query as a short human label, e.g. "asian-pop AND driving, not sad".
+ * Render a query as a short human label, e.g. "kpop × chill + lofi, not sad":
+ * × for songs that have both (an ingredient of combined tags), + for either
+ * (separate ingredients), the way the Play tab's pot shows them.
  *
  * The player shows this so it's always obvious *why* a given set of songs is
  * playing — which is the whole point of shuffling by query instead of by list.
@@ -46,20 +48,21 @@ function render(query: TagQuery, names: Map<number, string>, position: Position)
       );
 
       if (query.type === 'and' && negatives.length > 0 && positives.length > 0) {
+        // A lone positive owns the whole head, so "a + b, not c" needs no parentheses.
         const head = positives
-          .map((c) => render(c, names, 'and'))
+          .map((c) => render(c, names, positives.length === 1 ? 'top' : 'and'))
           .filter((t) => t !== 'Everything')
-          .join(' AND ');
+          .join(' × ');
         const tail = negatives.map((c) => render(c.child, names, 'not')).join(' or ');
         return `${head || 'Everything'}, not ${tail}`;
       }
 
-      const joiner = query.type === 'and' ? ' AND ' : ' OR ';
+      const joiner = query.type === 'and' ? ' × ' : ' + ';
       const body = query.children.map((c) => render(c, names, query.type)).join(joiner);
 
-      // AND/OR are associative, so a chain nested in the same operator needs no
-      // parentheses — only a change of operator (or sitting under NOT) does.
-      const needsParens = position !== 'top' && position !== query.type;
+      // × binds tighter than +, like times and plus, so only an either-chain
+      // inside a both-chain (or under "not") needs parentheses.
+      const needsParens = position === 'not' || (query.type === 'or' && position === 'and');
       return needsParens ? `(${body})` : body;
     }
   }

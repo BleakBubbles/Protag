@@ -15,29 +15,35 @@ export type TagQuery =
 
 export const MATCH_ALL: TagQuery = { type: 'all' };
 
-/** What the visual builder edits. Compiles to a `TagQuery` via `buildQuery`. */
+/**
+ * What the Play tab's builder edits: the pot. Compiles to a `TagQuery` via
+ * `buildQuery`.
+ *
+ * Each ingredient is one or more tags. A song plays if it matches any
+ * ingredient, and an ingredient of several tags (combined by dragging one onto
+ * another) needs all of them: "either" is the default, "both" is deliberate.
+ * Exclusions apply on top. A tag sits in at most one place, so every tile has
+ * one state.
+ */
 export interface QueryDraft {
-  /** Tags that must match. Combined by `mode`. */
-  include: number[];
-  /** Tags that must not match. Always AND-ed as exclusions. */
+  ingredients: number[][];
+  /** Tags whose songs never play. */
   exclude: number[];
-  /** Whether include/exclude tags also match their subtags. */
+  /** Whether tags also match their subtags. */
   includeDescendants: boolean;
-  mode: 'and' | 'or';
 }
 
 export const EMPTY_DRAFT: QueryDraft = {
-  include: [],
+  ingredients: [],
   exclude: [],
   includeDescendants: true,
-  mode: 'and',
 };
 
 /**
  * Turn builder state into a query.
  *
- * Exclusions are always AND-ed even in "or" mode: "any of these, but never that"
- * is what people mean, whereas OR-ing an exclusion would make it match everything.
+ * Exclusions are always AND-ed on top: "any of these, but never that" is what
+ * people mean, whereas OR-ing an exclusion would make it match everything.
  */
 export function buildQuery(draft: QueryDraft): TagQuery {
   const leaf = (tagId: number): TagQuery => ({
@@ -45,14 +51,12 @@ export function buildQuery(draft: QueryDraft): TagQuery {
     tagId,
     includeDescendants: draft.includeDescendants,
   });
+  const one = (children: TagQuery[], type: 'and' | 'or'): TagQuery =>
+    children.length === 1 ? children[0] : { type, children };
 
-  const includes = draft.include.map(leaf);
+  const ingredients = draft.ingredients.filter((tags) => tags.length > 0);
   const base: TagQuery =
-    includes.length === 0
-      ? { type: 'all' }
-      : includes.length === 1
-        ? includes[0]
-        : { type: draft.mode, children: includes };
+    ingredients.length === 0 ? { type: 'all' } : one(ingredients.map((tags) => one(tags.map(leaf), 'and')), 'or');
 
   if (draft.exclude.length === 0) return base;
 
@@ -68,37 +72,26 @@ export function isEmptyQuery(query: TagQuery): boolean {
 export type TagChoice = 'include' | 'exclude' | 'off';
 
 export function tagChoice(draft: QueryDraft, tagId: number): TagChoice {
-  if (draft.include.includes(tagId)) return 'include';
+  if (draft.ingredients.some((tags) => tags.includes(tagId))) return 'include';
   if (draft.exclude.includes(tagId)) return 'exclude';
   return 'off';
 }
 
-/** What one tap does to a tag in the builder: off → include → exclude → off. */
-export const NEXT_CHOICE: Record<TagChoice, TagChoice> = {
-  off: 'include',
-  include: 'exclude',
-  exclude: 'off',
-};
-
-/** One tap on a tag. Every state shows on the tile, so the cycle teaches itself. */
-export function cycleTag(draft: QueryDraft, tagId: number): QueryDraft {
-  const next = NEXT_CHOICE[tagChoice(draft, tagId)];
-  const include = draft.include.filter((id) => id !== tagId);
-  const exclude = draft.exclude.filter((id) => id !== tagId);
-  if (next === 'include') include.push(tagId);
-  if (next === 'exclude') exclude.push(tagId);
-  return { ...draft, include, exclude };
-}
-
 export function isEmptyDraft(draft: QueryDraft): boolean {
-  return draft.include.length === 0 && draft.exclude.length === 0;
+  return draft.ingredients.length === 0 && draft.exclude.length === 0;
 }
 
 /** Drop tags that no longer exist, e.g. from a mix saved before a tag was deleted. */
 export function pruneDraft(draft: QueryDraft, existing: ReadonlySet<number>): QueryDraft {
+  return mapDraftTags(draft, (id) => (existing.has(id) ? id : null));
+}
+
+/** Rewrite every tag id in a draft; `null` drops it, and an ingredient left empty goes too. */
+export function mapDraftTags(draft: QueryDraft, map: (tagId: number) => number | null): QueryDraft {
+  const all = (ids: number[]) => ids.map(map).filter((id): id is number => id !== null);
   return {
     ...draft,
-    include: draft.include.filter((id) => existing.has(id)),
-    exclude: draft.exclude.filter((id) => existing.has(id)),
+    ingredients: draft.ingredients.map(all).filter((tags) => tags.length > 0),
+    exclude: all(draft.exclude),
   };
 }

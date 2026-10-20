@@ -1,18 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { NEXT_CHOICE, type TagChoice } from '../../query/types';
+import type { TagChoice } from '../../query/types';
 import { formatCount } from '../format';
 import { colors, font, iconSize, radius, spacing, tagColor } from '../theme';
+import { useDraggable } from './PotDrag';
 
 export const TAG_TILE_HEIGHT = 64;
 const BADGE = 20;
 /** How strongly each state shows the tag's colour (1 = solid). */
 const WASH: Record<TagChoice, number> = { include: 1, off: 0.5, exclude: 0.43 };
 
+/** What a tap turns each state into: in or out of the pot. Excluding is by dragging. */
+const AFTER_TAP: Record<TagChoice, TagChoice> = { off: 'include', include: 'off', exclude: 'off' };
+
 /** `#RRGGBB` plus an opacity, as `#RRGGBBAA`. */
-const withAlpha = (hex: string, opacity: number) =>
+export const withAlpha = (hex: string, opacity: number) =>
   hex + Math.round(opacity * 255).toString(16).padStart(2, '0');
 
 const CHOICE_LABEL: Record<TagChoice, string> = {
@@ -22,6 +25,7 @@ const CHOICE_LABEL: Record<TagChoice, string> = {
 };
 
 export interface TagTileProps {
+  tagId: number;
   name: string;
   /** The tag's stored colour name. */
   color: string | null;
@@ -36,35 +40,34 @@ export interface TagTileProps {
 
 /**
  * A tag in the Play tab's builder: a big, forgiving target that's coloured
- * like the tag. Tapping cycles include → exclude → off, and each state is
- * unmistakable: off is a soft wash, included lights up in full colour with a
- * check, excluded keeps a dim trace of its colour (so you still see *which*
- * tag) inside a red outline, with a minus and the name struck through.
+ * like the tag. A tap drops it into the pot (or takes it back out); holding it
+ * lifts it, to drag onto something in the pot. Each state is unmistakable:
+ * off is a soft wash, in the pot lights up in full colour with a check,
+ * excluded keeps a dim trace of its colour (so you still see *which* tag)
+ * inside a red outline, with a minus and the name struck through.
  */
-export function TagTile({ name, color, songCount, choice, width, onPress, expanded, onToggleExpanded }: TagTileProps) {
+export function TagTile({ tagId, name, color, songCount, choice, width, onPress, expanded, onToggleExpanded }: TagTileProps) {
   const hue = tagColor(color);
   const included = choice === 'include';
   const excluded = choice === 'exclude';
   const ink = included ? colors.bg : colors.text;
 
   // While pressed, the tile already shows the colour the tap leads to, so
-  // releasing only adds or removes the marks. The preview is tied to the state
-  // the press *started* on: Pressable holds a quick tap "pressed" for 130 ms,
-  // past the moment the tap lands, and previewing from the new state then would
-  // flash a third state.
-  const [pressedOn, setPressedOn] = useState<TagChoice | null>(null);
-  const shown = pressedOn === choice ? NEXT_CHOICE[choice] : choice;
+  // releasing only adds or removes the marks.
+  const { handlers, pressed, lifting } = useDraggable({ kind: 'tile', tagId }, { names: [name], colors: [hue] }, onPress);
+  const shown = pressed ? AFTER_TAP[choice] : choice;
   const text = shown === 'include' ? colors.bg : colors.text;
 
   return (
-    <View style={[styles.tile, { width }]}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={() => setPressedOn(choice)}
-        onPressOut={() => setPressedOn(null)}
+    <View style={[styles.tile, { width }, lifting && styles.lifting]}>
+      <View
+        {...handlers}
+        accessible
         accessibilityRole="button"
         accessibilityLabel={`${name}, ${CHOICE_LABEL[choice]}, ${songCount} songs`}
-        accessibilityHint="Tap to include, then exclude, then clear"
+        accessibilityHint="Tap to add it to the mix or take it out. Hold to drag it."
+        accessibilityActions={[{ name: 'activate' }]}
+        onAccessibilityAction={onPress}
         style={[styles.main, { backgroundColor: withAlpha(hue, WASH[shown]) }]}
       >
         <Text
@@ -76,7 +79,7 @@ export function TagTile({ name, color, songCount, choice, width, onPress, expand
         <Text style={[styles.count, { color: excluded ? colors.exclude : shown === 'include' ? text : colors.textDim }]}>
           {`${formatCount(songCount)} ${songCount === 1 ? 'song' : 'songs'}`}
         </Text>
-      </Pressable>
+      </View>
 
       {/* A layer on top rather than a border on the tile: it can't shift the
           text, and the tile never has a border removed (which on Android once
@@ -116,6 +119,10 @@ const styles = StyleSheet.create({
     height: TAG_TILE_HEIGHT,
     borderRadius: radius.md,
     overflow: 'hidden',
+  },
+  // Picked up: what's left behind is a faint outline of where it came from.
+  lifting: {
+    opacity: 0.35,
   },
   outline: {
     position: 'absolute',
