@@ -7,7 +7,7 @@ import { formatCount, plural } from '../format';
 import { Icon } from '../Icon';
 import { IconButton } from '../IconButton';
 import { colors, font, iconSize, radius, spacing, touchTarget } from '../theme';
-import { useDraggable, useDropTarget, usePotDragState } from './PotDrag';
+import { Times, useDraggable, useDropTarget, usePotDragState } from './PotDrag';
 import { withAlpha } from './TagTile';
 
 const TOP = 24;
@@ -255,7 +255,7 @@ function IngredientChip({ index, tags, names, hues, count, onTap }: IngredientCh
             <View key={tags[i]} style={styles.segmentRow}>
               {i > 0 && (
                 <View style={styles.times}>
-                  <Icon name="close" size={SYMBOL} color={colors.textDim} />
+                  <Times size={SYMBOL} />
                 </View>
               )}
               <View style={[styles.part, { backgroundColor: tint[i] }]}>

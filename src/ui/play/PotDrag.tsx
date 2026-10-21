@@ -250,6 +250,15 @@ export function useDropTarget(spot: NonNullable<PotSpot>) {
   return { ref, hovered: drag.active !== null && drag.hover === key };
 }
 
+/** "Songs need both": the + icon turned on its corner, so it's the same weight as the pot's +. */
+export function Times({ size }: { size: number }) {
+  return (
+    <View style={styles.turned}>
+      <Icon name="add" size={size} color={colors.textDim} />
+    </View>
+  );
+}
+
 /** The floating copy of whatever is being dragged. Render it last in the drag root. */
 export function DragGhost() {
   const { active, position } = usePotDrag();
@@ -262,7 +271,7 @@ export function DragGhost() {
           <View key={i} style={styles.segment}>
             {i > 0 && (
               <View style={styles.times}>
-                <Icon name="close" size={18} color={colors.textDim} />
+                <Times size={18} />
               </View>
             )}
             <View style={[styles.name, { backgroundColor: active.ghost.colors[i] }]}>
@@ -313,5 +322,8 @@ const styles = StyleSheet.create({
   },
   times: {
     paddingHorizontal: 2,
+  },
+  turned: {
+    transform: [{ rotate: '45deg' }],
   },
 });
