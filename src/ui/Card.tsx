@@ -92,13 +92,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   titleText: {
-    flexShrink: 1,
+    flex: 1,
   },
-  // The (i) sits just after the title; its touch area overhangs on every side.
+  // The (i) sits in the top-right corner; its touch area overhangs the row.
   info: {
     height: font.heading.lineHeight,
     justifyContent: 'center',
-    marginLeft: spacing.xs - (touchTarget - iconSize.sm) / 2,
     marginRight: -(touchTarget - iconSize.sm) / 2,
   },
   status: {
