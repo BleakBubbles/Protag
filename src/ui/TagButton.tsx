@@ -7,34 +7,44 @@ export interface TagButtonProps {
   onPress: () => void;
   /** What it tags, for screen readers: "Tag this song", "Tag songs by NewJeans". */
   label: string;
-  /**
-   * Shows `label` beside the button too, outside it so the button stays small:
-   * for when there are no tag chips to sit next to. The whole line is the target.
-   */
-  showLabel?: boolean;
 }
 
 /**
  * The round tag button that ends a row of tag chips, dressed like them: one of
  * the row rather than a call to action, but always there and easy to hit.
  */
-export function TagButton({ onPress, label, showLabel }: TagButtonProps) {
+export function TagButton({ onPress, label }: TagButtonProps) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [styles.line, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
     >
-      <View style={styles.button}>
-        <Icon name="tag" size={iconSize.sm} color={colors.textDim} />
-      </View>
-      {showLabel && (
-        <Text style={styles.label} numberOfLines={1}>
-          {label}
-        </Text>
-      )}
+      <Icon name="tag" size={iconSize.sm} color={colors.textDim} />
     </Pressable>
+  );
+}
+
+/**
+ * A row of tags with none in it: a faint dashed pill where the chips would be,
+ * then the tag button, in its usual place. It states a fact rather than asking
+ * for something, and keeps the row's shape, so the first tag simply takes the
+ * placeholder's place. The placeholder is a way in too.
+ */
+export function NoTags({ onPress, label }: TagButtonProps) {
+  return (
+    <View style={styles.line}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`No tags yet. ${label}`}
+        style={({ pressed }) => [styles.placeholder, pressed && styles.pressed]}
+      >
+        <Text style={styles.placeholderText}>No tags yet</Text>
+      </Pressable>
+      <TagButton onPress={onPress} label={label} />
+    </View>
   );
 }
 
@@ -42,8 +52,7 @@ const styles = StyleSheet.create({
   line: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    flexShrink: 1,
+    gap: spacing.sm,
   },
   pressed: {
     opacity: 0.6,
@@ -58,9 +67,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  label: {
-    ...font.body,
-    flexShrink: 1,
-    color: colors.textDim,
+  // The tag chip's shape, dashed and empty: a slot, not a thing.
+  placeholder: {
+    minHeight: touchTarget,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+  },
+  placeholderText: {
+    ...font.label,
+    color: colors.textFaint,
   },
 });

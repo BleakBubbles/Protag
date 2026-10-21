@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { getTagsForSong } from '../../db/tags';
 import { openSongTags } from '../../navigation';
 import { useLibraryQuery } from '../hooks/useLibraryQuery';
-import { TagButton } from '../TagButton';
+import { NoTags, TagButton } from '../TagButton';
 import { TagChip } from '../TagChip';
 import { spacing, touchTarget } from '../theme';
 
@@ -22,7 +22,7 @@ export function SongTagsRow({ songId, onOpenTag }: { songId: number; onOpenTag: 
     <View style={styles.row}>
       {tags === undefined ? null : tags.length === 0 ? (
         <View style={styles.centred}>
-          <TagButton onPress={edit} label="Tag this song" showLabel />
+          <NoTags onPress={edit} label="Tag this song" />
         </View>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>

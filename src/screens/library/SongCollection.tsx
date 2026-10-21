@@ -11,7 +11,7 @@ import { CardActions } from '../../ui/Card';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { Artwork } from '../../ui/player/Artwork';
-import { TagButton } from '../../ui/TagButton';
+import { NoTags, TagButton } from '../../ui/TagButton';
 import { TagChip } from '../../ui/TagChip';
 import { colors, font, spacing } from '../../ui/theme';
 
@@ -29,7 +29,7 @@ export interface SongCollectionProps {
   tags: ReadonlyMap<number, readonly TagRow[]>;
   /** How the player names what's playing: "Playing · New Jeans". */
   label: string;
-  /** Beside the tag button while nothing's tagged: "Tag songs in New Jeans", "Tag songs by NewJeans". */
+  /** What the tag button does, for screen readers: "Tag songs in New Jeans", "Tag songs by NewJeans". */
   tagPrompt: string;
   /** Sections between the tags and the songs, like an artist's albums (use `CollectionSection`). */
   children?: ReactNode;
@@ -136,9 +136,8 @@ export function SongCollection({
             {ids.length > 0 && (
               <CollectionSection title="Song tags">
                 {makeup.length === 0 ? (
-                  // Nothing tagged yet: the same button, with words beside it.
                   <View style={styles.prompt}>
-                    <TagButton onPress={() => openEditTags(ids)} label={tagPrompt} showLabel />
+                    <NoTags onPress={() => openEditTags(ids)} label={tagPrompt} />
                   </View>
                 ) : (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
