@@ -27,6 +27,8 @@ export const colors = {
    * Shuffle tab's pot, where tags have their colours (colour is a tag's identity).
    */
   raised: '#3D3B38',
+  /** Dims the app behind something floating over it (the (i) bubble), so it stands out. */
+  scrim: 'rgba(0, 0, 0, 0.4)',
 
   text: '#EFEDE9',
   textDim: '#A3A09A',
