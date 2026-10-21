@@ -11,7 +11,7 @@ export interface CardProps {
   title?: string;
   /** An (i) beside the title that explains the card, so the card itself can stay short. */
   info?: InfoButtonProps;
-  /** A card's one action, at the end of the title row (a `small` Button). */
+  /** A card's one action, at the end of the title row. */
   action?: ReactNode;
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;

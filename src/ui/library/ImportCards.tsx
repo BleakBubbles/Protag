@@ -69,7 +69,7 @@ export function PlaylistsCard({
       title="Playlists"
       info={PLAYLISTS_INFO}
       action={
-        <Button label="Import" icon="download-outline" variant="tonal" size="small" onPress={onImport} disabled={disabled} />
+        <Button label="Import" icon="download-outline" variant="tonal" onPress={onImport} disabled={disabled} />
       }
     >
       <CardStatus>{folder ? `Last imported from ${folderLabel(folder)}` : 'Not imported yet'}</CardStatus>
