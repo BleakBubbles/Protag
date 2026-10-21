@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Stack } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -7,11 +8,21 @@ import { notifyLibraryChanged } from '@/db/changes';
 import { setFolderIncluded, syncFolders, type LibraryFolder } from '@/library/libraryFolders';
 import { useLibraryScan } from '@/library/useLibraryScan';
 import { EmptyState } from '@/ui/EmptyState';
+import { InfoButton } from '@/ui/InfoButton';
 import { plural } from '@/ui/format';
 import { ScanCard } from '@/ui/library/ScanCard';
 import { colors, font, iconSize, spacing } from '@/ui/theme';
 
 const ROW_HEIGHT = 64;
+
+const FOLDERS_INFO = {
+  topic: 'Folders',
+  paragraphs: [
+    'ProTag reads music from the ticked folders.',
+    'Folders that look like voice messages, recordings or phone sounds start unticked. Tap a folder to change it, then rescan.',
+    'Songs in an unticked folder keep their tags, and come back if you tick it again.',
+  ],
+};
 
 /**
  * Which of the phone's audio folders ProTag reads. Folders that look like
@@ -62,15 +73,11 @@ export default function FoldersScreen() {
 
   return (
     <View style={styles.screen}>
+      <Stack.Screen options={{ headerRight: () => <InfoButton {...FOLDERS_INFO} /> }} />
       <FlatList
         data={folders ?? []}
         keyExtractor={(folder) => folder.id}
-        ListHeaderComponent={
-          <Text style={styles.intro}>
-            ProTag reads the ticked folders. Ones that look like voice messages or recordings start
-            unticked. Songs in an unticked folder keep their tags, and come back if you tick it again.
-          </Text>
-        }
+        contentContainerStyle={styles.list}
         renderItem={({ item }) => <FolderRow folder={item} onToggle={toggle} />}
       />
       <View style={styles.footer}>
@@ -114,10 +121,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  intro: {
-    ...font.body,
-    color: colors.textDim,
-    padding: spacing.lg,
+  list: {
+    paddingVertical: spacing.sm,
   },
   row: {
     height: ROW_HEIGHT,

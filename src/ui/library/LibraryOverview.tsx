@@ -34,7 +34,17 @@ export interface LibraryOverviewProps {
 export function LibraryOverview({ counts, state, disabled, onScan, onChooseFolders }: LibraryOverviewProps) {
   const denied = state.kind === 'denied' ? state : null;
   return (
-    <Card title="On this phone">
+    <Card
+      title="On this phone"
+      info={{
+        topic: 'Your music',
+        paragraphs: [
+          'ProTag plays the music already on this phone; it doesn’t copy or move any files.',
+          'Rescan after adding songs, so ProTag finds them. Songs that have gone keep their tags, in case they come back.',
+          'Choose folders to leave out audio that isn’t music, like voice messages or recordings. Folders that look like that start out left out.',
+        ],
+      }}
+    >
       <View style={styles.stats}>
         <Stat value={formatCount(counts.songs)} unit={counts.songs === 1 ? 'song' : 'songs'} />
         <Stat value={formatCount(counts.tags)} unit={counts.tags === 1 ? 'tag' : 'tags'} />

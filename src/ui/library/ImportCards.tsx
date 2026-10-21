@@ -14,6 +14,15 @@ import { colors, font, iconSize, radius, spacing, tagColor } from '../theme';
 
 const TILE = 36;
 
+const PLAYLISTS_INFO = {
+  topic: 'Playlists',
+  paragraphs: [
+    'Other music apps can save playlists as .m3u files. Pick the folder they’re in, and each playlist becomes a tag holding its songs.',
+    'Importing again is safe: it only adds songs that are new, and never duplicates or removes anything.',
+    'Songs a playlist lists but this phone doesn’t have are shown under that playlist, so you can see what didn’t match.',
+  ],
+};
+
 /**
  * The onboarding offer to import playlists. "Choose folder" is the prominent
  * default; Android requires the user to pick the folder, so this is as close to
@@ -29,11 +38,8 @@ export function ImportPrompt({
   disabled?: boolean;
 }) {
   return (
-    <Card title="Bring your playlists">
-      <CardText>
-        Pick the folder where another music app saved its playlists (.m3u files). Each one becomes a
-        tag holding its songs, so your library starts out organised.
-      </CardText>
+    <Card title="Bring your playlists" info={PLAYLISTS_INFO}>
+      <CardText>Turn playlists from another music app into tags.</CardText>
       <CardActions>
         <Button label="Choose folder" icon="folder-open-outline" onPress={onChoose} disabled={disabled} />
         <Button label="Not now" variant="secondary" onPress={onDismiss} disabled={disabled} />
@@ -59,11 +65,7 @@ export function PlaylistsCard({
   onImport: () => void;
 }) {
   return (
-    <Card title="Playlists">
-      <CardText>
-        Bring in playlists from another music app. Each one becomes a tag holding its songs, and
-        importing again only adds what's new.
-      </CardText>
+    <Card title="Playlists" info={PLAYLISTS_INFO}>
       {folder && <Text style={styles.meta}>Last imported from {folderLabel(folder)}</Text>}
       <CardActions>
         <Button label="Import playlists" icon="download-outline" variant="tonal" onPress={onImport} disabled={disabled} />

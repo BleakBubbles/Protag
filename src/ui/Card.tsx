@@ -1,22 +1,35 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors, font, radius, spacing } from './theme';
+import { InfoButton, type InfoButtonProps } from './InfoButton';
+import { colors, font, iconSize, radius, spacing, touchTarget } from './theme';
 
 export interface CardProps {
   /** Small uppercase caption above the content. */
   label?: string;
   /** Heading inside the card. */
   title?: string;
+  /** An (i) beside the title that explains the card, so the card itself can stay short. */
+  info?: InfoButtonProps;
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;
 }
 
-export function Card({ label, title, children, style }: CardProps) {
+export function Card({ label, title, info, children, style }: CardProps) {
   return (
     <View style={[styles.card, style]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      {title ? <Text style={styles.title}>{title}</Text> : null}
+      {title ? (
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, styles.titleText]}>{title}</Text>
+          {info && (
+            // Full touch area, overhanging the row so the card isn't taller for it.
+            <View style={styles.info}>
+              <InfoButton {...info} />
+            </View>
+          )}
+        </View>
+      ) : null}
       {children}
     </View>
   );
@@ -50,6 +63,18 @@ const styles = StyleSheet.create({
   title: {
     ...font.heading,
     color: colors.text,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  titleText: {
+    flex: 1,
+  },
+  info: {
+    height: font.heading.lineHeight,
+    justifyContent: 'center',
+    marginRight: -(touchTarget - iconSize.sm) / 2,
   },
   text: {
     ...font.body,

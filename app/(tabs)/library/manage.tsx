@@ -54,13 +54,18 @@ export default function ManageLibraryScreen() {
       <PlaylistsCard state={imports.state} folder={imports.folder} disabled={busy} onImport={imports.run} />
 
       {/* Tags are the one thing a reinstall or a lost phone can't bring back. */}
-      <Card title="Backup">
+      <Card
+        title="Backup"
+        info={{
+          topic: 'Backup',
+          paragraphs: [
+            'Your tags live only on this phone. A reinstall or a lost phone would lose them, so export them now and then to keep them safe, or to move them to a new phone.',
+            'Importing a backup adds its tags to what’s here and never removes anything.',
+          ],
+        }}
+      >
         <CardText>
-          Your tags live only on this phone. Export them to keep them safe or to move them to a new
-          phone. Importing adds to what's here and never removes anything.
-        </CardText>
-        <CardText>
-          {backup.lastExport ? `Last exported ${formatDaysAgo(backup.lastExport)}.` : 'Never exported.'}
+          {backup.lastExport ? `Last exported ${formatDaysAgo(backup.lastExport)}` : 'Not exported yet'}
         </CardText>
         {backup.state.kind === 'imported' && <CardText>{backup.state.message}</CardText>}
         {backup.state.kind === 'error' && <CardText tone="error">{backup.state.message}</CardText>}
