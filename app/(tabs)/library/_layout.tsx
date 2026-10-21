@@ -13,6 +13,7 @@ export default function LibraryLayout() {
       <Stack.Screen name="index" options={{ title: 'Library' }} />
       <Stack.Screen name="tag/[id]" options={{ title: '' }} />
       <Stack.Screen name="manage" options={{ title: 'Manage library' }} />
+      <Stack.Screen name="folders" options={{ title: 'Folders' }} />
     </Stack>
   );
 }

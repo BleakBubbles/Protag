@@ -4,6 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import type { ScannedSong } from '../db/songs';
 import { toScannedSong, type SkipReason } from './assets';
 import { completeScan, recordScanPage } from './ingest';
+import { leftOutOfScan } from './libraryFolders';
 
 const PAGE_SIZE = 500;
 
@@ -18,6 +19,10 @@ export interface ScanSummary {
   skipped: Record<SkipReason, number>;
   /** Previously known songs this scan didn't see, now flagged missing. */
   missing: number;
+  /** Files in folders the user (or a default) left out. */
+  leftOut: number;
+  /** Previously known songs now hidden because their folder was left out. */
+  hidden: number;
 }
 
 export class MusicPermissionError extends Error {
@@ -58,12 +63,16 @@ export async function scanLibrary(
 ): Promise<ScanSummary> {
   await ensureMusicPermission();
   const genreNames = await loadGenreNames();
+  const leftOut = await leftOutOfScan(db);
+  const leaveOut = new Set(leftOut);
 
   const startedAt = Date.now();
   const summary: ScanSummary = {
     found: 0,
     skipped: { unavailable: 0, 'no-uri': 0, 'too-short': 0 },
     missing: 0,
+    leftOut: 0,
+    hidden: 0,
   };
 
   let cursor: string | undefined;
@@ -81,6 +90,10 @@ export async function scanLibrary(
 
     const songs: ScannedSong[] = [];
     for (const asset of page.assets) {
+      if (leaveOut.has(asset.id)) {
+        summary.leftOut++;
+        continue;
+      }
       const mapped = toScannedSong(asset, genreNames);
       if (mapped.ok) songs.push(mapped.song);
       else summary.skipped[mapped.reason]++;
@@ -96,6 +109,8 @@ export async function scanLibrary(
   }
 
   // Reached only if every page succeeded — see completeScan.
-  summary.missing = await completeScan(db, startedAt, summary.found);
+  const flagged = await completeScan(db, startedAt, summary.found, leftOut);
+  summary.missing = flagged.missing;
+  summary.hidden = flagged.hidden;
   return summary;
 }

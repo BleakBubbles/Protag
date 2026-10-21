@@ -22,7 +22,9 @@ export async function recordScanPage(
 }
 
 /**
- * Finish a scan by flagging songs it didn't see. Returns how many were flagged.
+ * Finish a scan by flagging songs it didn't see: `missing` are gone from the
+ * phone, `hidden` are in folders left out (their media ids are `leftOut`).
+ * Either way their tags are kept, and they come back when seen again.
  *
  * Only call this after the enumeration completed without throwing — a partial
  * scan would flag everything it hadn't reached yet.
@@ -36,8 +38,9 @@ export async function recordScanPage(
 export async function completeScan(
   db: SQLiteDatabase,
   scanStartedAt: number,
-  seenCount: number
-): Promise<number> {
-  if (seenCount === 0) return 0;
-  return flagMissingAfterScan(db, scanStartedAt);
+  seenCount: number,
+  leftOut: readonly string[] = []
+): Promise<{ missing: number; hidden: number }> {
+  if (seenCount === 0) return { missing: 0, hidden: 0 };
+  return flagMissingAfterScan(db, scanStartedAt, leftOut);
 }

@@ -4,7 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 
 import { countSongs } from '@/db/songs';
 import { useLibraryScan } from '@/library/useLibraryScan';
-import { openManageLibrary } from '@/navigation';
+import { openLibraryFolders, openManageLibrary } from '@/navigation';
 import { SongsView } from '@/screens/library/SongsView';
 import { TagsView } from '@/screens/library/TagsView';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
@@ -72,7 +72,13 @@ export default function LibraryScreen() {
           <Text style={styles.welcomeTitle}>Welcome to ProTag</Text>
           <Text style={styles.welcomeText}>Tag your songs, then shuffle by tag.</Text>
         </View>
-        <ScanCard state={scan.state} hasSongs={false} disabled={scan.busy} onScan={scan.run} />
+        <ScanCard
+          state={scan.state}
+          hasSongs={false}
+          disabled={scan.busy}
+          onScan={scan.run}
+          onChooseFolders={openLibraryFolders}
+        />
       </ScrollView>
     );
   }

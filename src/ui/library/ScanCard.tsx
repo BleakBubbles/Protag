@@ -11,10 +11,12 @@ export interface ScanCardProps {
   hasSongs: boolean;
   disabled?: boolean;
   onScan: () => void;
+  /** Shown after a scan that left files out, to see why or change it. */
+  onChooseFolders?: () => void;
 }
 
 /** Scan status and the scan/rescan button. Used for onboarding and in Manage library. */
-export function ScanCard({ state, hasSongs, disabled, onScan }: ScanCardProps) {
+export function ScanCard({ state, hasSongs, disabled, onScan, onChooseFolders }: ScanCardProps) {
   if (state.kind === 'scanning') {
     const { progress } = state;
     return (
@@ -76,8 +78,19 @@ export function ScanCard({ state, hasSongs, disabled, onScan }: ScanCardProps) {
           case they come back.
         </CardText>
       )}
+      {state.kind === 'done' && state.summary.leftOut > 0 && (
+        <CardText>
+          Left out {plural(state.summary.leftOut, 'file')} in unticked folders, like voice messages
+          and recordings.
+          {state.summary.hidden > 0 &&
+            ` ${plural(state.summary.hidden, 'song')} from them ${state.summary.hidden === 1 ? 'is' : 'are'} hidden now; tags are kept.`}
+        </CardText>
+      )}
       {state.kind === 'error' && <CardText tone="error">Scan failed: {state.message}</CardText>}
       <CardActions>
+        {state.kind === 'done' && state.summary.leftOut > 0 && onChooseFolders && (
+          <Button label="Choose folders" variant="secondary" onPress={onChooseFolders} disabled={disabled} />
+        )}
         <Button
           label={hasSongs ? 'Rescan library' : 'Scan my music'}
           variant={hasSongs ? 'secondary' : 'primary'}
