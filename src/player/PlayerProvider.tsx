@@ -23,12 +23,14 @@ import {
   cycleRepeat as cycleRepeatMode,
   EMPTY_QUEUE,
   jumpTo as jumpToIndex,
+  nextShuffleMode,
   retreat,
-  setShuffle,
+  setShuffleMode,
+  shuffleModeOf,
   type QueueAction,
   type QueueState,
 } from './queue';
-import { queueForQuery } from './sources';
+import { albumGroups, queueForQuery } from './sources';
 
 /** The one line to change to swap audio engines. */
 const useEngine: UseAudioEngine = useExpoAudioEngine;
@@ -102,6 +104,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const songRef = useRef(song);
   songRef.current = song;
   const loadToken = useRef(0);
+  /** Whether shuffling means by album: the last shuffle mode picked, carried to new queues like repeat. */
+  const prefersAlbums = useRef(false);
   const playCounted = useRef(false);
 
   const setQueue = useCallback((next: QueueState) => {
@@ -193,12 +197,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const actions = useMemo<PlayerActions>(
     () => ({
       playQueue(ids, { startId, shuffle = false, label, draft } = {}) {
-        const next = createQueue(ids, {
-          startId,
-          shuffle,
-          source: label ? { label, draft } : null,
-          repeat: queueRef.current.repeat, // repeat is a preference, not per-queue
-        });
+        const build = (groups?: number[][]) =>
+          createQueue(ids, {
+            startId,
+            shuffle,
+            // Like repeat, how to shuffle is a preference that carries over to new queues.
+            byAlbum: prefersAlbums.current,
+            groups,
+            source: label ? { label, draft } : null,
+            repeat: queueRef.current.repeat, // repeat is a preference, not per-queue
+          });
+        if (ids.length === 0) return false;
+        // Shuffling by album needs to know the albums first.
+        if (shuffle && prefersAlbums.current) {
+          albumGroups(db, ids).then((groups) => applyRef.current({ queue: build(groups), action: 'play' }));
+          return true;
+        }
+        const next = build();
         if (next.index < 0) return false;
         applyRef.current({ queue: next, action: 'play' });
         return true;
@@ -215,10 +230,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       seekTo: (seconds) => {
         engineRef.current.seekTo(seconds);
       },
-      // A new order for the engine, picking up the same song where it was:
-      // the lock screen can only skip through an order it was given whole.
-      toggleShuffle: () => {
-        const next = setShuffle(queueRef.current, !queueRef.current.shuffled);
+      // Off → songs → albums → off. A new order for the engine, picking up the
+      // same song where it was: the lock screen can only skip through an order
+      // it was given whole.
+      toggleShuffle: async () => {
+        const queue = queueRef.current;
+        const mode = nextShuffleMode(shuffleModeOf(queue));
+        if (mode !== 'off') prefersAlbums.current = mode === 'albums';
+        const groups = mode === 'albums' ? await albumGroups(db, queue.original) : undefined;
+        if (queueRef.current !== queue) return; // Something else changed the queue meanwhile.
+        const next = setShuffleMode(queue, mode, { groups });
         setQueue(next);
         const { playing, positionSec } = engineRef.current.status;
         loadOrder(next, { autoplay: playing, positionSec });
@@ -233,7 +254,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (next !== queueRef.current) applyRef.current({ queue: next, action: 'play' });
       },
     }),
-    [loadOrder, setQueue]
+    [db, loadOrder, setQueue]
   );
 
   // Count a play once enough of the song has actually been heard, so skips don't

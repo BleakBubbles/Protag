@@ -23,3 +23,22 @@ export async function queueForQuery(db: SQLiteDatabase, query: TagQuery): Promis
   const label = describeQuery(query, new Map([...tags.map((t) => [t.id, t.name] as const), ...albums]));
   return { ids, label };
 }
+
+/**
+ * The songs grouped by album, each album in track order, for album shuffle.
+ * A song without an album stands alone, so it's shuffled in among the albums.
+ */
+export async function albumGroups(db: SQLiteDatabase, ids: readonly number[]): Promise<number[][]> {
+  const rows = await db.getAllAsync<{ id: number; album_id: string | null }>(
+    `SELECT id, album_id FROM songs WHERE id IN (SELECT value FROM json_each(?))
+     ORDER BY album_id, track_no IS NULL, track_no, title COLLATE NOCASE`,
+    JSON.stringify(ids)
+  );
+  const albums = new Map<string, number[]>();
+  const singles: number[][] = [];
+  for (const { id, album_id } of rows) {
+    if (album_id === null) singles.push([id]);
+    else albums.set(album_id, [...(albums.get(album_id) ?? []), id]);
+  }
+  return [...albums.values(), ...singles];
+}

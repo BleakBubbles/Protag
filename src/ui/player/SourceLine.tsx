@@ -51,7 +51,7 @@ export function SourceLine({ queue, onClose }: SourceLineProps) {
   const line = (
     <View style={styles.line}>
       <Marquee style={styles.source} maxWidth={room - PILL_PADDING * 2 - positionWidth - spacing.sm}>
-        {queue.shuffled ? 'Shuffling' : 'Playing'} · {label}
+        {queue.shuffled ? (queue.byAlbum ? 'Shuffling albums' : 'Shuffling') : 'Playing'} · {label}
       </Marquee>
       <Text style={styles.position} onLayout={(e) => setPositionWidth(Math.ceil(e.nativeEvent.layout.width))}>
         {formatCount(queue.index + 1)} of {formatCount(queue.order.length)}

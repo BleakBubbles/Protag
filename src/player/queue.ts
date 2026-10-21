@@ -37,15 +37,24 @@ export interface QueueState {
   /** Index into `order`; -1 when empty. */
   index: number;
   shuffled: boolean;
+  /** Shuffled by album (each album whole, in track order) rather than by song. Only meaningful when `shuffled`. */
+  byAlbum: boolean;
   repeat: RepeatMode;
   source: QueueSource | null;
 }
+
+/** How a queue shuffles: not at all, song by song, or album by album. */
+export type ShuffleMode = 'off' | 'songs' | 'albums';
+
+export const shuffleModeOf = (queue: QueueState): ShuffleMode =>
+  !queue.shuffled ? 'off' : queue.byAlbum ? 'albums' : 'songs';
 
 export const EMPTY_QUEUE: QueueState = {
   order: [],
   original: [],
   index: -1,
   shuffled: false,
+  byAlbum: false,
   repeat: 'off',
   source: null,
 };
@@ -72,14 +81,39 @@ function shuffleAround(
 }
 
 /**
+ * Albums in random order, each whole and in its own order: `groups` are the
+ * songs grouped by album, each in track order (a song without an album is a
+ * group of one, so it's shuffled in among them). With `current`, its album
+ * comes first, whole, so the song plays on with its album around it.
+ */
+export function shuffleAlbums(
+  groups: readonly (readonly number[])[],
+  current: number | null,
+  { random = Math.random, strategy = fisherYates }: ShuffleOptions = {}
+): number[] {
+  const lead = current === null ? -1 : groups.findIndex((group) => group.includes(current));
+  const rest = groups.filter((_, i) => i !== lead);
+  // The strategy shuffles ids, so shuffle the groups' positions and map back.
+  const shuffled = strategy(
+    rest.map((_, i) => i),
+    random
+  ).map((i) => rest[i]);
+  return [...(lead >= 0 ? groups[lead] : []), ...shuffled.flat()];
+}
+
+/**
  * Build a queue. With `startId`, that song plays first — shuffled or not. Without
  * it, an unshuffled queue starts at the top and a shuffled one at a random song.
+ * Shuffled `byAlbum` (given `groups`), the start's album plays whole around it.
  */
 export function createQueue(
   ids: readonly number[],
   options: {
     startId?: number;
     shuffle?: boolean;
+    /** Shuffle album by album; needs `groups`, else it's by song. */
+    byAlbum?: boolean;
+    groups?: readonly (readonly number[])[];
     source?: QueueSource | null;
     repeat?: RepeatMode;
   } & ShuffleOptions = {}
@@ -89,13 +123,19 @@ export function createQueue(
     ? options.startId
     : null;
   const shuffled = options.shuffle ?? false;
-  const order = shuffled ? shuffleAround(original, start, options) : original;
+  const byAlbum = shuffled && !!options.byAlbum && !!options.groups;
+  const order = !shuffled
+    ? original
+    : byAlbum
+      ? shuffleAlbums(options.groups!, start, options)
+      : shuffleAround(original, start, options);
 
   return {
     order,
     original,
     index: order.length === 0 ? -1 : start === null ? 0 : order.indexOf(start),
     shuffled,
+    byAlbum,
     repeat: options.repeat ?? 'off',
     source: options.source ?? null,
   };
@@ -153,27 +193,53 @@ export function jumpTo(queue: QueueState, index: number): QueueState {
 }
 
 /**
- * Toggle shuffle without interrupting playback: the current song keeps playing
- * either way. On, it leads a freshly shuffled order; off, the original order
- * resumes from wherever that song sits in it.
+ * Change how the queue shuffles without interrupting playback: the current
+ * song keeps playing in every mode.
+ * - `songs`: it leads a freshly shuffled order.
+ * - `albums`: albums play in random order, each start to finish; the current
+ *   song's album comes first, from where it is, its earlier tracks behind it.
+ *   Needs `groups` (see `shuffleAlbums`); without them it shuffles songs.
+ * - `off`: the original order resumes from wherever that song sits in it.
  */
-export function setShuffle(queue: QueueState, on: boolean, options: ShuffleOptions = {}): QueueState {
-  if (on === queue.shuffled) return queue;
+export function setShuffleMode(
+  queue: QueueState,
+  mode: ShuffleMode,
+  options: ShuffleOptions & { groups?: readonly (readonly number[])[] } = {}
+): QueueState {
+  if (mode === shuffleModeOf(queue)) return queue;
   const current = currentId(queue);
 
-  if (on) {
+  if (mode === 'albums' && options.groups) {
+    const order = shuffleAlbums(options.groups, current, options);
+    return { ...queue, order, index: current === null ? -1 : order.indexOf(current), shuffled: true, byAlbum: true };
+  }
+  if (mode !== 'off') {
     const order = shuffleAround(queue.original, current, options);
-    return { ...queue, order, index: current === null ? -1 : 0, shuffled: true };
+    return { ...queue, order, index: current === null ? -1 : 0, shuffled: true, byAlbum: false };
   }
   return {
     ...queue,
     order: queue.original,
     index: current === null ? -1 : queue.original.indexOf(current),
     shuffled: false,
+    byAlbum: false,
   };
 }
 
+/** Shuffle on (songs) or off: what shuffling meant before albums. */
+export function setShuffle(queue: QueueState, on: boolean, options: ShuffleOptions = {}): QueueState {
+  return setShuffleMode(queue, on ? 'songs' : 'off', options);
+}
+
+const NEXT_SHUFFLE: Record<ShuffleMode, ShuffleMode> = { off: 'songs', songs: 'albums', albums: 'off' };
+
+/** What the shuffle button does: off → songs → albums → off, like repeat's cycle. */
+export const nextShuffleMode = (mode: ShuffleMode) => NEXT_SHUFFLE[mode];
+
 const NEXT_REPEAT: Record<RepeatMode, RepeatMode> = { off: 'all', all: 'one', one: 'off' };
+
+/** What the repeat button does: off → all → one → off. */
+export const nextRepeatMode = (mode: RepeatMode) => NEXT_REPEAT[mode];
 
 export function cycleRepeat(queue: QueueState): QueueState {
   return { ...queue, repeat: NEXT_REPEAT[queue.repeat] };

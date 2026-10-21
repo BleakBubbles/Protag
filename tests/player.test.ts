@@ -5,7 +5,7 @@ import { freshDatabase, insertSong } from './helpers/db.ts';
 import { getSongUris } from '../src/db/songs.ts';
 import { addTagToSong, createTag } from '../src/db/tags.ts';
 import { artworkCacheKey, isNativeLoadableUrl } from '../src/player/artworkUrls.ts';
-import { queueForQuery } from '../src/player/sources.ts';
+import { albumGroups, queueForQuery } from '../src/player/sources.ts';
 import { MATCH_ALL } from '../src/query/types.ts';
 import { formatCount, formatDaysAgo, formatTime, plural } from '../src/ui/format.ts';
 
@@ -89,5 +89,16 @@ test('a queue’s URIs come back in queue order, each song holding its place', a
     'content://media/external/audio/media/A',
     'content://media/external/audio/media/B',
   ]);
+  db.close();
+});
+
+test('album shuffle groups a queue by album, in track order; songs without one stand alone', async () => {
+  const db = await freshDatabase();
+  const b = await insertSong(db, 'B', { albumId: '1', trackNo: 2 });
+  const a = await insertSong(db, 'A', { albumId: '1', trackNo: 1 });
+  const loose = await insertSong(db, 'Loose');
+  const c = await insertSong(db, 'C', { albumId: '2', trackNo: 1 });
+  await insertSong(db, 'Not queued', { albumId: '1', trackNo: 3 });
+  assert.deepEqual(await albumGroups(db as never, [b, loose, a, c]), [[a, b], [c], [loose]]);
   db.close();
 });

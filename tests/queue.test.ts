@@ -9,7 +9,11 @@ import {
   EMPTY_QUEUE,
   fisherYates,
   jumpTo,
+  nextShuffleMode,
   retreat,
+  setShuffleMode,
+  shuffleAlbums,
+  shuffleModeOf,
   setShuffle,
   upNext,
 } from '../src/player/queue.ts';
@@ -125,6 +129,48 @@ test('upNext lists what is coming, wrapping only with repeat all', () => {
   const q = createQueue(IDS, { startId: 40 });
   assert.deepEqual(upNext(q, 3), [50]);
   assert.deepEqual(upNext({ ...q, repeat: 'all' }, 3), [50, 10, 20]);
+});
+
+// Albums by song id: [10, 11, 12] is one album in track order, 20 has none, [30, 31] another.
+const GROUPS = [[10, 11, 12], [20], [30, 31]];
+const GROUPED = GROUPS.flat();
+
+test('album shuffle keeps each album whole and in order, shuffling which comes next', () => {
+  const order = shuffleAlbums(GROUPS, null, { random: seeded(7) });
+  assert.deepEqual([...order].sort((a, b) => a - b), [...GROUPED].sort((a, b) => a - b));
+  for (const group of GROUPS) {
+    const at = order.indexOf(group[0]);
+    assert.deepEqual(order.slice(at, at + group.length), group, 'an album plays start to finish');
+  }
+});
+
+test('album shuffle leads with the current song’s album, whole', () => {
+  const order = shuffleAlbums(GROUPS, 31, { random: seeded(3) });
+  assert.deepEqual(order.slice(0, 2), [30, 31]);
+});
+
+test('the shuffle button cycles off, songs, albums, keeping the current song playing', () => {
+  assert.deepEqual(['off', 'songs', 'albums'].map((m) => nextShuffleMode(m as never)), ['songs', 'albums', 'off']);
+  const queue = createQueue(GROUPED, { startId: 11 });
+  const songs = setShuffleMode(queue, 'songs', { random: seeded() });
+  assert.equal(shuffleModeOf(songs), 'songs');
+  assert.equal(currentId(songs), 11);
+  const albums = setShuffleMode(songs, 'albums', { groups: GROUPS, random: seeded() });
+  assert.equal(shuffleModeOf(albums), 'albums');
+  assert.equal(currentId(albums), 11);
+  assert.deepEqual(albums.order.slice(0, 3), [10, 11, 12], 'its album around it, earlier tracks behind');
+  assert.equal(albums.index, 1);
+  const off = setShuffleMode(albums, 'off');
+  assert.deepEqual(off.order, GROUPED);
+  assert.equal(currentId(off), 11);
+});
+
+test('a new queue can start shuffled by album', () => {
+  const queue = createQueue(GROUPED, { shuffle: true, byAlbum: true, groups: GROUPS, startId: 20, random: seeded() });
+  assert.equal(shuffleModeOf(queue), 'albums');
+  assert.equal(currentId(queue), 20);
+  // Without groups to go on, it shuffles by song.
+  assert.equal(shuffleModeOf(createQueue(GROUPED, { shuffle: true, byAlbum: true })), 'songs');
 });
 
 test('every transition on an empty queue is safe', () => {
