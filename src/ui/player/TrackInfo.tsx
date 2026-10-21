@@ -1,36 +1,41 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
+import { Marquee } from '../Marquee';
 import { colors, font, spacing } from '../theme';
 
 export interface TrackInfoProps {
   title: string;
   artist: string | null;
   album: string | null;
-  /** Lines the title may wrap to. Space for all of them is always reserved. */
-  titleLines?: number;
 }
 
+/** Always one line each, so the block never changes height. */
+const HEIGHT = font.title.lineHeight + spacing.xs + font.body.lineHeight;
+
 /**
- * Title and artist/album in a block of *constant* height.
+ * Title and artist/album, centred, one line each: a line too long to fit
+ * scrolls sideways (see Marquee) instead of wrapping or being cut off.
  *
- * Without that, the block grows and shrinks from song to song — a long title
- * wraps to a second line, and CJK text renders taller than Latin — pushing the
- * controls below it around. The height comes from the font tokens, so it stays
- * right if they change.
+ * The block is a *constant* height, so the controls below never move from
+ * song to song, whatever the title's length or script (CJK text renders
+ * taller than Latin). The height comes from the font tokens, so it stays right
+ * if they change.
  */
-export function TrackInfo({ title, artist, album, titleLines = 2 }: TrackInfoProps) {
+export function TrackInfo({ title, artist, album }: TrackInfoProps) {
   const subtitle = [artist, album].filter(Boolean).join(' · ');
-  const height = font.title.lineHeight * titleLines + spacing.xs + font.body.lineHeight;
+  const [width, setWidth] = useState(0);
 
   return (
-    <View style={[styles.container, { height }]}>
-      <Text style={styles.title} numberOfLines={titleLines}>
+    <View style={styles.container} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      {/* Keyed by the text, so each new song's line starts from its beginning. */}
+      <Marquee key={`t${title}`} style={styles.title} maxWidth={width}>
         {title}
-      </Text>
+      </Marquee>
       {/* Always rendered, so a song with no artist doesn't shift the title. */}
-      <Text style={styles.subtitle} numberOfLines={1}>
+      <Marquee key={`s${subtitle}`} style={styles.subtitle} maxWidth={width}>
         {subtitle || ' '}
-      </Text>
+      </Marquee>
     </View>
   );
 }
@@ -40,19 +45,19 @@ export function TrackInfo({ title, artist, album, titleLines = 2 }: TrackInfoPro
 const styles = StyleSheet.create({
   container: {
     alignSelf: 'stretch',
+    alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
+    height: HEIGHT,
   },
   title: {
     ...font.title,
     color: colors.text,
-    textAlign: 'center',
     includeFontPadding: false,
   },
   subtitle: {
     ...font.body,
     color: colors.textDim,
-    textAlign: 'center',
     includeFontPadding: false,
   },
 });
