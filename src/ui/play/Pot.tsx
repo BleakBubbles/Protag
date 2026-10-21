@@ -17,8 +17,8 @@ const CONTENT = CHIP * 2 + spacing.sm;
 const ACTIONS = 56;
 /** The tray's rim around a combination's pills. */
 const TRAY_INSET = 3;
-/** The × between combined tags: bigger than the text, so it reads as a symbol. */
-const TIMES = 18;
+/** The + between ingredients and the × inside a combination: one icon set, one size, so they match. */
+const SYMBOL = 18;
 
 /** Songs the whole pot would play, with whether the pot was empty when counted. */
 export interface ShuffleCount {
@@ -102,9 +102,9 @@ export function Pot({
                 // The + travels with the chip after it, so a wrapped row never ends on one.
                 <View key={ingredientKey(tags)} style={styles.unit}>
                   {index > 0 && (
-                    <Text style={styles.plus} importantForAccessibility="no">
-                      +
-                    </Text>
+                    <View importantForAccessibility="no-hide-descendants">
+                      <Icon name="add" size={SYMBOL} color={colors.textDim} />
+                    </View>
                   )}
                   <IngredientChip
                     index={index}
@@ -255,7 +255,7 @@ function IngredientChip({ index, tags, names, hues, count, onTap }: IngredientCh
             <View key={tags[i]} style={styles.segmentRow}>
               {i > 0 && (
                 <View style={styles.times}>
-                  <Icon name="close" size={TIMES} color={colors.textDim} />
+                  <Icon name="close" size={SYMBOL} color={colors.textDim} />
                 </View>
               )}
               <View style={[styles.part, { backgroundColor: tint[i] }]}>
@@ -415,10 +415,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-  },
-  plus: {
-    ...font.listTitle,
-    color: colors.textFaint,
   },
   tray: {
     alignItems: 'center',
