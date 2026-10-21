@@ -2,7 +2,8 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { listMixes, parseDraft } from '../db/mixes';
 import { isTagColor } from '../db/tagColors';
-import { mapDraftTags, pruneDraft, type QueryDraft } from '../query/types';
+import { albumRef, readRef, type Ref } from '../query/refs';
+import { mapDraftRefs, mapDraftTags, pruneDraft, type QueryDraft } from '../query/types';
 import { SongMatcher } from './match';
 
 /**
@@ -35,11 +36,32 @@ export interface BackupSong {
   tags: { tag: number; addedAt: number }[];
 }
 
-/** A saved mix; its draft refers to tags by their ids in this file. */
+/**
+ * A saved mix; its draft refers to tags by their ids in this file. Album ids
+ * are the exporting phone's, so each comes with its name and artist in
+ * `albums`, which is how it's found again on another phone. Artists are names
+ * already, so they travel as they are.
+ */
 export interface BackupMix {
   name: string;
   draft: QueryDraft;
   createdAt: number;
+  albums?: Record<string, BackupAlbum>;
+}
+
+export interface BackupAlbum {
+  title: string;
+  artist: string | null;
+}
+
+/** The album ids a draft refers to. */
+function albumIds(draft: QueryDraft): string[] {
+  const ids = new Set<string>();
+  for (const ref of [...draft.ingredients.flat(), ...draft.exclude]) {
+    const read = readRef(ref);
+    if (read.kind === 'album') ids.add(read.albumId);
+  }
+  return [...ids];
 }
 
 export interface BackupFile {
@@ -115,8 +137,44 @@ export async function buildBackup(db: SQLiteDatabase, now = new Date()): Promise
     })),
     songs: [...songs.values()],
     // Library tag ids are the file's tag ids, so drafts carry over as they are.
-    mixes: mixes.map((m) => ({ name: m.name, draft: m.draft, createdAt: m.createdAt })),
+    mixes: await Promise.all(
+      mixes.map(async (m) => {
+        const albums = await describeAlbums(db, albumIds(m.draft));
+        return { name: m.name, draft: m.draft, createdAt: m.createdAt, ...(albums && { albums }) };
+      })
+    ),
   };
+}
+
+/** Each album's name and artist, for finding it again on another phone; missing songs count too. */
+async function describeAlbums(db: SQLiteDatabase, ids: string[]): Promise<Record<string, BackupAlbum> | undefined> {
+  if (ids.length === 0) return undefined;
+  const albums: Record<string, BackupAlbum> = {};
+  for (const id of ids) {
+    const row = await db.getFirstAsync<{ album: string; artist: string | null }>(
+      'SELECT album, artist FROM songs WHERE album_id = ? AND album IS NOT NULL ORDER BY is_missing LIMIT 1',
+      id
+    );
+    if (row) albums[id] = { title: row.album, artist: row.artist };
+  }
+  return albums;
+}
+
+/**
+ * This phone's id for an album described in a backup: same title, and same
+ * artist when the backup knows it (case aside). Null when it isn't here.
+ */
+async function findAlbum(db: SQLiteDatabase, album: BackupAlbum): Promise<string | null> {
+  const row = await db.getFirstAsync<{ album_id: string }>(
+    `SELECT album_id FROM songs
+     WHERE album_id IS NOT NULL AND album = ? COLLATE NOCASE
+       AND (? IS NULL OR artist = ? COLLATE NOCASE)
+     ORDER BY is_missing LIMIT 1`,
+    album.title,
+    album.artist,
+    album.artist
+  );
+  return row?.album_id ?? null;
 }
 
 // ------------------------------------------------------------------ reading
@@ -183,10 +241,19 @@ export function parseBackup(text: string): BackupFile {
   const mixes: BackupMix[] = [];
   for (const m of Array.isArray(data.mixes) ? data.mixes : []) {
     if (!isObject(m) || typeof m.name !== 'string' || !m.name.trim()) continue;
+    const albums: Record<string, BackupAlbum> = {};
+    if (isObject(m.albums)) {
+      for (const [id, album] of Object.entries(m.albums)) {
+        if (isObject(album) && typeof album.title === 'string') {
+          albums[id] = { title: album.title, artist: optString(album.artist) };
+        }
+      }
+    }
     mixes.push({
       name: m.name.trim(),
       draft: pruneDraft(parseDraft(JSON.stringify(m.draft ?? {})), tagIds),
       createdAt: isNumber(m.createdAt) ? m.createdAt : Date.now(),
+      albums,
     });
   }
 
@@ -354,7 +421,18 @@ export async function applyImport(db: SQLiteDatabase, plan: ImportPlan): Promise
     }
 
     for (const mix of plan.newMixes) {
-      const draft = mapDraftTags(mix.draft, (id) => libraryIds.get(id)!);
+      // Albums are found again by name and artist; one that isn't on this phone drops out.
+      const localAlbums = new Map<string, string | null>();
+      for (const id of albumIds(mix.draft)) {
+        const described = mix.albums?.[id];
+        localAlbums.set(id, described ? await findAlbum(txn, described) : null);
+      }
+      const draft = mapDraftRefs(mapDraftTags(mix.draft, (id) => libraryIds.get(id)!), (ref): Ref | null => {
+        const read = readRef(ref);
+        if (read.kind !== 'album') return ref;
+        const local = localAlbums.get(read.albumId);
+        return local ? albumRef(local) : null;
+      });
       // OR IGNORE: a mix of that name made while the summary was up wins.
       await txn.runAsync(
         'INSERT OR IGNORE INTO saved_queries (name, query_json, created_at) VALUES (?, ?, ?)',

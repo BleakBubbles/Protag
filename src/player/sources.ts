@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { listAlbumTitles } from '../db/albums';
 import { buildDescendantMap, listTags } from '../db/tags';
 import { describeQuery } from '../query/describe';
 import { findSongIds } from '../query/run';
@@ -17,8 +18,8 @@ export interface QueueRequest {
  * so the player's "Shuffling · …" line always reads the same as the query.
  */
 export async function queueForQuery(db: SQLiteDatabase, query: TagQuery): Promise<QueueRequest> {
-  const [descendants, tags] = await Promise.all([buildDescendantMap(db), listTags(db)]);
+  const [descendants, tags, albums] = await Promise.all([buildDescendantMap(db), listTags(db), listAlbumTitles(db)]);
   const ids = await findSongIds(db, query, { descendants, order: 'title' });
-  const label = describeQuery(query, new Map(tags.map((t) => [t.id, t.name])));
+  const label = describeQuery(query, new Map([...tags.map((t) => [t.id, t.name] as const), ...albums]));
   return { ids, label };
 }

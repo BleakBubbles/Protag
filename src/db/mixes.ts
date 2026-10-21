@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { isRef, type Ref } from '../query/refs';
 import { EMPTY_DRAFT, type QueryDraft } from '../query/types';
 
 /**
@@ -19,8 +20,7 @@ export interface Mix {
 /** Thrown for mix operations the user could plausibly trigger; the message is for the user. */
 export class MixError extends Error {}
 
-const ids = (value: unknown): number[] =>
-  Array.isArray(value) ? value.filter((v): v is number => typeof v === 'number') : [];
+const ids = (value: unknown): Ref[] => (Array.isArray(value) ? value.filter(isRef) : []);
 
 /**
  * Read a stored draft defensively: a damaged row becomes an empty mix, never a
@@ -40,7 +40,7 @@ export function parseDraft(json: string): QueryDraft {
   }
 }
 
-function legacyIngredients(include: number[], mode: unknown): number[][] {
+function legacyIngredients(include: Ref[], mode: unknown): Ref[][] {
   if (include.length === 0) return [];
   return mode === 'or' ? include.map((id) => [id]) : [include];
 }

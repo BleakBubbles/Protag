@@ -59,6 +59,12 @@ test('renaming refuses a name another mix has; deleting removes it', async () =>
 test('a damaged stored draft loads as an empty mix rather than crashing', () => {
   assert.deepEqual(parseDraft('{oops'), EMPTY_DRAFT);
   assert.deepEqual(parseDraft('{"ingredients":[[1,"x"],[]],"exclude":"no"}'), { ...EMPTY_DRAFT, ingredients: [[1]] });
+  // Artists and albums survive a round trip; anything else that's a string doesn't.
+  assert.deepEqual(parseDraft('{"ingredients":[["artist:IU",2],["album:9","genre:x"]],"exclude":["artist:SZA"]}'), {
+    ...EMPTY_DRAFT,
+    ingredients: [['artist:IU', 2], ['album:9']],
+    exclude: ['artist:SZA'],
+  });
 });
 
 test('mixes saved before the pot open as ingredients', () => {

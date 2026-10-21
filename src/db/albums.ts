@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { albumRef, type Ref } from '../query/refs';
 import type { SongRow } from './types';
 
 /**
@@ -88,5 +89,32 @@ export async function listArtistSongs(db: SQLiteDatabase, name: string): Promise
     `SELECT * FROM songs WHERE artist = ? AND is_missing = 0
      ORDER BY album COLLATE NOCASE, track_no IS NULL, track_no, title COLLATE NOCASE`,
     name
+  );
+}
+
+/** Every album's title by its ref: what describing a mix needs ("kpop + SOS"). */
+export async function listAlbumTitles(db: SQLiteDatabase): Promise<Map<Ref, string>> {
+  const rows = await db.getAllAsync<{ albumId: string; title: string }>(
+    `SELECT album_id AS albumId, MIN(album) AS title FROM songs
+     WHERE album_id IS NOT NULL AND album IS NOT NULL GROUP BY album_id`
+  );
+  return new Map(rows.map((r) => [albumRef(r.albumId), r.title]));
+}
+
+/**
+ * The artists and albums for the Shuffle tab's picture rows: the ones played
+ * most, then those with the most songs, so the rows show what's listened to.
+ */
+export async function listTopArtists(db: SQLiteDatabase, limit: number): Promise<ArtistSummary[]> {
+  return db.getAllAsync<ArtistSummary>(
+    `${ARTIST_SELECT} GROUP BY s.artist ORDER BY SUM(s.play_count) DESC, songs DESC, name COLLATE NOCASE LIMIT ?`,
+    limit
+  );
+}
+
+export async function listTopAlbums(db: SQLiteDatabase, limit: number): Promise<AlbumSummary[]> {
+  return db.getAllAsync<AlbumSummary>(
+    `${ALBUM_SELECT} GROUP BY s.album_id ORDER BY SUM(s.play_count) DESC, songs DESC, title COLLATE NOCASE LIMIT ?`,
+    limit
   );
 }

@@ -5,7 +5,8 @@ import { freshDatabase, insertSong, type TestDatabase } from './helpers/db.ts';
 import { addTagToSong, buildDescendantMap, createTag } from '../src/db/tags.ts';
 import { compileCountSelect, compileSongSelect } from '../src/query/compile.ts';
 import { describeQuery } from '../src/query/describe.ts';
-import { buildQuery, EMPTY_DRAFT, pruneDraft, type TagQuery } from '../src/query/types.ts';
+import { albumRef, artistRef, isRef, readRef, type Ref } from '../src/query/refs.ts';
+import { buildQuery, EMPTY_DRAFT, pruneDraft, sameDraft, type TagQuery } from '../src/query/types.ts';
 
 /**
  * Fixture tree:
@@ -210,4 +211,58 @@ test('pot ingredients: any ingredient plays, a combined one needs all its tags',
 test('a draft drops tags that no longer exist', () => {
   const draft = { ...EMPTY_DRAFT, ingredients: [[1, 2], [4]], exclude: [3] };
   assert.deepEqual(pruneDraft(draft, new Set([2])), { ...EMPTY_DRAFT, ingredients: [[2]], exclude: [] });
+});
+
+test('artists and albums are ingredients too, and combine with tags', async () => {
+  const db = await freshDatabase();
+  const chill = await createTag(db as never, 'chill', null);
+  const ditto = await insertSong(db, 'Ditto', { artist: 'NewJeans', album: 'OMG', albumId: '7' });
+  await insertSong(db, 'HypeBoy', { artist: 'NewJeans', album: 'New Jeans', albumId: '8' });
+  const snooze = await insertSong(db, 'Snooze', { artist: 'SZA', album: 'SOS', albumId: '9' });
+  await insertSong(db, 'Gone', { artist: 'NewJeans', albumId: '7', missing: true });
+  await addTagToSong(db as never, ditto, chill);
+  await addTagToSong(db as never, snooze, chill);
+
+  const play = (ingredients: Ref[][], exclude: Ref[] = []) =>
+    titlesFor(db, buildQuery({ ...EMPTY_DRAFT, ingredients, exclude }));
+  assert.deepEqual(await play([[artistRef('NewJeans')]]), ['Ditto', 'HypeBoy']);
+  assert.deepEqual(await play([[albumRef('9')]]), ['Snooze']);
+  assert.deepEqual(await play([[artistRef('NewJeans'), chill]]), ['Ditto'], 'NewJeans × chill');
+  assert.deepEqual(await play([[albumRef('8')], [albumRef('9')]]), ['HypeBoy', 'Snooze'], 'either album');
+  assert.deepEqual(await play([[chill]], [artistRef('SZA')]), ['Ditto'], 'chill, not SZA');
+  db.close();
+});
+
+test('artists read as their names, albums as their titles', () => {
+  const names = new Map<Ref, string>([
+    [1, 'chill'],
+    [albumRef('9'), 'SOS'],
+  ]);
+  const query = buildQuery({ ...EMPTY_DRAFT, ingredients: [[artistRef('NewJeans'), 1], [albumRef('9')]] });
+  assert.equal(describeQuery(query, names), 'NewJeans × chill + SOS');
+  assert.equal(describeQuery(buildQuery({ ...EMPTY_DRAFT, ingredients: [[albumRef('x')]] }), names), 'an album');
+});
+
+test('refs: tags are their ids; artists and albums are prefixed strings', () => {
+  assert.deepEqual(readRef(5), { kind: 'tag', tagId: 5 });
+  assert.deepEqual(readRef(artistRef('AC/DC: Live')), { kind: 'artist', name: 'AC/DC: Live' });
+  assert.deepEqual(readRef(albumRef('42')), { kind: 'album', albumId: '42' });
+  assert.ok(isRef(3) && isRef('artist:IU') && isRef('album:1'));
+  assert.ok(!isRef(1.5) && !isRef('artist:') && !isRef('genre:pop') && !isRef(null));
+});
+
+test('pruning drops deleted tags but keeps artists and albums', () => {
+  const draft = { ...EMPTY_DRAFT, ingredients: [[1, artistRef('IU')], [albumRef('2')]], exclude: [3] };
+  assert.deepEqual(pruneDraft(draft, new Set([3])), {
+    ...EMPTY_DRAFT,
+    ingredients: [[artistRef('IU')], [albumRef('2')]],
+    exclude: [3],
+  });
+});
+
+test('mixed drafts compare regardless of order', () => {
+  const a = { ...EMPTY_DRAFT, ingredients: [[2, artistRef('IU')], [albumRef('9')]] };
+  const b = { ...EMPTY_DRAFT, ingredients: [[albumRef('9')], [artistRef('IU'), 2]] };
+  assert.ok(sameDraft(a, b));
+  assert.ok(!sameDraft(a, { ...EMPTY_DRAFT, ingredients: [[2], [artistRef('IU')], [albumRef('9')]] }));
 });

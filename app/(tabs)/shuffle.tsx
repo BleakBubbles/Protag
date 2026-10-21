@@ -4,6 +4,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { listAlbums, listArtists, listTopAlbums, listTopArtists, type AlbumSummary, type ArtistSummary } from '@/db/albums';
 import { notifyLibraryChanged } from '@/db/changes';
 import { listMixes, parseDraft, saveMixAs, type Mix } from '@/db/mixes';
 import { countSongs } from '@/db/songs';
@@ -15,6 +16,7 @@ import { usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
 import { queueForQuery } from '@/player/sources';
 import { describeQuery } from '@/query/describe';
 import { dropInPot, tapExcluded, tapIngredient, tapTag, type PotItem, type PotSpot } from '@/query/pot';
+import { albumRef, artistRef, readRef, type Ref } from '@/query/refs';
 import { countMatching, findSongs } from '@/query/run';
 import {
   buildQuery,
@@ -26,8 +28,11 @@ import {
   type QueryDraft,
 } from '@/query/types';
 import { Button } from '@/ui/Button';
+import { plural } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
-import { ingredientKey, Pot, type ShuffleCount } from '@/ui/play/Pot';
+import { MusicPicker } from '@/ui/play/MusicPicker';
+import { PictureTile, SeeAllTile } from '@/ui/play/PictureTile';
+import { ingredientKey, Pot, type Look, type ShuffleCount } from '@/ui/play/Pot';
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
 import { PreviewSheet } from '@/ui/play/PreviewSheet';
 import { TagGrid } from '@/ui/play/TagGrid';
@@ -38,6 +43,8 @@ import { colors, font, spacing, tagColor } from '@/ui/theme';
 /** Covers in the pot's preview line, and how many of the most-played songs to find them among. */
 const COVERS = 5;
 const COVER_SAMPLE = 60;
+/** How many artists and albums each picture row shows before "All". */
+const ROW = 12;
 
 /**
  * Shuffle tab: build something to shuffle. The pot sits on top like a text field
@@ -57,14 +64,24 @@ export default function ShuffleScreen() {
   );
 
   const { data } = useLibraryQuery(async (db) => {
-    const [songs, tags, descendants, mixes] = await Promise.all([
+    const [songs, tags, descendants, mixes, artists, albums, topArtists, topAlbums] = await Promise.all([
       countSongs(db),
       listAllTagsWithCounts(db),
       buildDescendantMap(db),
       listMixes(db),
+      listArtists(db),
+      listAlbums(db),
+      listTopArtists(db, ROW),
+      listTopAlbums(db, ROW),
     ]);
     // A tag with nothing under it can't be shuffled, so the builder leaves it out.
-    return { songs, tags: tags.filter((t) => t.song_count > 0), descendants, mixes };
+    return {
+      songs,
+      tags: tags.filter((t) => t.song_count > 0),
+      descendants,
+      mixes,
+      music: { artists, albums, topArtists, topAlbums },
+    };
   }, []);
 
   if (!data) return <View style={styles.screen} />;
@@ -86,14 +103,23 @@ export default function ShuffleScreen() {
 /** Something to load into the pot, asked for by another screen. */
 type OpenRequest = { mixId: number } | { draft: QueryDraft } | null;
 
+/** Artists and albums, as ingredients: everyone (for names and the pickers), and the most played (for the rows). */
+type Music = {
+  artists: ArtistSummary[];
+  albums: AlbumSummary[];
+  topArtists: ArtistSummary[];
+  topAlbums: AlbumSummary[];
+};
+
 type BuilderProps = {
   tags: TagWithCounts[];
   descendants: Map<number, number[]>;
   mixes: Mix[];
+  music: Music;
   openRequest: OpenRequest;
 };
 
-function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
+function Builder({ tags, descendants, mixes, music, openRequest }: BuilderProps) {
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const playQuery = usePlayQuery();
@@ -106,8 +132,36 @@ function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
   const [previewing, setPreviewing] = useState(false);
   const { playQueue } = usePlayerActions();
 
-  const names = useMemo(() => new Map(tags.map((t) => [t.id, t.name])), [tags]);
-  const hues = useMemo(() => new Map(tags.map((t) => [t.id, tagColor(t.color)])), [tags]);
+  const [picking, setPicking] = useState<'artists' | 'albums' | null>(null);
+
+  // Everything an ingredient can be, by ref: its name, a tag's colour, an artist's or album's picture.
+  const tagIds = useMemo(() => new Set(tags.map((t) => t.id)), [tags]);
+  const names = useMemo(() => {
+    const map = new Map<Ref, string>(tags.map((t) => [t.id, t.name]));
+    for (const a of music.artists) map.set(artistRef(a.name), a.name);
+    for (const a of music.albums) map.set(albumRef(a.albumId), a.title);
+    return map;
+  }, [tags, music]);
+  const hues = useMemo(() => new Map<Ref, string>(tags.map((t) => [t.id, tagColor(t.color)])), [tags]);
+  const pictures = useMemo(() => {
+    const map = new Map<Ref, string | null>();
+    for (const a of music.artists) map.set(artistRef(a.name), a.coverAlbumId);
+    for (const a of music.albums) map.set(albumRef(a.albumId), a.albumId);
+    return map;
+  }, [music]);
+  const look = useCallback(
+    (ref: Ref): Look => {
+      const read = readRef(ref);
+      return {
+        // An artist is its own name; an album whose songs have all gone falls back to a word.
+        name: names.get(ref) ?? (read.kind === 'artist' ? read.name : read.kind === 'album' ? 'Album' : ''),
+        hue: hues.get(ref) ?? null,
+        cover: pictures.get(ref) ?? null,
+        round: read.kind === 'artist',
+      };
+    },
+    [names, hues, pictures]
+  );
   const children = useMemo(() => {
     const map = new Map<number | null, TagWithCounts[]>();
     for (const tag of tags) map.set(tag.parent_id, [...(map.get(tag.parent_id) ?? []), tag]);
@@ -129,7 +183,7 @@ function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
   }, [openRequest, mixes]);
 
   // Tags can be deleted (or emptied) while chosen here; quietly drop them.
-  const current = useMemo(() => pruneDraft(draft, new Set(names.keys())), [draft, names]);
+  const current = useMemo(() => pruneDraft(draft, tagIds), [draft, tagIds]);
   const query = useMemo(() => buildQuery(current), [current]);
 
   // The Shuffle label changes once per tap, when the new count is in, rather
@@ -182,9 +236,9 @@ function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
       }),
     []
   );
-  const choiceOf = useCallback((id: number) => tagChoice(current, id), [current]);
+  const choiceOf = useCallback((ref: Ref) => tagChoice(current, ref), [current]);
   // Pot changes apply to the pruned draft: it's what's on screen, so its indices are the ones tapped.
-  const tap = useCallback((id: number) => setDraft(tapTag(current, id)), [current]);
+  const tap = useCallback((ref: Ref) => setDraft(tapTag(current, ref)), [current]);
   const drag = usePotDragRoot((item: PotItem, spot: PotSpot) => setDraft(dropInPot(current, item, spot)));
   const still = drag.active === null;
   // An unchanged mix plays under its own name.
@@ -195,8 +249,7 @@ function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
       <View ref={drag.rootRef} style={styles.screen}>
         <Pot
           draft={current}
-          names={names}
-          hues={hues}
+          look={look}
           ingredientCounts={ingredientCounts}
           counted={counted}
           covers={covers}
@@ -206,7 +259,7 @@ function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
           onShuffle={() => playQuery(query, { draft: current, label: playLabel })}
           onClear={() => setDraft(EMPTY_DRAFT)}
           onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
-          onTapExcluded={(tagId) => setDraft(tapExcluded(current, tagId))}
+          onTapExcluded={(ref) => setDraft(tapExcluded(current, ref))}
         />
 
         <ScrollView style={styles.screen} contentContainerStyle={styles.content} scrollEnabled={still}>
@@ -226,7 +279,50 @@ function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
               />
             )}
           </View>
+
+          {/* Artists and albums: ingredients too, after the tags, as pictures. */}
+          {music.topArtists.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Artists</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} style={styles.bleed} contentContainerStyle={styles.pictureRow}>
+                {music.topArtists.map((a) => {
+                  const ref = artistRef(a.name);
+                  return (
+                    <PictureTile key={ref} refId={ref} name={a.name} cover={a.coverAlbumId} round choice={choiceOf(ref)} onPress={() => tap(ref)} />
+                  );
+                })}
+                <SeeAllTile label="All artists" round onPress={() => setPicking('artists')} />
+              </ScrollView>
+            </View>
+          )}
+          {music.topAlbums.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Albums</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} style={styles.bleed} contentContainerStyle={styles.pictureRow}>
+                {music.topAlbums.map((a) => {
+                  const ref = albumRef(a.albumId);
+                  return (
+                    <PictureTile key={ref} refId={ref} name={a.title} cover={a.albumId} round={false} choice={choiceOf(ref)} onPress={() => tap(ref)} />
+                  );
+                })}
+                <SeeAllTile label="All albums" round={false} onPress={() => setPicking('albums')} />
+              </ScrollView>
+            </View>
+          )}
         </ScrollView>
+
+        <MusicPicker
+          visible={picking !== null}
+          title={picking === 'albums' ? 'Albums' : 'Artists'}
+          items={
+            picking === 'albums'
+              ? music.albums.map((a) => ({ ref: albumRef(a.albumId), name: a.title, detail: a.artist ?? plural(a.songs, 'song'), cover: a.albumId, round: false }))
+              : music.artists.map((a) => ({ ref: artistRef(a.name), name: a.name, detail: plural(a.songs, 'song'), cover: a.coverAlbumId, round: true }))
+          }
+          choiceOf={choiceOf}
+          onTap={tap}
+          onClose={() => setPicking(null)}
+        />
 
         <PromptDialog
           visible={saving}
@@ -273,6 +369,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
+    gap: spacing.xl,
+  },
+  // A picture row runs to the screen's edges, starting in line with the grid.
+  bleed: {
+    marginHorizontal: -spacing.lg,
+  },
+  // Room above and beside the pictures for their rings, which a scroll view would clip.
+  pictureRow: {
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
   },
   section: {
     gap: spacing.md,

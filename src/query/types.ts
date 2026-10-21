@@ -1,3 +1,5 @@
+import { readRef, type Ref } from './refs';
+
 /**
  * The shape of a ProTag query.
  *
@@ -8,6 +10,8 @@
 export type TagQuery =
   | { type: 'all' }
   | { type: 'tag'; tagId: number; includeDescendants: boolean }
+  | { type: 'artist'; name: string }
+  | { type: 'album'; albumId: string }
   | { type: 'and'; children: TagQuery[] }
   | { type: 'or'; children: TagQuery[] }
   | { type: 'not'; child: TagQuery }
@@ -19,16 +23,16 @@ export const MATCH_ALL: TagQuery = { type: 'all' };
  * What the Shuffle tab's builder edits: the pot. Compiles to a `TagQuery` via
  * `buildQuery`.
  *
- * Each ingredient is one or more tags. A song plays if it matches any
- * ingredient, and an ingredient of several tags (combined by dragging one onto
- * another) needs all of them: "either" is the default, "both" is deliberate.
- * Exclusions apply on top. A tag sits in at most one place, so every tile has
- * one state.
+ * Each ingredient is one or more tags, artists or albums (`Ref`s). A song plays
+ * if it matches any ingredient, and an ingredient of several (combined by
+ * dragging one onto another) needs all of them: "either" is the default, "both"
+ * is deliberate. Exclusions apply on top. Each sits in at most one place, so
+ * every tile has one state.
  */
 export interface QueryDraft {
-  ingredients: number[][];
-  /** Tags whose songs never play. */
-  exclude: number[];
+  ingredients: Ref[][];
+  /** Whose songs never play. */
+  exclude: Ref[];
   /** Whether tags also match their subtags. */
   includeDescendants: boolean;
 }
@@ -46,11 +50,12 @@ export const EMPTY_DRAFT: QueryDraft = {
  * people mean, whereas OR-ing an exclusion would make it match everything.
  */
 export function buildQuery(draft: QueryDraft): TagQuery {
-  const leaf = (tagId: number): TagQuery => ({
-    type: 'tag',
-    tagId,
-    includeDescendants: draft.includeDescendants,
-  });
+  const leaf = (ref: Ref): TagQuery => {
+    const read = readRef(ref);
+    if (read.kind === 'artist') return { type: 'artist', name: read.name };
+    if (read.kind === 'album') return { type: 'album', albumId: read.albumId };
+    return { type: 'tag', tagId: read.tagId, includeDescendants: draft.includeDescendants };
+  };
   const one = (children: TagQuery[], type: 'and' | 'or'): TagQuery =>
     children.length === 1 ? children[0] : { type, children };
 
@@ -71,9 +76,9 @@ export function isEmptyQuery(query: TagQuery): boolean {
 
 export type TagChoice = 'include' | 'exclude' | 'off';
 
-export function tagChoice(draft: QueryDraft, tagId: number): TagChoice {
-  if (draft.ingredients.some((tags) => tags.includes(tagId))) return 'include';
-  if (draft.exclude.includes(tagId)) return 'exclude';
+export function tagChoice(draft: QueryDraft, ref: Ref): TagChoice {
+  if (draft.ingredients.some((tags) => tags.includes(ref))) return 'include';
+  if (draft.exclude.includes(ref)) return 'exclude';
   return 'off';
 }
 
@@ -87,23 +92,28 @@ export function isEmptyDraft(draft: QueryDraft): boolean {
  * saved mix.
  */
 export function sameDraft(a: QueryDraft, b: QueryDraft): boolean {
+  const sorted = (refs: readonly Ref[]) => refs.map(String).sort();
   const key = (d: QueryDraft) =>
-    JSON.stringify([
-      d.ingredients.map((tags) => [...tags].sort((x, y) => x - y).join()).sort(),
-      [...d.exclude].sort((x, y) => x - y),
-      d.includeDescendants,
-    ]);
+    JSON.stringify([d.ingredients.map((tags) => sorted(tags).join()).sort(), sorted(d.exclude), d.includeDescendants]);
   return key(a) === key(b);
 }
 
-/** Drop tags that no longer exist, e.g. from a mix saved before a tag was deleted. */
+/**
+ * Drop tags that no longer exist, e.g. from a mix saved before a tag was
+ * deleted. Artists and albums stay: one whose songs are gone just matches nothing.
+ */
 export function pruneDraft(draft: QueryDraft, existing: ReadonlySet<number>): QueryDraft {
   return mapDraftTags(draft, (id) => (existing.has(id) ? id : null));
 }
 
-/** Rewrite every tag id in a draft; `null` drops it, and an ingredient left empty goes too. */
+/** Rewrite every tag id in a draft, leaving artists and albums be; `null` drops it. */
 export function mapDraftTags(draft: QueryDraft, map: (tagId: number) => number | null): QueryDraft {
-  const all = (ids: number[]) => ids.map(map).filter((id): id is number => id !== null);
+  return mapDraftRefs(draft, (ref) => (typeof ref === 'number' ? map(ref) : ref));
+}
+
+/** Rewrite every ingredient in a draft; `null` drops it, and an ingredient left empty goes too. */
+export function mapDraftRefs(draft: QueryDraft, map: (ref: Ref) => Ref | null): QueryDraft {
+  const all = (refs: Ref[]) => refs.map(map).filter((ref): ref is Ref => ref !== null);
   return {
     ...draft,
     ingredients: draft.ingredients.map(all).filter((tags) => tags.length > 0),

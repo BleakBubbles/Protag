@@ -22,6 +22,11 @@ export const colors = {
   surface: '#1E1D1B',
   surfaceAlt: '#272624',
   border: '#34322F',
+  /**
+   * A step up from `border`: the neutral pill of an artist or album in the
+   * Shuffle tab's pot, where tags have their colours (colour is a tag's identity).
+   */
+  raised: '#3D3B38',
 
   text: '#EFEDE9',
   textDim: '#A3A09A',

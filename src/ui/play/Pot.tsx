@@ -3,6 +3,7 @@ import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, V
 
 import { albumArtUri } from '../../library/assets';
 import type { PotItem } from '../../query/pot';
+import type { Ref } from '../../query/refs';
 import type { QueryDraft } from '../../query/types';
 import { formatCount, plural } from '../format';
 import { Icon } from '../Icon';
@@ -32,14 +33,26 @@ export interface ShuffleCount {
   count: number;
 }
 
-/** How `ingredientCounts` names an ingredient: by its tags, not its place. */
-export const ingredientKey = (tags: readonly number[]) => tags.join();
+/** How `ingredientCounts` names an ingredient: by what's in it, not its place. */
+export const ingredientKey = (tags: readonly Ref[]) => tags.join();
+
+/** How an ingredient looks: its name, a tag's colour, or an artist's or album's picture. */
+export interface Look {
+  name: string;
+  /** A tag's colour as hex; null for artists and albums, which are neutral (colour is a tag's identity). */
+  hue: string | null;
+  /** Album id of the picture, for artists and albums. */
+  cover: string | null;
+  /** Round for an artist (a person), square for an album. */
+  round: boolean;
+}
+
+/** A small picture inside a pill. */
+const PILL_PICTURE = 22;
 
 export interface PotProps {
   draft: QueryDraft;
-  names: ReadonlyMap<number, string>;
-  /** Each tag's colour as hex. */
-  hues: ReadonlyMap<number, string>;
+  look: (ref: Ref) => Look;
   /** Songs per ingredient, by `ingredientKey`, once counted. */
   ingredientCounts: ReadonlyMap<string, number>;
   /** The latest finished count; the Shuffle button shows it as one change. */
@@ -53,7 +66,7 @@ export interface PotProps {
   onShuffle: () => void;
   onClear: () => void;
   onTapIngredient: (index: number) => void;
-  onTapExcluded: (tagId: number) => void;
+  onTapExcluded: (ref: Ref) => void;
 }
 
 /**
@@ -70,8 +83,7 @@ export interface PotProps {
  */
 export function Pot({
   draft,
-  names,
-  hues,
+  look,
   ingredientCounts,
   counted,
   covers,
@@ -89,7 +101,7 @@ export function Pot({
   const shuffle = shuffleText(counted);
 
   /** Each ingredient as a screen reader says it ("kpop and chill"), for naming what to combine with. */
-  const spoken = draft.ingredients.map((tags) => tags.map((id) => names.get(id) ?? '').join(' and '));
+  const spoken = draft.ingredients.map((tags) => tags.map((ref) => look(ref).name).join(' and '));
 
   // A combination can't be kept out (nobody means "not both"), so the zone stays away for it.
   const canKeepOut =
@@ -129,25 +141,19 @@ export function Pot({
                     index={index}
                     others={spoken.flatMap((other, i) => (i === index ? [] : [{ index: i, label: other }]))}
                     tags={tags}
-                    names={names}
-                    hues={hues}
+                    look={look}
                     count={ingredientCounts.get(ingredientKey(tags)) ?? null}
                     onTap={() => onTapIngredient(index)}
                   />
                 </View>
               ))}
-              {draft.exclude.map((tagId) => (
+              {draft.exclude.map((ref) => (
                 // Kept out reads as "minus": the − travels with its chip, like the +.
-                <View key={`x${tagId}`} style={styles.unit}>
+                <View key={`x${ref}`} style={styles.unit}>
                   <View importantForAccessibility="no-hide-descendants">
                     <Join minus size={SYMBOL} color={colors.exclude} />
                   </View>
-                  <ExcludedChip
-                    tagId={tagId}
-                    name={names.get(tagId) ?? ''}
-                    hue={hues.get(tagId) ?? colors.textDim}
-                    onTap={() => onTapExcluded(tagId)}
-                  />
+                  <ExcludedChip refId={ref} look={look(ref)} onTap={() => onTapExcluded(ref)} />
                 </View>
               ))}
             </ScrollView>
@@ -272,9 +278,8 @@ interface IngredientChipProps {
   index: number;
   /** The other ingredients, to offer combining with each (screen readers can't drag). */
   others: readonly { index: number; label: string }[];
-  tags: readonly number[];
-  names: ReadonlyMap<number, string>;
-  hues: ReadonlyMap<number, string>;
+  tags: readonly Ref[];
+  look: (ref: Ref) => Look;
   count: number | null;
   onTap: () => void;
 }
@@ -284,10 +289,10 @@ interface IngredientChipProps {
  * combination is a tray holding its tags' pills, joined by ×, so they read as
  * one thing that's picked up, dropped and split together.
  */
-function IngredientChip({ index, others, tags, names, hues, count, onTap }: IngredientChipProps) {
-  const label = tags.map((id) => names.get(id) ?? '');
-  const tint = tags.map((id) => hues.get(id) ?? colors.textDim);
-  const { handlers, lifting } = useDraggable({ kind: 'ingredient', index }, { names: label, colors: tint }, onTap);
+function IngredientChip({ index, others, tags, look, count, onTap }: IngredientChipProps) {
+  const looks = tags.map(look);
+  const label = looks.map((l) => l.name);
+  const { handlers, lifting } = useDraggable({ kind: 'ingredient', index }, ghostOf(looks), onTap);
   const target = useDropTarget({ kind: 'ingredient', index });
   const combined = tags.length > 1;
   const counted = count === null ? '' : formatCount(count);
@@ -324,24 +329,22 @@ function IngredientChip({ index, others, tags, names, hues, count, onTap }: Ingr
       onAccessibilityAction={(e) => act(e.nativeEvent.actionName)}
       style={[
         styles.chip,
-        combined ? styles.tray : { backgroundColor: tint[0] },
+        combined ? styles.tray : { backgroundColor: looks[0].hue ?? colors.raised },
         target.hovered && styles.chipHovered,
         lifting && styles.lifting,
       ]}
     >
       {combined ? (
         <>
-          {label.map((name, i) => (
+          {looks.map((l, i) => (
             <View key={tags[i]} style={styles.segmentRow}>
               {i > 0 && (
                 <View style={styles.times}>
                   <Join both size={SYMBOL} />
                 </View>
               )}
-              <View style={[styles.part, { backgroundColor: tint[i] }]}>
-                <Text style={styles.segmentText} numberOfLines={1}>
-                  {name}
-                </Text>
+              <View style={[styles.part, faceStyle(l)]}>
+                <Face look={l} />
               </View>
             </View>
           ))}
@@ -349,13 +352,11 @@ function IngredientChip({ index, others, tags, names, hues, count, onTap }: Ingr
         </>
       ) : (
         <>
-          <View style={styles.segment}>
-            <Text style={styles.segmentText} numberOfLines={1}>
-              {label[0]}
-            </Text>
+          <View style={[styles.segment, looks[0].hue === null && styles.withPicture]}>
+            <Face look={looks[0]} />
           </View>
           <View style={styles.count}>
-            <Text style={styles.countText}>{counted}</Text>
+            <Text style={[styles.countText, looks[0].hue === null && styles.neutralCount]}>{counted}</Text>
           </View>
         </>
       )}
@@ -364,9 +365,8 @@ function IngredientChip({ index, others, tags, names, hues, count, onTap }: Ingr
 }
 
 interface ExcludedChipProps {
-  tagId: number;
-  name: string;
-  hue: string;
+  refId: Ref;
+  look: Look;
   onTap: () => void;
 }
 
@@ -375,8 +375,9 @@ interface ExcludedChipProps {
  * shapes the mix as much as they do), inside a red rim, after a red −: the
  * same red ring that marks it on its tile.
  */
-function ExcludedChip({ tagId, name, hue, onTap }: ExcludedChipProps) {
-  const { handlers, lifting } = useDraggable({ kind: 'excluded', tagId }, { names: [name], colors: [hue] }, onTap);
+function ExcludedChip({ refId, look, onTap }: ExcludedChipProps) {
+  const { name } = look;
+  const { handlers, lifting } = useDraggable({ kind: 'excluded', ref: refId }, ghostOf([look]), onTap);
   const drop = usePotDrop();
   return (
     <View
@@ -390,19 +391,43 @@ function ExcludedChip({ tagId, name, hue, onTap }: ExcludedChipProps) {
       ]}
       onAccessibilityAction={(e) => {
         if (e.nativeEvent.actionName !== 'add') return onTap();
-        drop({ kind: 'excluded', tagId }, { kind: 'pot' });
+        drop({ kind: 'excluded', ref: refId }, { kind: 'pot' });
         AccessibilityInfo.announceForAccessibility(`${name} added to the mix`);
       }}
       style={[styles.chip, styles.keptOut, lifting && styles.lifting]}
     >
-      <View style={[styles.part, { backgroundColor: hue }]}>
-        <Text style={styles.segmentText} numberOfLines={1}>
-          {name}
-        </Text>
+      <View style={[styles.part, faceStyle(look)]}>
+        <Face look={look} />
       </View>
     </View>
   );
 }
+
+/** A tag's name on its colour; an artist's or album's on neutral, after its little picture. */
+function Face({ look }: { look: Look }) {
+  return (
+    <>
+      {look.hue === null && (
+        <Artwork
+          uri={look.cover ? albumArtUri(look.cover) : null}
+          size={PILL_PICTURE}
+          cornerRadius={look.round ? PILL_PICTURE / 2 : 4}
+        />
+      )}
+      <Text style={[styles.segmentText, look.hue === null && styles.neutralText]} numberOfLines={1}>
+        {look.name}
+      </Text>
+    </>
+  );
+}
+
+const faceStyle = (look: Look) => [{ backgroundColor: look.hue ?? colors.raised }, look.hue === null && styles.withPicture];
+
+/** What floats under the finger: neutral ones in a light grey, so their dark lettering still reads. */
+const ghostOf = (looks: readonly Look[]) => ({
+  names: looks.map((l) => l.name),
+  colors: looks.map((l) => l.hue ?? colors.textDim),
+});
 
 /** Slides over the buttons while something is lifted; dropping a tag here excludes it. */
 function KeepOut({ shown }: { shown: boolean }) {
@@ -554,12 +579,27 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   segment: {
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
     paddingHorizontal: spacing.md,
+  },
+  // A picture sits close to the pill's rounded end.
+  withPicture: {
+    paddingLeft: TRAY_INSET + 2,
+  },
+  neutralText: {
+    color: colors.text,
+  },
+  neutralCount: {
+    color: colors.textDim,
+    opacity: 1,
   },
   part: {
     alignSelf: 'stretch',
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
     paddingHorizontal: spacing.md - TRAY_INSET,
     borderRadius: radius.pill,
   },

@@ -1,3 +1,4 @@
+import type { Ref } from './refs';
 import type { QueryDraft } from './types';
 
 /**
@@ -5,27 +6,26 @@ import type { QueryDraft } from './types';
  * the draft. Kept apart from the screen so the rules can be tested directly.
  */
 
-/** Something picked up: a tile from the grid, or one of the pot's own chips. */
-export type PotItem =
-  { kind: 'tile'; tagId: number } | { kind: 'ingredient'; index: number } | { kind: 'excluded'; tagId: number };
+/** Something picked up: a tile (tag, artist or album), or one of the pot's own chips. */
+export type PotItem = { kind: 'tile'; ref: Ref } | { kind: 'ingredient'; index: number } | { kind: 'excluded'; ref: Ref };
 
 /** Where it was let go. `null` is anywhere outside the pot. */
 export type PotSpot = { kind: 'ingredient'; index: number } | { kind: 'pot' } | { kind: 'keepOut' } | null;
 
-/** Take a tag out of wherever it sits in the draft. */
-function takeOut(draft: QueryDraft, tagId: number): QueryDraft {
+/** Take a tag (or artist, or album) out of wherever it sits in the draft. */
+function takeOut(draft: QueryDraft, ref: Ref): QueryDraft {
   return {
     ...draft,
-    ingredients: draft.ingredients.map((tags) => tags.filter((id) => id !== tagId)).filter((tags) => tags.length > 0),
-    exclude: draft.exclude.filter((id) => id !== tagId),
+    ingredients: draft.ingredients.map((tags) => tags.filter((id) => id !== ref)).filter((tags) => tags.length > 0),
+    exclude: draft.exclude.filter((id) => id !== ref),
   };
 }
 
 /** A tile tapped: into the pot as its own ingredient, or back out from wherever it is. */
-export function tapTag(draft: QueryDraft, tagId: number): QueryDraft {
-  const inUse = draft.ingredients.some((tags) => tags.includes(tagId)) || draft.exclude.includes(tagId);
-  if (inUse) return takeOut(draft, tagId);
-  return { ...draft, ingredients: [...draft.ingredients, [tagId]] };
+export function tapTag(draft: QueryDraft, ref: Ref): QueryDraft {
+  const inUse = draft.ingredients.some((tags) => tags.includes(ref)) || draft.exclude.includes(ref);
+  if (inUse) return takeOut(draft, ref);
+  return { ...draft, ingredients: [...draft.ingredients, [ref]] };
 }
 
 /** An ingredient tapped: a combined one splits into its tags; a single one goes back. */
@@ -38,8 +38,8 @@ export function tapIngredient(draft: QueryDraft, index: number): QueryDraft {
 }
 
 /** An excluded tag tapped: it goes back. */
-export function tapExcluded(draft: QueryDraft, tagId: number): QueryDraft {
-  return takeOut(draft, tagId);
+export function tapExcluded(draft: QueryDraft, ref: Ref): QueryDraft {
+  return takeOut(draft, ref);
 }
 
 /**
@@ -51,7 +51,7 @@ export function tapExcluded(draft: QueryDraft, tagId: number): QueryDraft {
  *   goes back to where it was).
  */
 export function dropInPot(draft: QueryDraft, item: PotItem, spot: PotSpot): QueryDraft {
-  const moving = item.kind === 'ingredient' ? draft.ingredients[item.index] : [item.tagId];
+  const moving = item.kind === 'ingredient' ? draft.ingredients[item.index] : [item.ref];
   if (!moving) return draft;
   // Without what's moving, so a tag never ends up in two places.
   const rest =
@@ -60,7 +60,7 @@ export function dropInPot(draft: QueryDraft, item: PotItem, spot: PotSpot): Quer
           ...draft,
           ingredients: draft.ingredients.filter((_, i) => i !== item.index),
         }
-      : takeOut(draft, item.tagId);
+      : takeOut(draft, item.ref);
 
   if (spot === null) return item.kind === 'tile' ? draft : rest;
 
@@ -74,14 +74,14 @@ export function dropInPot(draft: QueryDraft, item: PotItem, spot: PotSpot): Quer
         .map((tags, i) => {
           if (i === spot.index) return [...tags, ...moving.filter((id) => !tags.includes(id))];
           if (item.kind === 'ingredient') return i === item.index ? [] : tags;
-          return tags.filter((id) => id !== item.tagId);
+          return tags.filter((id) => id !== item.ref);
         })
         .filter((tags) => tags.length > 0);
       return { ...rest, ingredients };
     }
     case 'pot':
-      if (item.kind === 'ingredient' || draft.ingredients.some((tags) => tags.includes(item.tagId))) return draft;
-      return { ...rest, ingredients: [...rest.ingredients, [item.tagId]] };
+      if (item.kind === 'ingredient' || draft.ingredients.some((tags) => tags.includes(item.ref))) return draft;
+      return { ...rest, ingredients: [...rest.ingredients, [item.ref]] };
     case 'keepOut':
       if (moving.length !== 1 || draft.exclude.includes(moving[0])) return draft;
       return { ...rest, exclude: [...rest.exclude, moving[0]] };

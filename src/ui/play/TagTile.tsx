@@ -66,7 +66,7 @@ export function TagTile({ tagId, name, color, songCount, choice, width, onPress,
 
   // While pressed, the tile already shows the colour the tap leads to, so
   // releasing only adds or removes the marks.
-  const { handlers, pressed, lifting } = useDraggable({ kind: 'tile', tagId }, { names: [name], colors: [hue] }, onPress);
+  const { handlers, pressed, lifting } = useDraggable({ kind: 'tile', ref: tagId }, { names: [name], colors: [hue] }, onPress);
   const drop = usePotDrop();
   const shown = pressed ? AFTER_TAP[choice] : choice;
   const text = shown === 'off' ? colors.text : colors.bg;
@@ -85,7 +85,7 @@ export function TagTile({ tagId, name, color, songCount, choice, width, onPress,
         ]}
         onAccessibilityAction={(e) => {
           if (e.nativeEvent.actionName !== 'keepOut') return onPress();
-          drop({ kind: 'tile', tagId }, { kind: 'keepOut' });
+          drop({ kind: 'tile', ref: tagId }, { kind: 'keepOut' });
           AccessibilityInfo.announceForAccessibility(`${name} kept out`);
         }}
         style={[styles.main, { backgroundColor: withAlpha(hue, WASH[shown]) }]}

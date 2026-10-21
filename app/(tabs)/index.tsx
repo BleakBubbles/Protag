@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { listAlbumTitles } from '@/db/albums';
 import { notifyLibraryChanged } from '@/db/changes';
 import { deleteMix, listMixes, renameMix, type Mix } from '@/db/mixes';
 import { countSongs } from '@/db/songs';
@@ -11,6 +12,7 @@ import { loadMixArt } from '@/library/mixArt';
 import { openLibrary, openShuffle } from '@/navigation';
 import { usePlayQuery } from '@/player/PlayerProvider';
 import { describeQuery } from '@/query/describe';
+import { isTagRef, type Ref } from '@/query/refs';
 import { buildQuery, pruneDraft } from '@/query/types';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
@@ -41,15 +43,16 @@ export default function MixesScreen() {
   useFocusEffect(useCallback(() => show(), [show]));
 
   const { data } = useLibraryQuery(async (db) => {
-    const [songs, tags, descendants, mixes] = await Promise.all([
+    const [songs, tags, descendants, mixes, albumTitles] = await Promise.all([
       countSongs(db),
       listAllTagsWithCounts(db),
       buildDescendantMap(db),
       listMixes(db),
+      listAlbumTitles(db),
     ]);
     const tagIds = new Set(tags.map((t) => t.id));
     const mixArt = await loadMixArt(db, mixes, tagIds, descendants);
-    return { songs, tags, tagIds, mixes, mixArt };
+    return { songs, tags, tagIds, mixes, mixArt, albumTitles };
   }, []);
 
   /** The mix whose long-press options are open, and the one being renamed. */
@@ -82,7 +85,7 @@ export default function MixesScreen() {
     );
   }
 
-  const names = new Map(data.tags.map((t) => [t.id, t.name]));
+  const names = new Map<Ref, string>([...data.tags.map((t) => [t.id, t.name] as const), ...data.albumTitles]);
   const colorOf = new Map(data.tags.map((t) => [t.id, t.color]));
   const cardWidth = (screenWidth - spacing.lg * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
 
@@ -119,7 +122,8 @@ export default function MixesScreen() {
               name={item.name}
               description={describeQuery(queryOf(item), names)}
               albumIds={data.mixArt.get(item.id) ?? []}
-              color={tagColor(colorOf.get(item.draft.ingredients[0]?.[0] ?? -1) ?? null)}
+              // A mix wears the colour of its first tag (artists and albums have none).
+              color={tagColor(colorOf.get(item.draft.ingredients.flat().find(isTagRef) ?? -1) ?? null)}
               width={cardWidth}
               onPress={() => play(item)}
               onLongPress={() => setMenuMix(item)}

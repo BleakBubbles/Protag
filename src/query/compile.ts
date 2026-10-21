@@ -3,7 +3,7 @@ import type { TagQuery } from './types';
 export interface CompiledQuery {
   /** A boolean SQL expression over the songs alias. Always parenthesised. */
   where: string;
-  params: number[];
+  params: (number | string)[];
 }
 
 /** Maps every tag id to itself plus its descendants. See `buildDescendantMap`. */
@@ -45,6 +45,13 @@ export function compileWhere(
       };
     }
 
+    // Straight from the song's own metadata: no tags involved.
+    case 'artist':
+      return { where: `(${alias}.artist = ?)`, params: [query.name] };
+
+    case 'album':
+      return { where: `(${alias}.album_id = ?)`, params: [query.albumId] };
+
     case 'and':
     case 'or': {
       // An empty AND matches everything, an empty OR matches nothing — the
@@ -83,7 +90,7 @@ export function compileSongSelect(
   query: TagQuery,
   descendants: DescendantMap,
   options: { order?: SongOrder; limit?: number } = {}
-): { sql: string; params: number[] } {
+): { sql: string; params: (number | string)[] } {
   const { where, params } = compileWhere(query, descendants);
   const order = ORDER_SQL[options.order ?? 'title'];
   const limit = options.limit ? ` LIMIT ${Math.floor(options.limit)}` : '';
@@ -98,7 +105,7 @@ export function compileSongSelect(
 export function compileCountSelect(
   query: TagQuery,
   descendants: DescendantMap
-): { sql: string; params: number[] } {
+): { sql: string; params: (number | string)[] } {
   const { where, params } = compileWhere(query, descendants);
   return {
     sql: `SELECT COUNT(*) AS n FROM songs s WHERE s.is_missing = 0 AND ${where}`,

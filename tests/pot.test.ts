@@ -37,31 +37,31 @@ test('dropping onto an ingredient combines, keeping its place', () => {
   );
   // A tile from the grid, even one already elsewhere in the pot or excluded.
   assert.deepEqual(
-    dropInPot(pot([[1], [2]]), { kind: 'tile', tagId: 5 }, { kind: 'ingredient', index: 1 }),
+    dropInPot(pot([[1], [2]]), { kind: 'tile', ref: 5 }, { kind: 'ingredient', index: 1 }),
     pot([[1], [2, 5]])
   );
   assert.deepEqual(
-    dropInPot(pot([[1], [2]]), { kind: 'tile', tagId: 1 }, { kind: 'ingredient', index: 1 }),
+    dropInPot(pot([[1], [2]]), { kind: 'tile', ref: 1 }, { kind: 'ingredient', index: 1 }),
     pot([[2, 1]])
   );
   assert.deepEqual(
-    dropInPot(pot([[1]], [4]), { kind: 'excluded', tagId: 4 }, { kind: 'ingredient', index: 0 }),
+    dropInPot(pot([[1]], [4]), { kind: 'excluded', ref: 4 }, { kind: 'ingredient', index: 0 }),
     pot([[1, 4]])
   );
   // Onto itself, or onto a combination that already has it: nothing changes.
   const same = pot([[1, 2]]);
   assert.equal(dropInPot(same, { kind: 'ingredient', index: 0 }, { kind: 'ingredient', index: 0 }), same);
-  assert.equal(dropInPot(same, { kind: 'tile', tagId: 2 }, { kind: 'ingredient', index: 0 }), same);
+  assert.equal(dropInPot(same, { kind: 'tile', ref: 2 }, { kind: 'ingredient', index: 0 }), same);
 });
 
 test('dropping into the pot adds; into Keep out excludes; outside takes out', () => {
-  assert.deepEqual(dropInPot(pot([[1]]), { kind: 'tile', tagId: 2 }, { kind: 'pot' }), pot([[1], [2]]));
-  assert.deepEqual(dropInPot(pot([], [2]), { kind: 'excluded', tagId: 2 }, { kind: 'pot' }), pot([[2]]));
+  assert.deepEqual(dropInPot(pot([[1]]), { kind: 'tile', ref: 2 }, { kind: 'pot' }), pot([[1], [2]]));
+  assert.deepEqual(dropInPot(pot([], [2]), { kind: 'excluded', ref: 2 }, { kind: 'pot' }), pot([[2]]));
   const inCombo = pot([[1, 2]]);
-  assert.equal(dropInPot(inCombo, { kind: 'tile', tagId: 2 }, { kind: 'pot' }), inCombo, 'already in the pot');
+  assert.equal(dropInPot(inCombo, { kind: 'tile', ref: 2 }, { kind: 'pot' }), inCombo, 'already in the pot');
 
   assert.deepEqual(dropInPot(pot([[1], [2]]), { kind: 'ingredient', index: 0 }, { kind: 'keepOut' }), pot([[2]], [1]));
-  assert.deepEqual(dropInPot(pot([[1, 2]]), { kind: 'tile', tagId: 2 }, { kind: 'keepOut' }), pot([[1]], [2]));
+  assert.deepEqual(dropInPot(pot([[1, 2]]), { kind: 'tile', ref: 2 }, { kind: 'keepOut' }), pot([[1]], [2]));
   assert.equal(
     dropInPot(inCombo, { kind: 'ingredient', index: 0 }, { kind: 'keepOut' }),
     inCombo,
@@ -69,7 +69,7 @@ test('dropping into the pot adds; into Keep out excludes; outside takes out', ()
   );
 
   assert.deepEqual(dropInPot(pot([[1], [2]]), { kind: 'ingredient', index: 0 }, null), pot([[2]]));
-  assert.deepEqual(dropInPot(pot([[1]], [2]), { kind: 'excluded', tagId: 2 }, null), pot([[1]]));
+  assert.deepEqual(dropInPot(pot([[1]], [2]), { kind: 'excluded', ref: 2 }, null), pot([[1]]));
   const draft = pot([[1]]);
-  assert.equal(dropInPot(draft, { kind: 'tile', tagId: 1 }, null), draft, 'a tile dragged off just goes back');
+  assert.equal(dropInPot(draft, { kind: 'tile', ref: 1 }, null), draft, 'a tile dragged off just goes back');
 });

@@ -32,7 +32,7 @@ type Rect = { x: number; y: number; width: number; height: number };
 type Target = { spot: NonNullable<PotSpot>; ref: RefObject<ViewInstance | null> };
 
 const itemKey = (item: PotItem): string =>
-  item.kind === 'ingredient' ? `i${item.index}` : `${item.kind}${item.tagId}`;
+  item.kind === 'ingredient' ? `i${item.index}` : `${item.kind}${item.ref}`;
 
 export const spotKey = (spot: PotSpot): string =>
   spot === null ? 'away' : spot.kind === 'ingredient' ? `i${spot.index}` : spot.kind;

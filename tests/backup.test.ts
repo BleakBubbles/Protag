@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { freshDatabase, insertSong, type TestDatabase } from './helpers/db.ts';
 import { listMixes, saveMix } from '../src/db/mixes.ts';
 import { addTagToSong, createTag, setTagColor } from '../src/db/tags.ts';
+import { albumRef, artistRef } from '../src/query/refs.ts';
 import { EMPTY_DRAFT } from '../src/query/types.ts';
 import {
   applyImport,
@@ -203,4 +204,26 @@ test('mixes come along, pointing at the restored tags', async () => {
 test('a backup made before mixes existed still imports', () => {
   const backup = parseBackup(JSON.stringify({ app: 'ProTag', format: 1, tags: [], songs: [] }));
   assert.deepEqual(backup.mixes, []);
+});
+
+test('a mix’s albums are found again on the new phone by name and artist', async () => {
+  const source = await freshDatabase();
+  await insertSong(source, 'Ditto', { artist: 'NewJeans', album: 'OMG', albumId: '7' });
+  await insertSong(source, 'Snooze', { artist: 'SZA', album: 'SOS', albumId: '8' });
+  const chill = await createTag(source as never, 'chill', null);
+  await saveMix(source as never, 'Mood', {
+    ...EMPTY_DRAFT,
+    ingredients: [[albumRef('7'), chill], [artistRef('IU')], [albumRef('8')]],
+  });
+
+  // Another phone: OMG has its own album id there, and SOS isn't on it.
+  const target = await freshDatabase();
+  await insertSong(target, 'Ditto', { artist: 'NewJeans', album: 'OMG', albumId: '55' });
+  await applyImport(target as never, await exportInto(source, target));
+
+  const [mix] = await listMixes(target as never);
+  const [tag] = await target.getAllAsync<{ id: number }>("SELECT id FROM tags WHERE name = 'chill'");
+  assert.deepEqual(mix.draft.ingredients, [[albumRef('55'), tag.id], [artistRef('IU')]]);
+  source.close();
+  target.close();
 });

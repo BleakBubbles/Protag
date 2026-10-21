@@ -6,6 +6,7 @@ import { buildDescendantMap } from '../../db/tags';
 import type { SongRow } from '../../db/types';
 import { albumArtUri } from '../../library/assets';
 import { findSongs } from '../../query/run';
+import type { Ref } from '../../query/refs';
 import { buildQuery, type QueryDraft } from '../../query/types';
 import { BottomSheet } from '../BottomSheet';
 import { FilterChip } from '../FilterChip';
@@ -21,7 +22,7 @@ export interface PreviewSheetProps {
   draft: QueryDraft;
   /** The whole pot in words: "kpop × chill + lofi, not sad". */
   description: string;
-  names: ReadonlyMap<number, string>;
+  names: ReadonlyMap<Ref, string>;
   onClose: () => void;
   /** Shuffle the whole pot, starting with this song. */
   onPlay: (songId: number) => void;
@@ -60,7 +61,7 @@ export function PreviewSheet({ visible, draft, description, names, onClose, onPl
     };
   }, [db, draft, filter, visible]);
 
-  const spoken = (tags: readonly number[]) => tags.map((id) => names.get(id) ?? '').join(' × ');
+  const spoken = (tags: readonly Ref[]) => tags.map((ref) => names.get(ref) ?? '').join(' × ');
 
   return (
     <BottomSheet visible={visible} onClose={onClose}>

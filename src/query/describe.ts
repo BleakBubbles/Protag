@@ -1,3 +1,4 @@
+import { albumRef, type Ref } from './refs';
 import type { TagQuery } from './types';
 
 /** Where a node sits, so we only add parentheses where they change meaning. */
@@ -11,11 +12,11 @@ type Position = 'top' | 'and' | 'or' | 'not';
  * The player shows this so it's always obvious *why* a given set of songs is
  * playing — which is the whole point of shuffling by query instead of by list.
  */
-export function describeQuery(query: TagQuery, tagNames: Map<number, string>): string {
-  return render(query, tagNames, 'top') || 'Everything';
+export function describeQuery(query: TagQuery, names: ReadonlyMap<Ref, string>): string {
+  return render(query, names, 'top') || 'Everything';
 }
 
-function render(query: TagQuery, names: Map<number, string>, position: Position): string {
+function render(query: TagQuery, names: ReadonlyMap<Ref, string>, position: Position): string {
   switch (query.type) {
     case 'all':
       return 'Everything';
@@ -27,6 +28,13 @@ function render(query: TagQuery, names: Map<number, string>, position: Position)
       const name = names.get(query.tagId) ?? 'deleted tag';
       return query.includeDescendants ? name : `${name} only`;
     }
+
+    case 'artist':
+      return query.name;
+
+    // Album ids mean nothing to people: their titles come in `names`, by ref.
+    case 'album':
+      return names.get(albumRef(query.albumId)) ?? 'an album';
 
     case 'not':
       return `not ${render(query.child, names, 'not')}`;
