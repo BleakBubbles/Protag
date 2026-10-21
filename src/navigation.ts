@@ -22,6 +22,9 @@ export const openEditTags = (songIds: readonly number[]) =>
 
 export const openManageLibrary = () => router.push('/library/manage');
 
+/** Which of the phone's audio folders the library reads. */
+export const openLibraryFolders = () => router.push('/library/folders');
+
 export const openLibrary = () => router.navigate('/library');
 
 /** The Shuffle tab, optionally with a saved mix or a tag combination loaded into the pot. */

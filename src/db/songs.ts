@@ -79,13 +79,28 @@ export async function upsertScannedSong(
  */
 export async function flagMissingAfterScan(
   db: SQLiteDatabase,
-  scanStartedAt: number
-): Promise<number> {
+  scanStartedAt: number,
+  leftOut: readonly string[] = []
+): Promise<{ missing: number; hidden: number }> {
+  // Songs in folders the user left out weren't seen either, but they're
+  // still on the phone: counted apart, so they aren't reported as gone.
+  const hidden =
+    leftOut.length === 0
+      ? 0
+      : ((
+          await db.getFirstAsync<{ n: number }>(
+            `SELECT COUNT(*) AS n FROM songs
+             WHERE last_seen_at < ? AND is_missing = 0
+               AND media_id IN (SELECT value FROM json_each(?))`,
+            scanStartedAt,
+            JSON.stringify(leftOut)
+          )
+        )?.n ?? 0);
   const result = await db.runAsync(
     'UPDATE songs SET is_missing = 1 WHERE last_seen_at < ? AND is_missing = 0',
     scanStartedAt
   );
-  return result.changes;
+  return { missing: result.changes - hidden, hidden };
 }
 
 export async function getSong(db: SQLiteDatabase, id: number): Promise<SongRow | null> {

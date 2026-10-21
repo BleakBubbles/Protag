@@ -2,9 +2,11 @@ import { ScrollView, StyleSheet, Text } from 'react-native';
 
 import { countSongs } from '@/db/songs';
 import { listTags } from '@/db/tags';
+import { loadFolderChoices } from '@/library/libraryFolders';
 import { useBackup } from '@/library/useBackup';
 import { useLibraryScan } from '@/library/useLibraryScan';
 import { usePlaylistImport } from '@/library/usePlaylistImport';
+import { openLibraryFolders } from '@/navigation';
 import { Button } from '@/ui/Button';
 import { Card, CardActions, CardText } from '@/ui/Card';
 import { formatDaysAgo, plural } from '@/ui/format';
@@ -16,8 +18,9 @@ import { colors, font, spacing } from '@/ui/theme';
 /** Rescan the device, import playlists, and back up tags — the library's housekeeping. */
 export default function ManageLibraryScreen() {
   const { data: counts } = useLibraryQuery(async (db) => {
-    const [songs, tags] = await Promise.all([countSongs(db), listTags(db)]);
-    return { songs, tags: tags.length };
+    const [songs, tags, folders] = await Promise.all([countSongs(db), listTags(db), loadFolderChoices(db)]);
+    const choices = Object.values(folders);
+    return { songs, tags: tags.length, folders: choices.length, reading: choices.filter((f) => f.include).length };
   }, []);
   const scan = useLibraryScan();
   const imports = usePlaylistImport();
@@ -33,7 +36,24 @@ export default function ManageLibraryScreen() {
         </Card>
       )}
 
-      <ScanCard state={scan.state} hasSongs={(counts?.songs ?? 0) > 0} disabled={busy} onScan={scan.run} />
+      <ScanCard
+        state={scan.state}
+        hasSongs={(counts?.songs ?? 0) > 0}
+        disabled={busy}
+        onScan={scan.run}
+        onChooseFolders={openLibraryFolders}
+      />
+
+      <Card title="Folders">
+        <CardText>
+          {counts && counts.folders > 0
+            ? `Reading ${counts.reading} of ${plural(counts.folders, 'folder')}. Ones that look like voice messages or recordings are left out.`
+            : 'ProTag reads every audio folder on this phone, except ones that look like voice messages or recordings.'}
+        </CardText>
+        <CardActions>
+          <Button label="Choose folders" icon="folder-outline" variant="secondary" onPress={openLibraryFolders} disabled={busy} />
+        </CardActions>
+      </Card>
 
       <Card title="Playlists">
         <CardText>

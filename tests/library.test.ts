@@ -143,18 +143,34 @@ test('songs a scan does not see are flagged missing, and return when seen again'
   await recordScanPage(db as never, [scanned('1'), scanned('2')], 1000);
 
   await recordScanPage(db as never, [scanned('1')], 2000);
-  assert.equal(await completeScan(db as never, 2000, 1), 1);
+  assert.deepEqual(await completeScan(db as never, 2000, 1), { missing: 1, hidden: 0 });
   const missing = await db.getFirstAsync<{ media_id: string }>(
     'SELECT media_id FROM songs WHERE is_missing = 1'
   );
   assert.equal(missing?.media_id, '2');
 
   await recordScanPage(db as never, [scanned('1'), scanned('2')], 3000);
-  assert.equal(await completeScan(db as never, 3000, 2), 0);
+  assert.deepEqual(await completeScan(db as never, 3000, 2), { missing: 0, hidden: 0 });
   const stillMissing = await db.getFirstAsync<{ n: number }>(
     'SELECT COUNT(*) AS n FROM songs WHERE is_missing = 1'
   );
   assert.equal(stillMissing?.n, 0);
+  db.close();
+});
+
+test('songs in a left-out folder are hidden, not reported as gone', async () => {
+  const db = await freshDatabase();
+  await recordScanPage(db as never, [scanned('1'), scanned('2'), scanned('3')], 1000);
+
+  // '2' is in a folder now left out; '3' has really gone.
+  await recordScanPage(db as never, [scanned('1')], 2000);
+  assert.deepEqual(await completeScan(db as never, 2000, 1, ['2', 'not-in-library']), { missing: 1, hidden: 1 });
+
+  // Ticked again, it comes back with the next scan.
+  await recordScanPage(db as never, [scanned('1'), scanned('2')], 3000);
+  assert.deepEqual(await completeScan(db as never, 3000, 2), { missing: 0, hidden: 0 });
+  const back = await db.getFirstAsync<{ is_missing: number }>("SELECT is_missing FROM songs WHERE media_id = '2'");
+  assert.equal(back?.is_missing, 0);
   db.close();
 });
 
@@ -163,7 +179,7 @@ test('a scan that saw nothing does not wipe the library', async () => {
   await recordScanPage(db as never, [scanned('1'), scanned('2')], 1000);
 
   // e.g. permission revoked mid-session, or storage not mounted yet
-  assert.equal(await completeScan(db as never, 2000, 0), 0);
+  assert.deepEqual(await completeScan(db as never, 2000, 0), { missing: 0, hidden: 0 });
   const missing = await db.getFirstAsync<{ n: number }>(
     'SELECT COUNT(*) AS n FROM songs WHERE is_missing = 1'
   );

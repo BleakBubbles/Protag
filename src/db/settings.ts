@@ -10,6 +10,8 @@ export const SettingKey = {
   lastBackupExport: 'backup.lastExportAt',
   /** 'shown' once the user has seen how to bring back a hidden mini-player. */
   miniPlayerHint: 'miniPlayer.hint',
+  /** JSON `FolderChoices`: which of the phone's audio folders are read (library/folders.ts). */
+  libraryFolders: 'library.folders',
 } as const;
 
 export type SettingKey = (typeof SettingKey)[keyof typeof SettingKey];
