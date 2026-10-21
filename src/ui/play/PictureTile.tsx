@@ -41,7 +41,8 @@ export interface PictureTileProps {
 export function PictureTile({ refId, name, cover, round, choice, onPress }: PictureTileProps) {
   const { handlers, pressed, lifting } = useDraggable(
     { kind: 'tile', ref: refId },
-    { names: [name], colors: [colors.textDim] },
+    // Lifts as its picture, not as text.
+    { parts: [{ name, hue: null, cover, round }], picture: true },
     onPress
   );
   const drop = usePotDrop();

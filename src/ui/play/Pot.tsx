@@ -10,7 +10,7 @@ import { Icon } from '../Icon';
 import { IconButton } from '../IconButton';
 import { Artwork } from '../player/Artwork';
 import { colors, font, iconSize, radius, spacing, touchTarget } from '../theme';
-import { Join, useDraggable, useDropTarget, usePotDragState, usePotDrop } from './PotDrag';
+import { Join, useDraggable, useDropTarget, usePotDragState, usePotDrop, type Look } from './PotDrag';
 import { withAlpha } from './TagTile';
 
 /** The top line: tall enough for the cover stack. */
@@ -36,16 +36,7 @@ export interface ShuffleCount {
 /** How `ingredientCounts` names an ingredient: by what's in it, not its place. */
 export const ingredientKey = (tags: readonly Ref[]) => tags.join();
 
-/** How an ingredient looks: its name, a tag's colour, or an artist's or album's picture. */
-export interface Look {
-  name: string;
-  /** A tag's colour as hex; null for artists and albums, which are neutral (colour is a tag's identity). */
-  hue: string | null;
-  /** Album id of the picture, for artists and albums. */
-  cover: string | null;
-  /** Round for an artist (a person), square for an album. */
-  round: boolean;
-}
+export type { Look } from './PotDrag';
 
 /** A small picture inside a pill. */
 const PILL_PICTURE = 22;
@@ -423,11 +414,8 @@ function Face({ look }: { look: Look }) {
 
 const faceStyle = (look: Look) => [{ backgroundColor: look.hue ?? colors.raised }, look.hue === null && styles.withPicture];
 
-/** What floats under the finger: neutral ones in a light grey, so their dark lettering still reads. */
-const ghostOf = (looks: readonly Look[]) => ({
-  names: looks.map((l) => l.name),
-  colors: looks.map((l) => l.hue ?? colors.textDim),
-});
+/** What floats under the finger: the chip as it looks here. */
+const ghostOf = (looks: readonly Look[]) => ({ parts: [...looks] });
 
 /** Slides over the buttons while something is lifted; dropping a tag here excludes it. */
 function KeepOut({ shown }: { shown: boolean }) {

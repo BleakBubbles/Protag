@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 
 import type { PotItem, PotSpot } from '../../query/pot';
+import { albumArtUri } from '../../library/assets';
+import { Artwork } from '../player/Artwork';
 import { colors, font, radius, spacing } from '../theme';
 
 /** How long a finger rests on a tag before it lifts. Shorter fights scrolling; longer feels stuck. */
@@ -20,12 +22,33 @@ const SLOP = 8;
 const GHOST_WIDTH = 280;
 /** The ghost floats this far above the finger, so the finger never hides it or what's under it. */
 const GHOST_LIFT = 64;
+/** A lifted picture is taller than a pill, so it floats higher. */
+const PICTURE_LIFT = 124;
+const GHOST_PICTURE = 72;
+const PILL_PICTURE = 24;
+
+/**
+ * How one part of the pot looks: its name, a tag's colour, or an artist's or
+ * album's picture. The pot's chips, the tiles and the drag ghost all draw from it.
+ */
+export interface Look {
+  name: string;
+  /** A tag's colour as hex; null for artists and albums, which are neutral (colour is a tag's identity). */
+  hue: string | null;
+  /** Album id of the picture, for artists and albums. */
+  cover: string | null;
+  /** Round for an artist (a person), square for an album. */
+  round: boolean;
+}
 
 /** What the floating copy of a dragged thing shows. */
 export interface Ghost {
-  names: string[];
-  /** Hex, one per name. */
-  colors: string[];
+  parts: Look[];
+  /**
+   * Lifted from an artist's or album's picture tile: it floats as that picture
+   * (a placeholder when there's no artwork, as everywhere), not as a pill.
+   */
+  picture?: boolean;
 }
 
 type Rect = { x: number; y: number; width: number; height: number };
@@ -69,6 +92,7 @@ export function usePotDragRoot(onDrop: (item: PotItem, spot: PotSpot) => void) {
     spots: { spot: NonNullable<PotSpot>; rect: Rect }[];
   }>({ root: null, spots: [] });
   const ownKey = useRef<string | null>(null);
+  const liftBy = useRef(GHOST_LIFT);
   /** Counts lifts, so a measurement that finishes after its finger let go is ignored. */
   const lift = useRef({ id: 0, ready: false });
   const dropRef = useRef(onDrop);
@@ -88,7 +112,7 @@ export function usePotDragRoot(onDrop: (item: PotItem, spot: PotSpot) => void) {
       if (!root) return;
       position.setValue({
         x: x - root.x - GHOST_WIDTH / 2,
-        y: y - root.y - GHOST_LIFT,
+        y: y - root.y - liftBy.current,
       });
     };
     return {
@@ -108,6 +132,7 @@ export function usePotDragRoot(onDrop: (item: PotItem, spot: PotSpot) => void) {
         performAndroidHapticsAsync(AndroidHaptics.Drag_Start).catch(() => {});
         const id = ++lift.current.id;
         lift.current.ready = false;
+        liftBy.current = ghost.picture ? PICTURE_LIFT : GHOST_LIFT;
         ownKey.current = item.kind === 'ingredient' ? spotKey({ kind: 'ingredient', index: item.index }) : null;
         const [root, ...rects] = await Promise.all([
           measure(rootRef),
@@ -300,20 +325,49 @@ export function Join({
 export function DragGhost() {
   const { active, position } = usePotDrag();
   if (!active) return null;
+  const { parts, picture } = active.ghost;
+
+  if (picture && parts.length === 1) {
+    const [part] = parts;
+    return (
+      <Animated.View pointerEvents="none" style={[styles.ghost, { transform: position.getTranslateTransform() }]}>
+        <View style={styles.lifted}>
+          <Artwork
+            uri={part.cover ? albumArtUri(part.cover) : null}
+            size={GHOST_PICTURE}
+            cornerRadius={part.round ? GHOST_PICTURE / 2 : radius.md}
+          />
+          <View style={styles.caption}>
+            <Text style={styles.captionText} numberOfLines={1}>
+              {part.name}
+            </Text>
+          </View>
+        </View>
+      </Animated.View>
+    );
+  }
+
   return (
     <Animated.View pointerEvents="none" style={[styles.ghost, { transform: position.getTranslateTransform() }]}>
       {/* A combination rides in its tray, as in the pot. */}
-      <View style={[styles.pill, active.ghost.names.length > 1 && styles.tray]}>
-        {active.ghost.names.map((name, i) => (
+      <View style={[styles.pill, parts.length > 1 && styles.tray]}>
+        {parts.map((part, i) => (
           <View key={i} style={styles.segment}>
             {i > 0 && (
               <View style={styles.times}>
                 <Join both size={18} />
               </View>
             )}
-            <View style={[styles.name, { backgroundColor: active.ghost.colors[i] }]}>
-              <Text style={styles.nameText} numberOfLines={1}>
-                {name}
+            <View style={[styles.name, { backgroundColor: part.hue ?? colors.raised }, part.hue === null && styles.withPicture]}>
+              {part.hue === null && (
+                <Artwork
+                  uri={part.cover ? albumArtUri(part.cover) : null}
+                  size={PILL_PICTURE}
+                  cornerRadius={part.round ? PILL_PICTURE / 2 : 4}
+                />
+              )}
+              <Text style={[styles.nameText, part.hue === null && styles.neutralText]} numberOfLines={1}>
+                {part.name}
               </Text>
             </View>
           </View>
@@ -349,13 +403,38 @@ const styles = StyleSheet.create({
   },
   name: {
     alignSelf: 'stretch',
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
     paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
+  },
+  withPicture: {
+    paddingLeft: 6,
   },
   nameText: {
     ...font.label,
     color: colors.bg,
+  },
+  neutralText: {
+    color: colors.text,
+  },
+  // A picture lifted off its tile, a little bigger, its name on a dark tab under it.
+  lifted: {
+    alignItems: 'center',
+    gap: spacing.xs,
+    transform: [{ scale: 1.06 }],
+  },
+  caption: {
+    maxWidth: GHOST_PICTURE * 2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.raised,
+  },
+  captionText: {
+    ...font.label,
+    color: colors.text,
   },
   times: {
     paddingHorizontal: 2,

@@ -66,7 +66,11 @@ export function TagTile({ tagId, name, color, songCount, choice, width, onPress,
 
   // While pressed, the tile already shows the colour the tap leads to, so
   // releasing only adds or removes the marks.
-  const { handlers, pressed, lifting } = useDraggable({ kind: 'tile', ref: tagId }, { names: [name], colors: [hue] }, onPress);
+  const { handlers, pressed, lifting } = useDraggable(
+    { kind: 'tile', ref: tagId },
+    { parts: [{ name, hue, cover: null, round: false }] },
+    onPress
+  );
   const drop = usePotDrop();
   const shown = pressed ? AFTER_TAP[choice] : choice;
   const text = shown === 'off' ? colors.text : colors.bg;
