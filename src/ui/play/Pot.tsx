@@ -7,7 +7,7 @@ import { formatCount, plural } from '../format';
 import { Icon } from '../Icon';
 import { IconButton } from '../IconButton';
 import { colors, font, iconSize, radius, spacing, touchTarget } from '../theme';
-import { Times, useDraggable, useDropTarget, usePotDragState } from './PotDrag';
+import { Join, useDraggable, useDropTarget, usePotDragState } from './PotDrag';
 import { withAlpha } from './TagTile';
 
 const TOP = 24;
@@ -17,7 +17,7 @@ const CONTENT = CHIP * 2 + spacing.sm;
 const ACTIONS = 56;
 /** The tray's rim around a combination's pills. */
 const TRAY_INSET = 3;
-/** The + between ingredients and the × inside a combination: one icon set, one size, so they match. */
+/** The + between ingredients and the × inside a combination. */
 const SYMBOL = 18;
 
 /** Songs the whole pot would play, with whether the pot was empty when counted. */
@@ -103,7 +103,7 @@ export function Pot({
                 <View key={ingredientKey(tags)} style={styles.unit}>
                   {index > 0 && (
                     <View importantForAccessibility="no-hide-descendants">
-                      <Icon name="add" size={SYMBOL} color={colors.textDim} />
+                      <Join size={SYMBOL} />
                     </View>
                   )}
                   <IngredientChip
@@ -255,7 +255,7 @@ function IngredientChip({ index, tags, names, hues, count, onTap }: IngredientCh
             <View key={tags[i]} style={styles.segmentRow}>
               {i > 0 && (
                 <View style={styles.times}>
-                  <Times size={SYMBOL} />
+                  <Join both size={SYMBOL} />
                 </View>
               )}
               <View style={[styles.part, { backgroundColor: tint[i] }]}>

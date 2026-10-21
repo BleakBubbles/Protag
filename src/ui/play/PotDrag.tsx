@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 
 import type { PotItem, PotSpot } from '../../query/pot';
-import { Icon } from '../Icon';
 import { colors, font, radius, spacing } from '../theme';
 
 /** How long a finger rests on a tag before it lifts. Shorter fights scrolling; longer feels stuck. */
@@ -250,11 +249,20 @@ export function useDropTarget(spot: NonNullable<PotSpot>) {
   return { ref, hovered: drag.active !== null && drag.hover === key };
 }
 
-/** "Songs need both": the + icon turned on its corner, so it's the same weight as the pot's +. */
-export function Times({ size }: { size: number }) {
+/** Stroke of the pot's + and ×, in dp: a touch heavier than Ionicons' own. */
+const STROKE = 1.75;
+
+/**
+ * The pot's + ("either") and × ("both"): two rounded bars, the × being the +
+ * turned on its corner, so the two always match in size and weight.
+ */
+export function Join({ both, size }: { both?: boolean; size: number }) {
+  const arm = Math.round(size * 0.6);
+  const bar = { backgroundColor: colors.textDim, borderRadius: STROKE / 2 };
   return (
-    <View style={styles.turned}>
-      <Icon name="add" size={size} color={colors.textDim} />
+    <View style={[styles.join, { width: size, height: size }, both && styles.turned]}>
+      <View style={[bar, { width: arm, height: STROKE }]} />
+      <View style={[bar, styles.across, { width: STROKE, height: arm }]} />
     </View>
   );
 }
@@ -271,7 +279,7 @@ export function DragGhost() {
           <View key={i} style={styles.segment}>
             {i > 0 && (
               <View style={styles.times}>
-                <Times size={18} />
+                <Join both size={18} />
               </View>
             )}
             <View style={[styles.name, { backgroundColor: active.ghost.colors[i] }]}>
@@ -322,6 +330,13 @@ const styles = StyleSheet.create({
   },
   times: {
     paddingHorizontal: 2,
+  },
+  join: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  across: {
+    position: 'absolute',
   },
   turned: {
     transform: [{ rotate: '45deg' }],
