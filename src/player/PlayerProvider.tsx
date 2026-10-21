@@ -23,6 +23,7 @@ import {
   cycleRepeat as cycleRepeatMode,
   EMPTY_QUEUE,
   jumpTo as jumpToIndex,
+  neighbours,
   retreat,
   setShuffle,
   type QueueAction,
@@ -109,29 +110,55 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setQueueState(next);
   }, []);
 
-  // Assigned below, once the engine exists; the engine's onEnded needs `apply`.
+  // Assigned below, once the engine exists; the engine's callbacks need them.
   const applyRef = useRef<(result: { queue: QueueState; action: QueueAction }) => void>(() => {});
-  const engine = useEngine({ onEnded: () => applyRef.current(advance(queueRef.current, 'ended')) });
+  const followRef = useRef<(result: { queue: QueueState; action: QueueAction }) => void>(() => {});
+  const engine = useEngine({
+    onEnded: () => applyRef.current(advance(queueRef.current, 'ended')),
+    // The lock screen, headphones or a song ending moved playback on its own.
+    onMoved: (direction) =>
+      followRef.current(direction === 'next' ? advance(queueRef.current, 'skip') : retreat(queueRef.current, 0)),
+  });
   const engineRef = useRef(engine);
   engineRef.current = engine;
 
-  const loadSong = useCallback(
-    async (id: number, autoplay: boolean) => {
-      // Rapid skips start several loads; only the newest may touch the player.
+  /**
+   * Hand the engine the queue's current song and its neighbours. Moving to a
+   * neighbour is a skip; the same song again (after shuffle or repeat
+   * changes) only updates what's either side of it.
+   */
+  const syncEngine = useCallback(
+    async (queue: QueueState, autoplay: boolean) => {
+      const id = currentId(queue);
+      if (id === null) return;
+      const around = neighbours(queue);
+      // Rapid skips start several syncs; only the newest may touch the player.
       const token = ++loadToken.current;
-      const row = await getSong(db, id);
+      const [row, previous, next] = await Promise.all([
+        getSong(db, id),
+        around.previous === null ? null : getSong(db, around.previous),
+        around.next === null ? null : getSong(db, around.next),
+      ]);
       if (token !== loadToken.current) return;
 
-      setSong(row);
+      if (row?.id !== songRef.current?.id) {
+        setSong(row);
+        playCounted.current = false;
+      }
       if (!row) return;
-      playCounted.current = false;
-      engineRef.current.load(
-        row.uri,
+      engineRef.current.show(
         {
-          title: row.title,
-          artist: row.artist,
-          album: row.album,
-          artworkUri: albumArtUri(row.album_id),
+          previous: previous?.uri ?? null,
+          current: {
+            uri: row.uri,
+            nowPlaying: {
+              title: row.title,
+              artist: row.artist,
+              album: row.album,
+              artworkUri: albumArtUri(row.album_id),
+            },
+          },
+          next: next?.uri ?? null,
         },
         autoplay
       );
@@ -143,11 +170,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setQueue(next);
     const e = engineRef.current;
     switch (action) {
-      case 'play': {
-        const id = currentId(next);
-        if (id !== null) loadSong(id, true);
+      case 'play':
+        syncEngine(next, true);
+        // Starting the song that's already playing (from a new queue, say) starts it over.
+        if (currentId(next) === songRef.current?.id) {
+          playCounted.current = false;
+          e.seekTo(0);
+        }
         break;
-      }
       case 'replay':
         playCounted.current = false;
         e.seekTo(0).then(() => e.play());
@@ -158,6 +188,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         break;
     }
   };
+
+  // Playback has already moved; the queue catches up and the engine gets the
+  // new neighbours. Going back past the first song lands on a song the queue
+  // doesn't have before it, and syncing moves forward again: the song restarts.
+  followRef.current = ({ queue: next }) => {
+    setQueue(next);
+    syncEngine(next, false);
+  };
+
+  // Repeat-one loops natively, so a song can repeat with the phone locked.
+  useEffect(() => {
+    engineRef.current.setRepeatOne(queue.repeat === 'one');
+  }, [queue.repeat]);
 
   const actions = useMemo<PlayerActions>(
     () => ({
@@ -176,10 +219,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         const e = engineRef.current;
         if (e.status.playing) e.pause();
         else if (songRef.current) e.play();
-        else {
-          const id = currentId(queueRef.current);
-          if (id !== null) loadSong(id, true);
-        }
+        else syncEngine(queueRef.current, true);
       },
       next: () => applyRef.current(advance(queueRef.current, 'skip')),
       previous: () =>
@@ -187,14 +227,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       seekTo: (seconds) => {
         engineRef.current.seekTo(seconds);
       },
-      toggleShuffle: () => setQueue(setShuffle(queueRef.current, !queueRef.current.shuffled)),
-      cycleRepeat: () => setQueue(cycleRepeatMode(queueRef.current)),
+      // The same song plays on; only what's either side of it changes.
+      toggleShuffle: () => {
+        const next = setShuffle(queueRef.current, !queueRef.current.shuffled);
+        setQueue(next);
+        syncEngine(next, false);
+      },
+      cycleRepeat: () => {
+        const next = cycleRepeatMode(queueRef.current);
+        setQueue(next);
+        syncEngine(next, false);
+      },
       jumpTo(index) {
         const next = jumpToIndex(queueRef.current, index);
         if (next !== queueRef.current) applyRef.current({ queue: next, action: 'play' });
       },
     }),
-    [loadSong, setQueue]
+    [syncEngine, setQueue]
   );
 
   // Count a play once enough of the song has actually been heard, so skips don't

@@ -213,11 +213,11 @@ export default function AddSongsScreen() {
           </View>
         }
         ListEmptyComponent={
-          !data ? null : trimmed ? (
+          !data ? undefined : trimmed ? (
             <EmptyState icon="search" title="No matches" body={`Nothing matches "${trimmed}".`} />
           ) : untaggedOnly ? (
             <EmptyState icon="checkmark-done" title="Everything's tagged" body="Every song has at least one tag." />
-          ) : null
+          ) : undefined
         }
       />
     </View>

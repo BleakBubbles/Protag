@@ -93,7 +93,7 @@ export function SongsView() {
       ListEmptyComponent={
         data && trimmed ? (
           <EmptyState icon="search" title="No matches" body={`Nothing matches "${trimmed}".`} />
-        ) : null
+        ) : undefined
       }
     />
   );

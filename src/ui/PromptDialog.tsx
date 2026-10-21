@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, TextInput, View, type TextInputInstance } from 'react-native';
 
 import { Button } from './Button';
 import { colors, font, radius, spacing, touchTarget } from './theme';
@@ -43,7 +43,7 @@ export function PromptDialog({
   const [value, setValue] = useState(initialValue);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   // Reset each time it opens.
   useEffect(() => {
@@ -72,7 +72,9 @@ export function PromptDialog({
       transparent
       animationType="fade"
       onRequestClose={onClose}
-      onShow={() => setTimeout(() => inputRef.current?.focus(), KEYBOARD_DELAY_MS)}
+      onShow={() => {
+        setTimeout(() => inputRef.current?.focus(), KEYBOARD_DELAY_MS);
+      }}
     >
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cancel" />
       {/* Sits in the upper part of the screen so the keyboard never covers it. */}

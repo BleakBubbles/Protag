@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { StyleSheet, TextInput, View, type TextInputInstance, type TextInputProps } from 'react-native';
 
 import { Icon, type IconName } from './Icon';
 import { IconButton } from './IconButton';
@@ -12,7 +12,7 @@ export interface SearchFieldProps extends Omit<TextInputProps, 'style'> {
   icon?: IconName;
 }
 
-export const SearchField = forwardRef<TextInput, SearchFieldProps>(function SearchField(
+export const SearchField = forwardRef<TextInputInstance, SearchFieldProps>(function SearchField(
   { value, onChangeText, icon = 'search', ...inputProps },
   ref
 ) {

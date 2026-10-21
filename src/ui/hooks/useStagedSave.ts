@@ -1,6 +1,4 @@
-import { useNavigation } from 'expo-router';
-// SDK 58: usePreventRemove moves to `expo-router` itself, with a `repeat()` callback (see NOTES.md, task 5b).
-import { usePreventRemove, type NavigationAction } from 'expo-router/react-navigation';
+import { useNavigation, usePreventRemove } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -16,16 +14,17 @@ export function useStagedSave(dirty: boolean, apply: () => Promise<void>) {
   const navigation = useNavigation();
   const [leaving, setLeaving] = useState(false);
   const [saving, setSaving] = useState(false);
-  const blockedAction = useRef<NavigationAction | null>(null);
+  /** Re-runs the navigation the guard blocked, once the guard is down. */
+  const repeatBlocked = useRef<(() => void) | null>(null);
 
-  usePreventRemove(dirty && !leaving, ({ data }) => {
+  usePreventRemove(dirty && !leaving, ({ repeat }) => {
     Alert.alert('Discard changes?', "Your changes haven't been saved.", [
       { text: 'Keep editing', style: 'cancel' },
       {
         text: 'Discard',
         style: 'destructive',
         onPress: () => {
-          blockedAction.current = data.action;
+          repeatBlocked.current = repeat;
           setLeaving(true);
         },
       },
@@ -41,7 +40,7 @@ export function useStagedSave(dirty: boolean, apply: () => Promise<void>) {
   useEffect(() => {
     if (!leaving || left.current) return;
     left.current = true;
-    if (blockedAction.current) navigation.dispatch(blockedAction.current);
+    if (repeatBlocked.current) repeatBlocked.current();
     else navigation.goBack();
   }, [leaving, navigation]);
 

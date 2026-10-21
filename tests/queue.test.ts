@@ -9,6 +9,7 @@ import {
   EMPTY_QUEUE,
   fisherYates,
   jumpTo,
+  neighbours,
   retreat,
   setShuffle,
   upNext,
@@ -125,6 +126,18 @@ test('upNext lists what is coming, wrapping only with repeat all', () => {
   const q = createQueue(IDS, { startId: 40 });
   assert.deepEqual(upNext(q, 3), [50]);
   assert.deepEqual(upNext({ ...q, repeat: 'all' }, 3), [50, 10, 20]);
+});
+
+test('neighbours are where the skip buttons go, wrapping like them', () => {
+  const first = createQueue(IDS);
+  assert.deepEqual(neighbours(first), { previous: null, next: 20 });
+  const last = createQueue(IDS, { startId: 50 });
+  assert.deepEqual(neighbours(last), { previous: 40, next: null });
+  assert.deepEqual(neighbours({ ...last, repeat: 'all' }), { previous: 40, next: 10 });
+  assert.deepEqual(neighbours({ ...first, repeat: 'all' }), { previous: 50, next: 20 });
+  // Repeat-one still lets you skip on, as the next button does.
+  assert.deepEqual(neighbours({ ...last, repeat: 'one' }), { previous: 40, next: 10 });
+  assert.deepEqual(neighbours(EMPTY_QUEUE), { previous: null, next: null });
 });
 
 test('every transition on an empty queue is safe', () => {

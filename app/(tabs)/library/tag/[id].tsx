@@ -306,7 +306,7 @@ export default function TagScreen() {
               <Button label="Add songs" icon="add" variant="tonal" onPress={() => openAddSongs(id)} />
               <Button label="New subtag" variant="secondary" onPress={() => setDialog('add-subtag')} />
             </EmptyState>
-          ) : null
+          ) : undefined
         }
       />
 

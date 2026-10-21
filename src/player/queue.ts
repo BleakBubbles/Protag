@@ -147,6 +147,19 @@ export function retreat(
   return { queue, action: 'replay' };
 }
 
+/**
+ * The songs a skip either way would reach from the start of the current one,
+ * by the same rules as the buttons: what the lock screen keeps ready.
+ */
+export function neighbours(queue: QueueState): { previous: number | null; next: number | null } {
+  const forward = advance(queue, 'skip');
+  const back = retreat(queue, 0);
+  return {
+    previous: back.action === 'play' ? currentId(back.queue) : null,
+    next: forward.action === 'play' ? currentId(forward.queue) : null,
+  };
+}
+
 export function jumpTo(queue: QueueState, index: number): QueueState {
   if (index < 0 || index >= queue.order.length) return queue;
   return { ...queue, index };

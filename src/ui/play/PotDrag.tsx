@@ -1,3 +1,4 @@
+import { AndroidHaptics, performAndroidHapticsAsync } from 'expo-haptics';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import {
   Animated,
@@ -6,6 +7,7 @@ import {
   View,
   type GestureResponderEvent,
   type GestureResponderHandlers,
+  type ViewInstance,
 } from 'react-native';
 
 import type { PotItem, PotSpot } from '../../query/pot';
@@ -27,7 +29,7 @@ export interface Ghost {
 }
 
 type Rect = { x: number; y: number; width: number; height: number };
-type Target = { spot: NonNullable<PotSpot>; ref: RefObject<View | null> };
+type Target = { spot: NonNullable<PotSpot>; ref: RefObject<ViewInstance | null> };
 
 const itemKey = (item: PotItem): string =>
   item.kind === 'ingredient' ? `i${item.index}` : `${item.kind}${item.tagId}`;
@@ -42,7 +44,7 @@ const PRIORITY: Record<NonNullable<PotSpot>['kind'], number> = {
   pot: 2,
 };
 
-const measure = (ref: RefObject<View | null>) =>
+const measure = (ref: RefObject<ViewInstance | null>) =>
   new Promise<Rect | null>((resolve) => {
     if (!ref.current) return resolve(null);
     ref.current.measure((_x, _y, width, height, pageX, pageY) => resolve({ x: pageX, y: pageY, width, height }));
@@ -57,7 +59,7 @@ const inside = (r: Rect, x: number, y: number) => x >= r.x && x <= r.x + r.width
  * and the drop targets stay where they were measured.
  */
 export function usePotDragRoot(onDrop: (item: PotItem, spot: PotSpot) => void) {
-  const rootRef = useRef<View>(null);
+  const rootRef = useRef<ViewInstance>(null);
   const [active, setActive] = useState<{ item: PotItem; ghost: Ghost } | null>(null);
   const [hover, setHover] = useState<string>('away');
   const position = useRef(new Animated.ValueXY()).current;
@@ -97,6 +99,9 @@ export function usePotDragRoot(onDrop: (item: PotItem, spot: PotSpot) => void) {
         };
       },
       async begin(item: PotItem, ghost: Ghost, x: number, y: number) {
+        // Felt the moment it lifts, so the finger knows it can move. Follows
+        // the phone's own touch-feedback setting.
+        performAndroidHapticsAsync(AndroidHaptics.Drag_Start).catch(() => {});
         const id = ++lift.current.id;
         lift.current.ready = false;
         ownKey.current = item.kind === 'ingredient' ? spotKey({ kind: 'ingredient', index: item.index }) : null;
@@ -233,7 +238,7 @@ export function useDraggable(item: PotItem, ghost: Ghost, onTap: () => void) {
 /** Registers a view as somewhere to drop; `hovered` while a drag is over it. */
 export function useDropTarget(spot: NonNullable<PotSpot>) {
   const drag = usePotDrag();
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
   const key = spotKey(spot);
   const kind = spot.kind;
   const index = spot.kind === 'ingredient' ? spot.index : -1;

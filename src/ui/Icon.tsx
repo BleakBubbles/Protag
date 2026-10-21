@@ -27,6 +27,8 @@ export interface IconProps {
 
 /** An icon by name, from whichever set it belongs to. */
 export function Icon({ name, size, color }: IconProps) {
-  if (name in OWN) return <MaterialCommunityIcons name={OWN[name as OwnIconName]} size={size} color={color} />;
-  return <Ionicons name={name as ComponentProps<typeof Ionicons>['name']} size={size} color={color} />;
+  // The icons draw as text, which takes any colour React Native does; their types are just narrower.
+  const tint = (color ?? undefined) as string | undefined;
+  if (name in OWN) return <MaterialCommunityIcons name={OWN[name as OwnIconName]} size={size} color={tint} />;
+  return <Ionicons name={name as ComponentProps<typeof Ionicons>['name']} size={size} color={tint} />;
 }
