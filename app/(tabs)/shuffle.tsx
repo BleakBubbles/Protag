@@ -4,14 +4,25 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { listAlbums, listArtists, listTopAlbums, listTopArtists, type AlbumSummary, type ArtistSummary } from '@/db/albums';
+import { listAlbums, listArtists, type AlbumSummary, type ArtistSummary } from '@/db/albums';
 import { notifyLibraryChanged } from '@/db/changes';
 import { listMixes, parseDraft, saveMixAs, type Mix } from '@/db/mixes';
 import { countSongs } from '@/db/songs';
-import { buildDescendantMap, listAllTagsWithCounts } from '@/db/tags';
+import { getSetting, setSetting, SettingKey } from '@/db/settings';
+import { buildDescendantMap, listAllTagsWithCounts, listTagPlays } from '@/db/tags';
 import type { TagWithCounts } from '@/db/types';
 import { openLibrary } from '@/navigation';
 import { distinctAlbums } from '@/library/mixArt';
+import { matchesQuery, searchKey } from '@/library/search';
+import {
+  nextMusicSort,
+  nextTagSort,
+  parseSorts,
+  sortMusic,
+  SORT_LABEL,
+  sortTags,
+  type ShuffleSorts,
+} from '@/library/sorts';
 import { usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
 import { queueForQuery } from '@/player/sources';
 import { describeQuery } from '@/query/describe';
@@ -35,6 +46,7 @@ import { PictureTile, SeeAllTile } from '@/ui/play/PictureTile';
 import { ingredientKey, Pot, type Look, type ShuffleCount } from '@/ui/play/Pot';
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
 import { PreviewSheet } from '@/ui/play/PreviewSheet';
+import { SearchButton, SearchRow, SectionHead } from '@/ui/play/SectionHead';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
 import { PromptDialog } from '@/ui/PromptDialog';
@@ -45,6 +57,8 @@ const COVERS = 5;
 const COVER_SAMPLE = 60;
 /** How many artists and albums each picture row shows before "All". */
 const ROW = 12;
+/** Search results are one flat grid: no tag opens to show subtags. */
+const NO_CHILDREN = new Map<number | null, TagWithCounts[]>();
 
 /**
  * Shuffle tab: build something to shuffle. The pot sits on top like a text field
@@ -64,15 +78,15 @@ export default function ShuffleScreen() {
   );
 
   const { data } = useLibraryQuery(async (db) => {
-    const [songs, tags, descendants, mixes, artists, albums, topArtists, topAlbums] = await Promise.all([
+    const [songs, tags, descendants, mixes, artists, albums, tagPlays, sorts] = await Promise.all([
       countSongs(db),
       listAllTagsWithCounts(db),
       buildDescendantMap(db),
       listMixes(db),
       listArtists(db),
       listAlbums(db),
-      listTopArtists(db, ROW),
-      listTopAlbums(db, ROW),
+      listTagPlays(db),
+      getSetting(db, SettingKey.shuffleSorts),
     ]);
     // A tag with nothing under it can't be shuffled, so the builder leaves it out.
     return {
@@ -80,7 +94,9 @@ export default function ShuffleScreen() {
       tags: tags.filter((t) => t.song_count > 0),
       descendants,
       mixes,
-      music: { artists, albums, topArtists, topAlbums },
+      music: { artists, albums },
+      tagPlays,
+      initialSorts: parseSorts(sorts),
     };
   }, []);
 
@@ -103,12 +119,10 @@ export default function ShuffleScreen() {
 /** Something to load into the pot, asked for by another screen. */
 type OpenRequest = { mixId: number } | { draft: QueryDraft } | null;
 
-/** Artists and albums, as ingredients: everyone (for names and the pickers), and the most played (for the rows). */
+/** Artists and albums, as ingredients. */
 type Music = {
   artists: ArtistSummary[];
   albums: AlbumSummary[];
-  topArtists: ArtistSummary[];
-  topAlbums: AlbumSummary[];
 };
 
 type BuilderProps = {
@@ -116,10 +130,14 @@ type BuilderProps = {
   descendants: Map<number, number[]>;
   mixes: Mix[];
   music: Music;
+  /** Plays by tag id, for sorting by most played. */
+  tagPlays: ReadonlyMap<number, number>;
+  /** How each section was last sorted; changes here are kept. */
+  initialSorts: ShuffleSorts;
   openRequest: OpenRequest;
 };
 
-function Builder({ tags, descendants, mixes, music, openRequest }: BuilderProps) {
+function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, openRequest }: BuilderProps) {
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const playQuery = usePlayQuery();
@@ -162,11 +180,45 @@ function Builder({ tags, descendants, mixes, music, openRequest }: BuilderProps)
     },
     [names, hues, pictures]
   );
+  const [sorts, setSorts] = useState(initialSorts);
+  const changeSorts = (next: ShuffleSorts) => {
+    setSorts(next);
+    setSetting(db, SettingKey.shuffleSorts, JSON.stringify(next));
+  };
   const children = useMemo(() => {
     const map = new Map<number | null, TagWithCounts[]>();
-    for (const tag of tags) map.set(tag.parent_id, [...(map.get(tag.parent_id) ?? []), tag]);
+    for (const tag of sortTags(tags, sorts.tags, tagPlays)) map.set(tag.parent_id, [...(map.get(tag.parent_id) ?? []), tag]);
     return map;
-  }, [tags]);
+  }, [tags, sorts.tags, tagPlays]);
+
+  // Search: one field for every section. While it has text, tags show as one
+  // flat grid from every level, and the picture rows draw on everyone, not
+  // just the first few; a section with nothing to show hides.
+  const [searching, setSearching] = useState(false);
+  const [search, setSearch] = useState('');
+  const term = search.trim();
+  const closeSearch = () => {
+    setSearch('');
+    setSearching(false);
+  };
+  const found = useMemo(() => {
+    if (!term) return null;
+    const hit = (...fields: (string | null)[]) => matchesQuery(searchKey(fields), term);
+    return {
+      tags: sortTags(tags.filter((t) => hit(t.name)), sorts.tags, tagPlays),
+      artists: music.artists.filter((a) => hit(a.name)),
+      albums: music.albums.filter((a) => hit(a.title, a.artist)),
+    };
+  }, [term, tags, music, sorts.tags, tagPlays]);
+  const parentName = useCallback(
+    (tag: TagWithCounts) => (tag.parent_id === null ? undefined : names.get(tag.parent_id)),
+    [names]
+  );
+  const artists = found?.artists ?? music.artists;
+  const albums = found?.albums ?? music.albums;
+  const artistRow = useMemo(() => sortMusic(artists, sorts.artists, (a) => a.name).slice(0, ROW), [artists, sorts.artists]);
+  const albumRow = useMemo(() => sortMusic(albums, sorts.albums, (a) => a.title).slice(0, ROW), [albums, sorts.albums]);
+  const nothingFound = found !== null && found.tags.length + found.artists.length + found.albums.length === 0;
 
   // Opening a mix, or what's playing: load it, then drop the request so it
   // isn't loaded again over later changes. What's playing may be a saved mix
@@ -262,10 +314,42 @@ function Builder({ tags, descendants, mixes, music, openRequest }: BuilderProps)
           onTapExcluded={(ref) => setDraft(tapExcluded(current, ref))}
         />
 
-        <ScrollView style={styles.screen} contentContainerStyle={styles.content} scrollEnabled={still}>
+        <ScrollView
+          style={styles.screen}
+          contentContainerStyle={styles.content}
+          scrollEnabled={still}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Your tags</Text>
-            {tags.length === 0 ? (
+            {searching ? (
+              <SearchRow value={search} onChangeText={setSearch} onClose={closeSearch} />
+            ) : (
+              <SectionHead
+                tall
+                label="Your tags"
+                sort={SORT_LABEL[sorts.tags]}
+                onSort={() => changeSorts({ ...sorts, tags: nextTagSort(sorts.tags) })}
+              >
+                <SearchButton onPress={() => setSearching(true)} />
+              </SectionHead>
+            )}
+            {found ? (
+              found.tags.length > 0 ? (
+                <TagGrid
+                  tags={found.tags}
+                  childrenOf={NO_CHILDREN}
+                  expanded={expanded}
+                  choiceOf={choiceOf}
+                  onTap={tap}
+                  onToggleExpanded={toggleExpanded}
+                  width={screenWidth - spacing.lg * 2}
+                  parentOf={parentName}
+                />
+              ) : (
+                <Text style={styles.hint}>{nothingFound ? `Nothing matches “${term}”.` : 'No tags match.'}</Text>
+              )
+            ) : tags.length === 0 ? (
               <Text style={styles.hint}>Tag some songs in the Library to mix them here.</Text>
             ) : (
               <TagGrid
@@ -281,31 +365,39 @@ function Builder({ tags, descendants, mixes, music, openRequest }: BuilderProps)
           </View>
 
           {/* Artists and albums: ingredients too, after the tags, as pictures. */}
-          {music.topArtists.length > 0 && (
+          {artistRow.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Artists</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} style={styles.bleed} contentContainerStyle={styles.pictureRow}>
-                {music.topArtists.map((a) => {
+              <SectionHead
+                label="Artists"
+                sort={SORT_LABEL[sorts.artists]}
+                onSort={() => changeSorts({ ...sorts, artists: nextMusicSort(sorts.artists) })}
+              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} keyboardShouldPersistTaps="handled" style={styles.bleed} contentContainerStyle={styles.pictureRow}>
+                {artistRow.map((a) => {
                   const ref = artistRef(a.name);
                   return (
                     <PictureTile key={ref} refId={ref} name={a.name} cover={a.coverAlbumId} round choice={choiceOf(ref)} onPress={() => tap(ref)} />
                   );
                 })}
-                <SeeAllTile label="All artists" round onPress={() => setPicking('artists')} />
+                {artists.length > ROW && <SeeAllTile label="All artists" round onPress={() => setPicking('artists')} />}
               </ScrollView>
             </View>
           )}
-          {music.topAlbums.length > 0 && (
+          {albumRow.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Albums</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} style={styles.bleed} contentContainerStyle={styles.pictureRow}>
-                {music.topAlbums.map((a) => {
+              <SectionHead
+                label="Albums"
+                sort={SORT_LABEL[sorts.albums]}
+                onSort={() => changeSorts({ ...sorts, albums: nextMusicSort(sorts.albums) })}
+              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} keyboardShouldPersistTaps="handled" style={styles.bleed} contentContainerStyle={styles.pictureRow}>
+                {albumRow.map((a) => {
                   const ref = albumRef(a.albumId);
                   return (
                     <PictureTile key={ref} refId={ref} name={a.title} cover={a.albumId} round={false} choice={choiceOf(ref)} onPress={() => tap(ref)} />
                   );
                 })}
-                <SeeAllTile label="All albums" round={false} onPress={() => setPicking('albums')} />
+                {albums.length > ROW && <SeeAllTile label="All albums" round={false} onPress={() => setPicking('albums')} />}
               </ScrollView>
             </View>
           )}
@@ -392,12 +484,6 @@ const styles = StyleSheet.create({
     ...font.body,
     color: colors.textDim,
     textAlign: 'center',
-  },
-  sectionLabel: {
-    ...font.caption,
-    color: colors.textFaint,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
   },
   hint: {
     ...font.caption,

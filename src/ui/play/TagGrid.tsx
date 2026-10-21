@@ -22,6 +22,8 @@ export interface TagGridProps {
   onToggleExpanded: (tagId: number) => void;
   /** The width this level has to fill. */
   width: number;
+  /** A tag's parent's name, shown before its own: for search results, where levels mix. */
+  parentOf?: (tag: TagWithCounts) => string | undefined;
 }
 
 /**
@@ -29,7 +31,7 @@ export interface TagGridProps {
  * *below its row*, not right after the tile, so expanding never moves the tile
  * beside it.
  */
-export function TagGrid({ tags, childrenOf, expanded, choiceOf, onTap, onToggleExpanded, width }: TagGridProps) {
+export function TagGrid({ tags, childrenOf, expanded, choiceOf, onTap, onToggleExpanded, width, parentOf }: TagGridProps) {
   const tileWidth = (width - GAP * (COLUMNS - 1)) / COLUMNS;
   const rows: TagWithCounts[][] = [];
   for (let i = 0; i < tags.length; i += COLUMNS) rows.push(tags.slice(i, i + COLUMNS));
@@ -46,6 +48,7 @@ export function TagGrid({ tags, childrenOf, expanded, choiceOf, onTap, onToggleE
                   key={tag.id}
                   tagId={tag.id}
                   name={tag.name}
+                  parent={parentOf?.(tag)}
                   color={tag.color}
                   songCount={tag.song_count}
                   choice={choiceOf(tag.id)}

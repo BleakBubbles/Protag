@@ -40,6 +40,8 @@ const TAP_LABEL: Record<TagChoice, string> = {
 export interface TagTileProps {
   tagId: number;
   name: string;
+  /** Its parent's name, when the tile is shown away from it (search results). */
+  parent?: string;
   /** The tag's stored colour name. */
   color: string | null;
   songCount: number;
@@ -59,7 +61,7 @@ export interface TagTileProps {
  * it, white with a check when it's in, red with a minus when it's kept out.
  * The ring sits just outside the tile, so it shows against any tag colour.
  */
-export function TagTile({ tagId, name, color, songCount, choice, width, onPress, expanded, onToggleExpanded }: TagTileProps) {
+export function TagTile({ tagId, name, parent, color, songCount, choice, width, onPress, expanded, onToggleExpanded }: TagTileProps) {
   const hue = tagColor(color);
   const included = choice === 'include';
   const excluded = choice === 'exclude';
@@ -81,7 +83,7 @@ export function TagTile({ tagId, name, color, songCount, choice, width, onPress,
         {...handlers}
         accessible
         accessibilityRole="button"
-        accessibilityLabel={`${name}, ${CHOICE_LABEL[choice]}, ${songCount} songs`}
+        accessibilityLabel={`${parent ? `${parent}, ` : ''}${name}, ${CHOICE_LABEL[choice]}, ${songCount} songs`}
         // Keeping out is a drag for everyone else; here it's an action.
         accessibilityActions={[
           { name: 'activate', label: TAP_LABEL[choice] },
@@ -95,6 +97,7 @@ export function TagTile({ tagId, name, color, songCount, choice, width, onPress,
         style={[styles.main, { backgroundColor: withAlpha(hue, WASH[shown]) }]}
       >
         <Text style={[styles.name, { color: text }]} numberOfLines={1}>
+          {parent && <Text style={styles.parent}>{parent} › </Text>}
           {name}
         </Text>
         <Text style={[styles.count, { color: shown === 'off' ? colors.textDim : text }]}>
@@ -166,6 +169,9 @@ const styles = StyleSheet.create({
   },
   count: {
     ...font.caption,
+  },
+  parent: {
+    opacity: 0.6,
   },
   badge: {
     position: 'absolute',

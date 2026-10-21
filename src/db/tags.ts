@@ -46,6 +46,28 @@ export async function listTagsWithCounts(
   );
 }
 
+/**
+ * Plays per tag, inherited like its song count (each song once): what
+ * "Most played" sorts tags by. Tags whose songs were never played are left out.
+ */
+export async function listTagPlays(db: SQLiteDatabase): Promise<Map<number, number>> {
+  const rows = await db.getAllAsync<{ id: number; plays: number }>(
+    `WITH RECURSIVE sub(root, id) AS (
+       SELECT id, id FROM tags
+       UNION ALL
+       SELECT sub.root, t.id FROM tags t JOIN sub ON t.parent_id = sub.id
+     )
+     SELECT root AS id, SUM(play_count) AS plays FROM (
+       SELECT DISTINCT sub.root, s.id, s.play_count
+       FROM sub
+       JOIN song_tags st ON st.tag_id = sub.id
+       JOIN songs s ON s.id = st.song_id AND s.is_missing = 0
+     )
+     GROUP BY root HAVING plays > 0`
+  );
+  return new Map(rows.map((r) => [r.id, r.plays]));
+}
+
 /** The whole tree with counts, in one query: for views that show every level, like the query builder. */
 export async function listAllTagsWithCounts(db: SQLiteDatabase): Promise<TagWithCounts[]> {
   return db.getAllAsync<TagWithCounts>(`${TAGS_WITH_COUNTS} ORDER BY t.sort_order, t.name COLLATE NOCASE`);

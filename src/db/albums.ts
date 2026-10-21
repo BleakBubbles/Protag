@@ -19,6 +19,9 @@ export interface AlbumSummary {
   title: string;
   artist: string | null;
   songs: number;
+  /** Plays across its songs, and when its newest song arrived (epoch ms): for sorting. */
+  plays: number;
+  added: number;
 }
 
 export interface ArtistSummary {
@@ -27,6 +30,8 @@ export interface ArtistSummary {
   albums: number;
   /** The album they have most songs on, for their picture. */
   coverAlbumId: string | null;
+  plays: number;
+  added: number;
 }
 
 const ALBUM_SELECT = `
@@ -35,7 +40,9 @@ const ALBUM_SELECT = `
          (SELECT a.artist FROM songs a
            WHERE a.album_id = s.album_id AND a.is_missing = 0 AND a.artist IS NOT NULL
            GROUP BY a.artist ORDER BY COUNT(*) DESC, a.artist LIMIT 1) AS artist,
-         COUNT(*) AS songs
+         COUNT(*) AS songs,
+         SUM(s.play_count) AS plays,
+         MAX(s.added_at) AS added
   FROM songs s
   WHERE s.is_missing = 0 AND s.album_id IS NOT NULL AND s.album IS NOT NULL`;
 
@@ -62,7 +69,9 @@ const ARTIST_SELECT = `
          COUNT(DISTINCT s.album_id) AS albums,
          (SELECT a.album_id FROM songs a
            WHERE a.artist = s.artist AND a.is_missing = 0 AND a.album_id IS NOT NULL
-           GROUP BY a.album_id ORDER BY COUNT(*) DESC, a.album_id LIMIT 1) AS coverAlbumId
+           GROUP BY a.album_id ORDER BY COUNT(*) DESC, a.album_id LIMIT 1) AS coverAlbumId,
+         SUM(s.play_count) AS plays,
+         MAX(s.added_at) AS added
   FROM songs s
   WHERE s.is_missing = 0 AND s.artist IS NOT NULL`;
 
@@ -99,22 +108,4 @@ export async function listAlbumTitles(db: SQLiteDatabase): Promise<Map<Ref, stri
      WHERE album_id IS NOT NULL AND album IS NOT NULL GROUP BY album_id`
   );
   return new Map(rows.map((r) => [albumRef(r.albumId), r.title]));
-}
-
-/**
- * The artists and albums for the Shuffle tab's picture rows: the ones played
- * most, then those with the most songs, so the rows show what's listened to.
- */
-export async function listTopArtists(db: SQLiteDatabase, limit: number): Promise<ArtistSummary[]> {
-  return db.getAllAsync<ArtistSummary>(
-    `${ARTIST_SELECT} GROUP BY s.artist ORDER BY SUM(s.play_count) DESC, songs DESC, name COLLATE NOCASE LIMIT ?`,
-    limit
-  );
-}
-
-export async function listTopAlbums(db: SQLiteDatabase, limit: number): Promise<AlbumSummary[]> {
-  return db.getAllAsync<AlbumSummary>(
-    `${ALBUM_SELECT} GROUP BY s.album_id ORDER BY SUM(s.play_count) DESC, songs DESC, title COLLATE NOCASE LIMIT ?`,
-    limit
-  );
 }

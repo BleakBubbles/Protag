@@ -27,10 +27,13 @@ async function library() {
 
 test('albums show under their most common artist, with songs on the phone counted', async () => {
   const db = await library();
-  assert.deepEqual(await listAlbums(db as never), [
-    { albumId: '1', title: 'New Jeans', artist: 'NewJeans', songs: 4 },
-    { albumId: '2', title: 'OMG', artist: 'NewJeans', songs: 1 },
-  ]);
+  assert.deepEqual(
+    (await listAlbums(db as never)).map(({ albumId, title, artist, songs, plays }) => ({ albumId, title, artist, songs, plays })),
+    [
+      { albumId: '1', title: 'New Jeans', artist: 'NewJeans', songs: 4, plays: 0 },
+      { albumId: '2', title: 'OMG', artist: 'NewJeans', songs: 1, plays: 0 },
+    ]
+  );
   assert.equal((await getAlbum(db as never, '2'))?.songs, 1);
   assert.equal(await getAlbum(db as never, 'nope'), null);
   db.close();
@@ -50,8 +53,9 @@ test('artists list their songs and albums, pictured by their biggest album', asy
     artists.map((a) => a.name),
     ['Kenshi Yonezu', 'NewJeans', 'NewJeans feat. X']
   );
-  const newJeans = await getArtist(db as never, 'NewJeans');
-  assert.deepEqual(newJeans, { name: 'NewJeans', songs: 4, albums: 2, coverAlbumId: '1' });
+  const { added, ...newJeans } = (await getArtist(db as never, 'NewJeans'))!;
+  assert.deepEqual(newJeans, { name: 'NewJeans', songs: 4, albums: 2, coverAlbumId: '1', plays: 0 });
+  assert.ok(added > 0);
   assert.equal(artists[0].coverAlbumId, null, 'no album, no picture');
 
   assert.deepEqual(

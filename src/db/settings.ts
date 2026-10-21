@@ -16,6 +16,8 @@ export const SettingKey = {
   libraryFolders: 'library.folders',
   /** Epoch ms when the last complete library scan finished. */
   lastScanAt: 'library.lastScanAt',
+  /** JSON `ShuffleSorts`: how each Shuffle tab section is ordered (library/sorts.ts). */
+  shuffleSorts: 'shuffle.sorts',
 } as const;
 
 export type SettingKey = (typeof SettingKey)[keyof typeof SettingKey];
