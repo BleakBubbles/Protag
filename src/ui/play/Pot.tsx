@@ -15,6 +15,10 @@ const CHIP = 36;
 /** Two rows of chips; more scroll. Fixed, so the pot never changes height. */
 const CONTENT = CHIP * 2 + spacing.sm;
 const ACTIONS = 56;
+/** The tray's rim around a combination's pills. */
+const TRAY_INSET = 3;
+/** The × between combined tags: bigger than the text, so it reads as a symbol. */
+const TIMES = 18;
 
 /** Songs the whole pot would play, with whether the pot was empty when counted. */
 export interface ShuffleCount {
@@ -95,15 +99,22 @@ export function Pot({
           <FadeIn>
             <ScrollView scrollEnabled={active === null} contentContainerStyle={styles.chips}>
               {draft.ingredients.map((tags, index) => (
-                <IngredientChip
-                  key={ingredientKey(tags)}
-                  index={index}
-                  tags={tags}
-                  names={names}
-                  hues={hues}
-                  count={ingredientCounts.get(ingredientKey(tags)) ?? null}
-                  onTap={() => onTapIngredient(index)}
-                />
+                // The + travels with the chip after it, so a wrapped row never ends on one.
+                <View key={ingredientKey(tags)} style={styles.unit}>
+                  {index > 0 && (
+                    <Text style={styles.plus} importantForAccessibility="no">
+                      +
+                    </Text>
+                  )}
+                  <IngredientChip
+                    index={index}
+                    tags={tags}
+                    names={names}
+                    hues={hues}
+                    count={ingredientCounts.get(ingredientKey(tags)) ?? null}
+                    onTap={() => onTapIngredient(index)}
+                  />
+                </View>
               ))}
               {draft.exclude.map((tagId) => (
                 <ExcludedChip
@@ -208,13 +219,18 @@ interface IngredientChipProps {
   onTap: () => void;
 }
 
-/** One ingredient: its tags side by side in their colours, joined by ×, then its song count. */
+/**
+ * One ingredient. A lone tag is a pill in its colour with its song count; a
+ * combination is a tray holding its tags' pills, joined by ×, so they read as
+ * one thing that's picked up, dropped and split together.
+ */
 function IngredientChip({ index, tags, names, hues, count, onTap }: IngredientChipProps) {
   const label = tags.map((id) => names.get(id) ?? '');
   const tint = tags.map((id) => hues.get(id) ?? colors.textDim);
   const { handlers, lifting } = useDraggable({ kind: 'ingredient', index }, { names: label, colors: tint }, onTap);
   const target = useDropTarget({ kind: 'ingredient', index });
-  const last = tint[tint.length - 1];
+  const combined = tags.length > 1;
+  const counted = count === null ? '' : formatCount(count);
 
   return (
     <View
@@ -226,25 +242,43 @@ function IngredientChip({ index, tags, names, hues, count, onTap }: IngredientCh
       accessibilityHint={tags.length > 1 ? 'Tap to split' : 'Tap to take it out'}
       accessibilityActions={[{ name: 'activate' }]}
       onAccessibilityAction={onTap}
-      style={[styles.chip, target.hovered && styles.chipHovered, lifting && styles.lifting]}
+      style={[
+        styles.chip,
+        combined ? styles.tray : { backgroundColor: tint[0] },
+        target.hovered && styles.chipHovered,
+        lifting && styles.lifting,
+      ]}
     >
-      {label.map((name, i) => (
-        <View key={tags[i]} style={styles.segmentRow}>
-          {i > 0 && (
-            <View style={styles.times}>
-              <Text style={styles.timesText}>×</Text>
+      {combined ? (
+        <>
+          {label.map((name, i) => (
+            <View key={tags[i]} style={styles.segmentRow}>
+              {i > 0 && (
+                <View style={styles.times}>
+                  <Icon name="close" size={TIMES} color={colors.textDim} />
+                </View>
+              )}
+              <View style={[styles.part, { backgroundColor: tint[i] }]}>
+                <Text style={styles.segmentText} numberOfLines={1}>
+                  {name}
+                </Text>
+              </View>
             </View>
-          )}
-          <View style={[styles.segment, { backgroundColor: tint[i] }]}>
+          ))}
+          <Text style={styles.trayCount}>{counted}</Text>
+        </>
+      ) : (
+        <>
+          <View style={styles.segment}>
             <Text style={styles.segmentText} numberOfLines={1}>
-              {name}
+              {label[0]}
             </Text>
           </View>
-        </View>
-      ))}
-      <View style={[styles.count, { backgroundColor: last }]}>
-        <Text style={styles.countText}>{count === null ? '' : formatCount(count)}</Text>
-      </View>
+          <View style={styles.count}>
+            <Text style={styles.countText}>{counted}</Text>
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -377,24 +411,47 @@ const styles = StyleSheet.create({
   lifting: {
     opacity: 0.3,
   },
+  unit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  plus: {
+    ...font.listTitle,
+    color: colors.textFaint,
+  },
+  tray: {
+    alignItems: 'center',
+    padding: TRAY_INSET,
+    backgroundColor: colors.border,
+  },
   segmentRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
   },
   segment: {
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
+  },
+  part: {
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md - TRAY_INSET,
+    borderRadius: radius.pill,
   },
   segmentText: {
     ...font.label,
     color: colors.bg,
   },
   times: {
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: 2,
   },
-  timesText: {
-    ...font.label,
-    color: colors.text,
+  trayCount: {
+    ...font.caption,
+    color: colors.textDim,
+    paddingLeft: spacing.sm,
+    paddingRight: spacing.md - TRAY_INSET,
   },
   count: {
     justifyContent: 'center',

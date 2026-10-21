@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import type { PotItem, PotSpot } from '../../query/pot';
+import { Icon } from '../Icon';
 import { colors, font, radius, spacing } from '../theme';
 
 /** How long a finger rests on a tag before it lifts. Shorter fights scrolling; longer feels stuck. */
@@ -255,12 +256,13 @@ export function DragGhost() {
   if (!active) return null;
   return (
     <Animated.View pointerEvents="none" style={[styles.ghost, { transform: position.getTranslateTransform() }]}>
-      <View style={styles.pill}>
+      {/* A combination rides in its tray, as in the pot. */}
+      <View style={[styles.pill, active.ghost.names.length > 1 && styles.tray]}>
         {active.ghost.names.map((name, i) => (
           <View key={i} style={styles.segment}>
             {i > 0 && (
               <View style={styles.times}>
-                <Text style={styles.timesText}>×</Text>
+                <Icon name="close" size={18} color={colors.textDim} />
               </View>
             )}
             <View style={[styles.name, { backgroundColor: active.ghost.colors[i] }]}>
@@ -289,26 +291,27 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: radius.pill,
     overflow: 'hidden',
-    backgroundColor: colors.bg,
     transform: [{ scale: 1.06 }],
+  },
+  tray: {
+    padding: 3,
+    backgroundColor: colors.border,
   },
   segment: {
     flexDirection: 'row',
+    alignItems: 'center',
   },
   name: {
+    alignSelf: 'stretch',
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
   },
   nameText: {
     ...font.label,
     color: colors.bg,
   },
   times: {
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xs,
-  },
-  timesText: {
-    ...font.label,
-    color: colors.text,
+    paddingHorizontal: 2,
   },
 });
