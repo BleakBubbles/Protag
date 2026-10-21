@@ -1,16 +1,20 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { createTag } from '../db/tags';
-import type { ParsedPlaylist } from './m3u';
+import { entryLabel, type ParsedPlaylist } from './m3u';
 import type { SongMatcher } from './match';
 
 export interface PlaylistImportResult {
   name: string;
   /** Null when nothing matched, in which case no tag is created. */
   tagId: number | null;
+  /** The tag's stored colour name, for showing it. */
+  color: string | null;
   createdTag: boolean;
   matched: number;
   unmatched: number;
+  /** The entries that weren't found, as people read them ("Artist – Title"), so a mismatch can be looked into. */
+  missing: string[];
   /** Links actually added — lower than `matched` when re-importing. */
   added: number;
 }
@@ -34,9 +38,11 @@ export async function importPlaylistAsTag(
   const result: PlaylistImportResult = {
     name,
     tagId: null,
+    color: null,
     createdTag: false,
     matched: matched.length,
     unmatched: unmatched.length,
+    missing: unmatched.map(entryLabel),
     added: 0,
   };
   if (matched.length === 0) return result;
@@ -49,6 +55,8 @@ export async function importPlaylistAsTag(
     const tagId = existing?.id ?? (await createTag(txn, name, null));
     result.tagId = tagId;
     result.createdTag = !existing;
+    const tag = await txn.getFirstAsync<{ color: string | null }>('SELECT color FROM tags WHERE id = ?', tagId);
+    result.color = tag?.color ?? null;
 
     const now = Date.now();
     for (const songId of matched) {

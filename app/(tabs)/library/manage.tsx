@@ -12,7 +12,7 @@ import { Button } from '@/ui/Button';
 import { Card, CardActions, CardText } from '@/ui/Card';
 import { formatDaysAgo } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
-import { ImportStatus } from '@/ui/library/ImportCards';
+import { PlaylistsCard } from '@/ui/library/ImportCards';
 import { LibraryOverview, type LibraryCounts } from '@/ui/library/LibraryOverview';
 import { colors, spacing } from '@/ui/theme';
 
@@ -51,16 +51,7 @@ export default function ManageLibraryScreen() {
         />
       )}
 
-      <Card title="Playlists">
-        <CardText>
-          Turn .m3u playlists into tags. Re-importing is safe — existing tags are reused, never
-          duplicated.
-        </CardText>
-        <CardActions>
-          <Button label="Import playlists" variant="secondary" onPress={imports.run} disabled={busy} />
-        </CardActions>
-      </Card>
-      <ImportStatus state={imports.state} />
+      <PlaylistsCard state={imports.state} folder={imports.folder} disabled={busy} onImport={imports.run} />
 
       {/* Tags are the one thing a reinstall or a lost phone can't bring back. */}
       <Card title="Backup">
