@@ -1,10 +1,11 @@
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Animated, Dimensions, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { albumArtUri } from '../../library/assets';
 import { openSongTags } from '../../navigation';
 import { useNowPlaying, usePlaybackStatus, usePlayerActions } from '../../player/PlayerProvider';
 import { IconButton } from '../IconButton';
+import { Marquee } from '../Marquee';
 import { colors, font, iconSize, radius, spacing } from '../theme';
 import { Artwork } from './Artwork';
 import { useMiniPlayerVisibility } from './MiniPlayerVisibility';
@@ -28,6 +29,8 @@ export function MiniPlayer() {
   const { song } = useNowPlaying();
   const { visible, hintVisible, hide } = useMiniPlayerVisibility();
   const sheet = usePlayerSheet();
+  /** Room for the title and artist, between the artwork and the buttons. */
+  const [textWidth, setTextWidth] = useState(0);
 
   if (hintVisible) {
     return (
@@ -49,13 +52,14 @@ export function MiniPlayer() {
         style={styles.row}
       >
         <Artwork uri={albumArtUri(song.album_id)} size={THUMB} />
-        <View style={styles.text}>
-          <Text style={styles.title} numberOfLines={1}>
+        {/* Too long to fit, they scroll sideways, each new song from its start. */}
+        <View style={styles.text} onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}>
+          <Marquee key={`t${song.title}`} style={styles.title} maxWidth={textWidth}>
             {song.title}
-          </Text>
-          <Text style={styles.artist} numberOfLines={1}>
+          </Marquee>
+          <Marquee key={`a${song.artist}`} style={styles.artist} maxWidth={textWidth}>
             {song.artist ?? ' '}
-          </Text>
+          </Marquee>
         </View>
         <PlayPause />
         <NextTrack />
