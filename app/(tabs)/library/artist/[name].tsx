@@ -57,6 +57,7 @@ export default function ArtistScreen() {
       songs={songs}
       tags={tags}
       label={artist.name}
+      tagAllLabel="Tag all songs"
     >
       {albums.length > 0 && (
         <View style={styles.albums}>

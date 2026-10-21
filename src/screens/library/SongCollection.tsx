@@ -1,17 +1,17 @@
 import { Stack } from 'expo-router';
 import { useCallback, useMemo, type ReactNode } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import type { SongRow as Song, TagRow } from '../../db/types';
 import { albumArtUri } from '../../library/assets';
-import { openEditTags, openSongTags } from '../../navigation';
+import { openEditTags, openSongTags, openTag } from '../../navigation';
 import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
 import { Button } from '../../ui/Button';
 import { CardActions } from '../../ui/Card';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
-import { IconButton } from '../../ui/IconButton';
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { Artwork } from '../../ui/player/Artwork';
+import { TagChip } from '../../ui/TagChip';
 import { colors, font, spacing } from '../../ui/theme';
 
 const NO_TAGS: readonly TagRow[] = [];
@@ -28,23 +28,51 @@ export interface SongCollectionProps {
   tags: ReadonlyMap<number, readonly TagRow[]>;
   /** How the player names what's playing: "Playing · New Jeans". */
   label: string;
+  /** The button that tags every song here: "Tag album", "Tag all songs". */
+  tagAllLabel: string;
   /** Between the buttons and the songs, like an artist's albums. */
   children?: ReactNode;
 }
 
 /**
  * An album's or an artist's page: their picture and name, Play (in order) and
- * Shuffle, then the songs, with their tags like everywhere else. The tag button
- * up top tags them all at once: for someone who thinks in albums, tagging one
- * song at a time would be the friction that sends them away.
+ * Shuffle, a strip of how its songs are tagged, then the songs themselves.
+ *
+ * The strip leads with a button that tags every song at once (for someone who
+ * thinks in albums, tagging one song at a time would be the friction that
+ * sends them away), then each tag already used here with how many songs have
+ * it: the album seen through ProTag's eyes. A tag opens its own page.
  */
-export function SongCollection({ picture, title, subtitle, meta, songs, tags, label, children }: SongCollectionProps) {
+export function SongCollection({
+  picture,
+  title,
+  subtitle,
+  meta,
+  songs,
+  tags,
+  label,
+  tagAllLabel,
+  children,
+}: SongCollectionProps) {
   const screen = useWindowDimensions();
   const { playQueue } = usePlayerActions();
   const { song: current } = useNowPlaying();
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
   const ids = useMemo(() => songs.map((s) => s.id), [songs]);
   const size = Math.min(MAX_PICTURE, screen.width * 0.55);
+
+  /** The tags on these songs, the most widely used first. */
+  const makeup = useMemo(() => {
+    const byTag = new Map<number, { tag: TagRow; count: number }>();
+    for (const song of songs) {
+      for (const tag of tags.get(song.id) ?? NO_TAGS) {
+        const entry = byTag.get(tag.id);
+        if (entry) entry.count++;
+        else byTag.set(tag.id, { tag, count: 1 });
+      }
+    }
+    return [...byTag.values()].sort((a, b) => b.count - a.count || a.tag.name.localeCompare(b.tag.name));
+  }, [songs, tags]);
 
   const play = useCallback(
     (startId?: number, shuffle = false) => playQueue(ids, { startId, shuffle, label }),
@@ -53,15 +81,7 @@ export function SongCollection({ picture, title, subtitle, meta, songs, tags, la
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: '',
-          headerRight: () =>
-            ids.length > 0 ? (
-              <IconButton icon="tag" label={`Edit tags for all ${ids.length} songs`} onPress={() => openEditTags(ids)} />
-            ) : null,
-        }}
-      />
+      <Stack.Screen options={{ title: '' }} />
       <FlatList
         style={styles.screen}
         data={songs}
@@ -110,6 +130,14 @@ export function SongCollection({ picture, title, subtitle, meta, songs, tags, la
                 <Button label="Shuffle" icon="shuffle" variant="secondary" onPress={() => play(undefined, true)} disabled={ids.length === 0} />
               </CardActions>
             </View>
+            {ids.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stripRow} contentContainerStyle={styles.strip}>
+                <Button label={tagAllLabel} icon="tag" variant="tonal" size="small" onPress={() => openEditTags(ids)} />
+                {makeup.map(({ tag, count }) => (
+                  <TagChip key={tag.id} name={tag.name} color={tag.color} count={count} onPress={() => openTag(tag.id)} />
+                ))}
+              </ScrollView>
+            )}
             {children}
           </View>
         }
@@ -152,6 +180,15 @@ const styles = StyleSheet.create({
   },
   actions: {
     alignSelf: 'stretch',
+    paddingHorizontal: spacing.lg,
+  },
+  stripRow: {
+    alignSelf: 'stretch',
+    flexGrow: 0,
+  },
+  strip: {
+    alignItems: 'center',
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
 });
