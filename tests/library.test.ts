@@ -10,7 +10,7 @@ import { getTagsForSong } from '../src/db/tags.ts';
 import type { ScannedSong } from '../src/db/songs.ts';
 import { albumArtUri, MIN_DURATION_MS, toScannedSong } from '../src/library/assets.ts';
 import { completeScan, recordScanPage } from '../src/library/ingest.ts';
-import { baseName, entryLabel, folderLabel, parseM3u, playlistNameFromUri } from '../src/library/m3u.ts';
+import { baseName, entryLabel, parseM3u, playlistNameFromUri } from '../src/library/m3u.ts';
 import { normalize, SongMatcher } from '../src/library/match.ts';
 import { importPlaylistAsTag } from '../src/library/playlists.ts';
 
@@ -327,14 +327,6 @@ test('songs not found read the way people know them', () => {
   assert.equal(entryLabel({ location: 'x.mp3', artist: 'NewJeans', title: 'Ditto' }), 'NewJeans – Ditto');
   assert.equal(entryLabel({ location: 'x.mp3', artist: null, title: 'Ditto' }), 'Ditto');
   assert.equal(entryLabel({ location: '/storage/Music/NewJeans%20-%20Ditto.flac', artist: null, title: null }), 'NewJeans - Ditto');
-});
-
-test('an import folder is named the way the file picker shows it', () => {
-  assert.equal(
-    folderLabel('content://com.android.externalstorage.documents/tree/primary%3AMusic%2FPlaylists'),
-    'Music/Playlists'
-  );
-  assert.equal(folderLabel('content://com.android.externalstorage.documents/tree/primary%3A'), 'Phone storage');
 });
 
 test('a playlist with no matches creates no tag', async () => {

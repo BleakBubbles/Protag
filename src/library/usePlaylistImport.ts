@@ -22,14 +22,11 @@ export function usePlaylistImport() {
   const [state, setState] = useState<ImportState>({ kind: 'idle' });
   // Unknown until loaded, so the prompt doesn't flash up for someone who dismissed it.
   const [promptDismissed, setPromptDismissed] = useState<boolean | null>(null);
-  /** The folder imported from last time; the picker opens there. */
-  const [folder, setFolder] = useState<string | null>(null);
 
   useEffect(() => {
     getSetting(db, SettingKey.playlistPrompt).then((value) =>
       setPromptDismissed(value === 'dismissed')
     );
-    getSetting(db, SettingKey.playlistFolder).then(setFolder);
   }, [db]);
 
   const run = useCallback(async () => {
@@ -40,7 +37,6 @@ export function usePlaylistImport() {
     setState({ kind: 'importing' });
     try {
       await setSetting(db, SettingKey.playlistFolder, picked);
-      setFolder(picked);
       const summary = await importPlaylistsFrom(db, picked);
       setState({ kind: 'done', summary });
     } catch (error) {
@@ -56,7 +52,6 @@ export function usePlaylistImport() {
 
   return {
     state,
-    folder,
     run,
     busy: state.kind === 'importing',
     /** Show the onboarding prompt: not dismissed, and no import attempted yet. */

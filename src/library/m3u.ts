@@ -54,18 +54,6 @@ export function entryLabel(entry: PlaylistEntry): string {
   return baseName(entry.location).replace(/\.[^.]+$/, '') || entry.location;
 }
 
-/**
- * A SAF folder as a person knows it: `content://…/tree/primary%3AMusic%2FPlaylists`
- * → "Music/Playlists". Anything else comes back as its last part.
- */
-export function folderLabel(treeUri: string): string {
-  const tree = treeUri.split('/tree/')[1];
-  if (!tree) return documentName(treeUri);
-  const path = safeDecode(tree.split('/')[0]);
-  const afterVolume = path.slice(path.indexOf(':') + 1);
-  return afterVolume || 'Phone storage';
-}
-
 /** Playlist name from a SAF document URI: `…%2FDriving.m3u` → `Driving`. */
 export function playlistNameFromUri(uri: string): string {
   return documentName(uri).replace(PLAYLIST_EXTENSIONS, '');

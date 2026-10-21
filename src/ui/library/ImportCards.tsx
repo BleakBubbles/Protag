@@ -2,13 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { folderLabel } from '../../library/m3u';
 import type { FolderImportSummary } from '../../library/playlistFolder';
 import type { PlaylistImportResult } from '../../library/playlists';
 import type { ImportState } from '../../library/usePlaylistImport';
 import { openTag } from '../../navigation';
 import { Button } from '../Button';
-import { Card, CardActions, CardStatus, CardText } from '../Card';
+import { Card, CardActions, CardText } from '../Card';
 import { formatCount, plural } from '../format';
 import { colors, font, iconSize, radius, spacing, tagColor } from '../theme';
 
@@ -49,18 +48,15 @@ export function ImportPrompt({
 }
 
 /**
- * Manage library's playlist card: what importing does, where from last time,
- * the button, and — after an import — what came of each playlist, right here.
+ * Manage library's playlist card: the button, and — after an import — what
+ * came of each playlist, right here.
  */
 export function PlaylistsCard({
   state,
-  folder,
   disabled,
   onImport,
 }: {
   state: ImportState;
-  /** The folder imported from last time, if any; the picker opens there. */
-  folder: string | null;
   disabled?: boolean;
   onImport: () => void;
 }) {
@@ -72,7 +68,6 @@ export function PlaylistsCard({
         <Button label="Import" icon="download-outline" variant="tonal" onPress={onImport} disabled={disabled} />
       }
     >
-      <CardStatus>{folder ? `Last imported from ${folderLabel(folder)}` : 'Not imported yet'}</CardStatus>
       <ImportProgress state={state} />
     </Card>
   );

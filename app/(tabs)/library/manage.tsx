@@ -51,7 +51,7 @@ export default function ManageLibraryScreen() {
         />
       )}
 
-      <PlaylistsCard state={imports.state} folder={imports.folder} disabled={busy} onImport={imports.run} />
+      <PlaylistsCard state={imports.state} disabled={busy} onImport={imports.run} />
 
       {/* Tags are the one thing a reinstall or a lost phone can't bring back. */}
       <Card
