@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { TagChoice } from '../../query/types';
 import { formatCount } from '../format';
 import { colors, font, iconSize, radius, spacing, tagColor } from '../theme';
-import { useDraggable } from './PotDrag';
+import { useDraggable, usePotDrop } from './PotDrag';
 
 export const TAG_TILE_HEIGHT = 64;
 const BADGE = 20;
@@ -19,9 +19,16 @@ export const withAlpha = (hex: string, opacity: number) =>
   hex + Math.round(opacity * 255).toString(16).padStart(2, '0');
 
 const CHOICE_LABEL: Record<TagChoice, string> = {
-  include: 'included',
-  exclude: 'excluded',
+  include: 'in the mix',
+  exclude: 'kept out',
   off: 'not used',
+};
+
+/** What double-tapping does, as a screen reader says it. */
+const TAP_LABEL: Record<TagChoice, string> = {
+  off: 'Add to the mix',
+  include: 'Take out of the mix',
+  exclude: 'Let its songs back in',
 };
 
 export interface TagTileProps {
@@ -55,6 +62,7 @@ export function TagTile({ tagId, name, color, songCount, choice, width, onPress,
   // While pressed, the tile already shows the colour the tap leads to, so
   // releasing only adds or removes the marks.
   const { handlers, pressed, lifting } = useDraggable({ kind: 'tile', tagId }, { names: [name], colors: [hue] }, onPress);
+  const drop = usePotDrop();
   const shown = pressed ? AFTER_TAP[choice] : choice;
   const text = shown === 'include' ? colors.bg : colors.text;
 
@@ -65,9 +73,16 @@ export function TagTile({ tagId, name, color, songCount, choice, width, onPress,
         accessible
         accessibilityRole="button"
         accessibilityLabel={`${name}, ${CHOICE_LABEL[choice]}, ${songCount} songs`}
-        accessibilityHint="Tap to add it to the mix or take it out. Hold to drag it."
-        accessibilityActions={[{ name: 'activate' }]}
-        onAccessibilityAction={onPress}
+        // Keeping out is a drag for everyone else; here it's an action.
+        accessibilityActions={[
+          { name: 'activate', label: TAP_LABEL[choice] },
+          ...(excluded ? [] : [{ name: 'keepOut', label: 'Keep its songs out' }]),
+        ]}
+        onAccessibilityAction={(e) => {
+          if (e.nativeEvent.actionName !== 'keepOut') return onPress();
+          drop({ kind: 'tile', tagId }, { kind: 'keepOut' });
+          AccessibilityInfo.announceForAccessibility(`${name} kept out`);
+        }}
         style={[styles.main, { backgroundColor: withAlpha(hue, WASH[shown]) }]}
       >
         <Text

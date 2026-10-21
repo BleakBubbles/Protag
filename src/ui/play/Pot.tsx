@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { PotItem } from '../../query/pot';
 import type { QueryDraft } from '../../query/types';
@@ -7,7 +7,7 @@ import { formatCount, plural } from '../format';
 import { Icon } from '../Icon';
 import { IconButton } from '../IconButton';
 import { colors, font, iconSize, radius, spacing, touchTarget } from '../theme';
-import { Join, useDraggable, useDropTarget, usePotDragState } from './PotDrag';
+import { Join, useDraggable, useDropTarget, usePotDragState, usePotDrop } from './PotDrag';
 import { withAlpha } from './TagTile';
 
 const TOP = 24;
@@ -77,6 +77,9 @@ export function Pot({
   const empty = draft.ingredients.length === 0 && draft.exclude.length === 0;
   const shuffle = shuffleText(counted);
 
+  /** Each ingredient as a screen reader says it ("kpop and chill"), for naming what to combine with. */
+  const spoken = draft.ingredients.map((tags) => tags.map((id) => names.get(id) ?? '').join(' and '));
+
   // A combination can't be kept out (nobody means "not both"), so the zone stays away for it.
   const canKeepOut =
     active !== null && !(active.kind === 'ingredient' && (draft.ingredients[active.index]?.length ?? 0) > 1);
@@ -108,6 +111,7 @@ export function Pot({
                   )}
                   <IngredientChip
                     index={index}
+                    others={spoken.flatMap((other, i) => (i === index ? [] : [{ index: i, label: other }]))}
                     tags={tags}
                     names={names}
                     hues={hues}
@@ -212,6 +216,8 @@ function FadeIn({ children }: { children: ReactNode }) {
 
 interface IngredientChipProps {
   index: number;
+  /** The other ingredients, to offer combining with each (screen readers can't drag). */
+  others: readonly { index: number; label: string }[];
   tags: readonly number[];
   names: ReadonlyMap<number, string>;
   hues: ReadonlyMap<number, string>;
@@ -224,13 +230,34 @@ interface IngredientChipProps {
  * combination is a tray holding its tags' pills, joined by ×, so they read as
  * one thing that's picked up, dropped and split together.
  */
-function IngredientChip({ index, tags, names, hues, count, onTap }: IngredientChipProps) {
+function IngredientChip({ index, others, tags, names, hues, count, onTap }: IngredientChipProps) {
   const label = tags.map((id) => names.get(id) ?? '');
   const tint = tags.map((id) => hues.get(id) ?? colors.textDim);
   const { handlers, lifting } = useDraggable({ kind: 'ingredient', index }, { names: label, colors: tint }, onTap);
   const target = useDropTarget({ kind: 'ingredient', index });
   const combined = tags.length > 1;
   const counted = count === null ? '' : formatCount(count);
+  const drop = usePotDrop();
+  const spoken = label.join(' and ');
+
+  // Every drop a chip can take part in, as a named action: combining with each
+  // other ingredient, and (a lone tag only, as with dragging) keeping it out.
+  const actions = [
+    { name: 'activate', label: combined ? 'Split it' : 'Take it out' },
+    ...others.map((other) => ({ name: `combine-${other.index}`, label: `Combine with ${other.label}` })),
+    ...(combined ? [] : [{ name: 'keepOut', label: 'Keep its songs out' }]),
+  ];
+  const act = (action: string) => {
+    if (action === 'activate') return onTap();
+    if (action === 'keepOut') {
+      drop({ kind: 'ingredient', index }, { kind: 'keepOut' });
+      return AccessibilityInfo.announceForAccessibility(`${spoken} kept out`);
+    }
+    const other = others.find((o) => action === `combine-${o.index}`);
+    if (!other) return;
+    drop({ kind: 'ingredient', index }, { kind: 'ingredient', index: other.index });
+    AccessibilityInfo.announceForAccessibility(`Combined ${spoken} and ${other.label}: songs need both`);
+  };
 
   return (
     <View
@@ -238,10 +265,9 @@ function IngredientChip({ index, tags, names, hues, count, onTap }: IngredientCh
       {...handlers}
       accessible
       accessibilityRole="button"
-      accessibilityLabel={`${label.join(' and ')}${count !== null ? `, ${count} songs` : ''}`}
-      accessibilityHint={tags.length > 1 ? 'Tap to split' : 'Tap to take it out'}
-      accessibilityActions={[{ name: 'activate' }]}
-      onAccessibilityAction={onTap}
+      accessibilityLabel={`${spoken}${combined ? ', songs with all of them' : ''}${count !== null ? `, ${count} songs` : ''}`}
+      accessibilityActions={actions}
+      onAccessibilityAction={(e) => act(e.nativeEvent.actionName)}
       style={[
         styles.chip,
         combined ? styles.tray : { backgroundColor: tint[0] },
@@ -293,15 +319,22 @@ interface ExcludedChipProps {
 /** A kept-out tag: a dim trace of its colour, crossed out in a red outline, like its tile. */
 function ExcludedChip({ tagId, name, hue, onTap }: ExcludedChipProps) {
   const { handlers, lifting } = useDraggable({ kind: 'excluded', tagId }, { names: [name], colors: [hue] }, onTap);
+  const drop = usePotDrop();
   return (
     <View
       {...handlers}
       accessible
       accessibilityRole="button"
       accessibilityLabel={`${name}, kept out`}
-      accessibilityHint="Tap to let its songs back in"
-      accessibilityActions={[{ name: 'activate' }]}
-      onAccessibilityAction={onTap}
+      accessibilityActions={[
+        { name: 'activate', label: 'Let its songs back in' },
+        { name: 'add', label: 'Add to the mix' },
+      ]}
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName !== 'add') return onTap();
+        drop({ kind: 'excluded', tagId }, { kind: 'pot' });
+        AccessibilityInfo.announceForAccessibility(`${name} added to the mix`);
+      }}
       style={[styles.excluded, { backgroundColor: withAlpha(hue, 0.43) }, lifting && styles.lifting]}
     >
       <Icon name="remove" size={iconSize.sm - 6} color={colors.exclude} />

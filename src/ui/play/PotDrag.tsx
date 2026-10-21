@@ -92,6 +92,10 @@ export function usePotDragRoot(onDrop: (item: PotItem, spot: PotSpot) => void) {
       });
     };
     return {
+      /** Do what dropping `item` on `spot` does, without a drag: for screen readers. */
+      drop(item: PotItem, spot: PotSpot) {
+        dropRef.current(item, spot);
+      },
       register(key: string, target: Target) {
         targets.set(key, target);
         return () => {
@@ -152,6 +156,15 @@ function usePotDrag(): PotDrag {
   const drag = useContext(PotDragContext);
   if (!drag) throw new Error('Pot drag pieces must sit inside PotDragContext');
   return drag;
+}
+
+/**
+ * What a drop does, as a plain call. Screen-reader users can't drag, so the
+ * pot's tiles and chips offer each drop as a named action that calls this:
+ * the same rules, no second path to get wrong.
+ */
+export function usePotDrop() {
+  return usePotDrag().drop;
 }
 
 /** The screen's drag state: whether something is up, and where it hovers. */
