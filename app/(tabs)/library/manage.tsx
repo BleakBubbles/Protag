@@ -9,7 +9,7 @@ import { useLibraryScan } from '@/library/useLibraryScan';
 import { usePlaylistImport } from '@/library/usePlaylistImport';
 import { openLibraryFolders } from '@/navigation';
 import { Button } from '@/ui/Button';
-import { Card, CardActions, CardText } from '@/ui/Card';
+import { Card, CardActions, CardStatus, CardText } from '@/ui/Card';
 import { formatDaysAgo } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { PlaylistsCard } from '@/ui/library/ImportCards';
@@ -64,9 +64,9 @@ export default function ManageLibraryScreen() {
           ],
         }}
       >
-        <CardText>
+        <CardStatus>
           {backup.lastExport ? `Last exported ${formatDaysAgo(backup.lastExport)}` : 'Not exported yet'}
-        </CardText>
+        </CardStatus>
         {backup.state.kind === 'imported' && <CardText>{backup.state.message}</CardText>}
         {backup.state.kind === 'error' && <CardText tone="error">{backup.state.message}</CardText>}
         <CardActions>

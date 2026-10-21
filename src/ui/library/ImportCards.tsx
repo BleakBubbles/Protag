@@ -8,7 +8,7 @@ import type { PlaylistImportResult } from '../../library/playlists';
 import type { ImportState } from '../../library/usePlaylistImport';
 import { openTag } from '../../navigation';
 import { Button } from '../Button';
-import { Card, CardActions, CardText } from '../Card';
+import { Card, CardActions, CardStatus, CardText } from '../Card';
 import { formatCount, plural } from '../format';
 import { colors, font, iconSize, radius, spacing, tagColor } from '../theme';
 
@@ -65,11 +65,14 @@ export function PlaylistsCard({
   onImport: () => void;
 }) {
   return (
-    <Card title="Playlists" info={PLAYLISTS_INFO}>
-      {folder && <Text style={styles.meta}>Last imported from {folderLabel(folder)}</Text>}
-      <CardActions>
-        <Button label="Import playlists" icon="download-outline" variant="tonal" onPress={onImport} disabled={disabled} />
-      </CardActions>
+    <Card
+      title="Playlists"
+      info={PLAYLISTS_INFO}
+      action={
+        <Button label="Import" icon="download-outline" variant="tonal" size="small" onPress={onImport} disabled={disabled} />
+      }
+    >
+      <CardStatus>{folder ? `Last imported from ${folderLabel(folder)}` : 'Not imported yet'}</CardStatus>
       <ImportProgress state={state} />
     </Card>
   );
@@ -188,10 +191,6 @@ function ResultRow({ result }: { result: PlaylistImportResult }) {
 }
 
 const styles = StyleSheet.create({
-  meta: {
-    ...font.label,
-    color: colors.textFaint,
-  },
   progress: {
     flexDirection: 'row',
     alignItems: 'center',

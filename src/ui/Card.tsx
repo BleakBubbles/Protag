@@ -11,11 +11,13 @@ export interface CardProps {
   title?: string;
   /** An (i) beside the title that explains the card, so the card itself can stay short. */
   info?: InfoButtonProps;
+  /** A card's one action, at the end of the title row (a `small` Button). */
+  action?: ReactNode;
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;
 }
 
-export function Card({ label, title, info, children, style }: CardProps) {
+export function Card({ label, title, info, action, children, style }: CardProps) {
   return (
     <View style={[styles.card, style]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -28,6 +30,8 @@ export function Card({ label, title, info, children, style }: CardProps) {
               <InfoButton {...info} />
             </View>
           )}
+          <View style={styles.spacer} />
+          {action}
         </View>
       ) : null}
       {children}
@@ -38,6 +42,15 @@ export function Card({ label, title, info, children, style }: CardProps) {
 /** Body text inside a card. */
 export function CardText({ children, tone = 'dim' }: { children: ReactNode; tone?: 'dim' | 'error' }) {
   return <Text style={tone === 'error' ? styles.error : styles.text}>{children}</Text>;
+}
+
+/** A line saying how things stand ("Last scanned 2 days ago"): smaller and quieter than body text. */
+export function CardStatus({ children }: { children: ReactNode }) {
+  return (
+    <Text style={styles.status} numberOfLines={1}>
+      {children}
+    </Text>
+  );
 }
 
 /** A horizontal group of buttons inside a card. */
@@ -69,12 +82,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   titleText: {
-    flex: 1,
+    flexShrink: 1,
   },
+  // The (i) sits just after the title; its touch area overhangs on every side.
   info: {
     height: font.heading.lineHeight,
     justifyContent: 'center',
+    marginLeft: spacing.xs - (touchTarget - iconSize.sm) / 2,
     marginRight: -(touchTarget - iconSize.sm) / 2,
+  },
+  spacer: {
+    flex: 1,
+  },
+  status: {
+    ...font.label,
+    color: colors.textFaint,
   },
   text: {
     ...font.body,
