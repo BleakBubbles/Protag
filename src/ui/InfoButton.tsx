@@ -90,7 +90,7 @@ function Bubble({ anchor, topic, paragraphs }: { anchor: Rect } & InfoButtonProp
 const styles = StyleSheet.create({
   // The app dimmed behind the bubble: it stands out, and a tap anywhere closes it.
   scrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: colors.scrim,
   },
   // A step lighter than the cards it sits over; the dimmed app gives it its edge.
