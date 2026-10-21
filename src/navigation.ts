@@ -10,6 +10,14 @@ import type { QueryDraft } from './query/types';
 export const openTag = (id: number) =>
   router.push({ pathname: '/library/tag/[id]', params: { id: String(id) } });
 
+/** An album's page: its tracklist, in order. `albumId` is Android's. */
+export const openAlbum = (albumId: string) =>
+  router.push({ pathname: '/library/album/[id]', params: { id: albumId } });
+
+/** An artist's page: their albums and songs. */
+export const openArtist = (name: string) =>
+  router.push({ pathname: '/library/artist/[name]', params: { name } });
+
 /** One song's tags: the same editor as for several songs. */
 export const openSongTags = (id: number) => openEditTags([id]);
 

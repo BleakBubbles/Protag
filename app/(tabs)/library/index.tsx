@@ -5,6 +5,8 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { countSongs } from '@/db/songs';
 import { useLibraryScan } from '@/library/useLibraryScan';
 import { openLibraryFolders, openManageLibrary } from '@/navigation';
+import { AlbumsView } from '@/screens/library/AlbumsView';
+import { ArtistsView } from '@/screens/library/ArtistsView';
 import { SongsView } from '@/screens/library/SongsView';
 import { TagsView } from '@/screens/library/TagsView';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
@@ -15,7 +17,7 @@ import { LogoMark } from '@/ui/LogoMark';
 import { SegmentedControl } from '@/ui/SegmentedControl';
 import { colors, font, spacing } from '@/ui/theme';
 
-type LibraryView = 'tags' | 'songs';
+type LibraryView = 'tags' | 'songs' | 'artists' | 'albums';
 
 /** Set in full (not just the parts that differ), so it replaces the selection header cleanly. */
 const libraryHeader = {
@@ -28,11 +30,15 @@ const libraryHeader = {
 const SEGMENTS = [
   { value: 'tags', label: 'Tags' },
   { value: 'songs', label: 'Songs' },
+  { value: 'artists', label: 'Artists' },
+  { value: 'albums', label: 'Albums' },
 ] as const;
 
+
 /**
- * Library tab: browse by tag or by song. Before the first scan it's onboarding
- * instead — there's nothing to browse yet.
+ * Library tab: browse by tag (where it opens: tags are ProTag's heart), by
+ * song, by artist or by album. Before the first scan it's onboarding instead —
+ * there's nothing to browse yet.
  */
 export default function LibraryScreen() {
   const { data: songCount } = useLibraryQuery(countSongs, []);
@@ -89,7 +95,15 @@ export default function LibraryScreen() {
       <View style={styles.segments}>
         <SegmentedControl segments={SEGMENTS} value={view} onChange={switchView} />
       </View>
-      {view === 'tags' ? <TagsView selection={selection} onLooseSongs={setLooseIds} /> : <SongsView />}
+      {view === 'tags' ? (
+        <TagsView selection={selection} onLooseSongs={setLooseIds} />
+      ) : view === 'songs' ? (
+        <SongsView />
+      ) : view === 'artists' ? (
+        <ArtistsView />
+      ) : (
+        <AlbumsView />
+      )}
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Marquee } from '../Marquee';
 import { colors, font, spacing } from '../theme';
@@ -8,6 +8,8 @@ export interface TrackInfoProps {
   title: string;
   artist: string | null;
   album: string | null;
+  /** Tapping the artist · album line: off to their pages. */
+  onPressSubtitle?: () => void;
 }
 
 /** Always one line each, so the block never changes height. */
@@ -22,7 +24,7 @@ const HEIGHT = font.title.lineHeight + spacing.xs + font.body.lineHeight;
  * taller than Latin). The height comes from the font tokens, so it stays right
  * if they change.
  */
-export function TrackInfo({ title, artist, album }: TrackInfoProps) {
+export function TrackInfo({ title, artist, album, onPressSubtitle }: TrackInfoProps) {
   const subtitle = [artist, album].filter(Boolean).join(' · ');
   const [width, setWidth] = useState(0);
 
@@ -33,9 +35,17 @@ export function TrackInfo({ title, artist, album }: TrackInfoProps) {
         {title}
       </Marquee>
       {/* Always rendered, so a song with no artist doesn't shift the title. */}
-      <Marquee key={`s${subtitle}`} style={styles.subtitle} maxWidth={width}>
-        {subtitle || ' '}
-      </Marquee>
+      <Pressable
+        onPress={onPressSubtitle}
+        disabled={!onPressSubtitle}
+        accessibilityRole={onPressSubtitle ? 'link' : undefined}
+        accessibilityHint={onPressSubtitle ? 'Goes to the artist or album' : undefined}
+        hitSlop={8}
+      >
+        <Marquee key={`s${subtitle}`} style={styles.subtitle} maxWidth={width}>
+          {subtitle || ' '}
+        </Marquee>
+      </Pressable>
     </View>
   );
 }

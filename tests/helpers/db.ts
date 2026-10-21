@@ -83,17 +83,28 @@ export async function freshDatabase(): Promise<TestDatabase> {
 export async function insertSong(
   db: TestDatabase,
   title: string,
-  extra: { artist?: string; missing?: boolean; durationMs?: number; filename?: string } = {}
+  extra: {
+    artist?: string;
+    missing?: boolean;
+    durationMs?: number;
+    filename?: string;
+    album?: string;
+    albumId?: string;
+    trackNo?: number;
+  } = {}
 ): Promise<number> {
   const now = Date.now();
   const result = await db.runAsync(
-    `INSERT INTO songs (media_id, uri, filename, title, artist, duration_ms, added_at, last_seen_at, is_missing)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO songs (media_id, uri, filename, title, artist, album, album_id, track_no, duration_ms, added_at, last_seen_at, is_missing)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     `media-${title}`,
     `content://media/external/audio/media/${title}`,
     extra.filename ?? `${title}.mp3`,
     title,
     extra.artist ?? null,
+    extra.album ?? null,
+    extra.albumId ?? null,
+    extra.trackNo ?? null,
     extra.durationMs ?? 180000,
     now,
     now,

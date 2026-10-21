@@ -12,6 +12,8 @@ export default function LibraryLayout() {
       {/* The index sets its own header: it changes while selecting songs. */}
       <Stack.Screen name="index" options={{ title: 'Library' }} />
       <Stack.Screen name="tag/[id]" options={{ title: '' }} />
+      <Stack.Screen name="album/[id]" options={{ title: '' }} />
+      <Stack.Screen name="artist/[name]" options={{ title: '' }} />
       <Stack.Screen name="manage" options={{ title: 'Manage library' }} />
       <Stack.Screen name="folders" options={{ title: 'Folders' }} />
     </Stack>
