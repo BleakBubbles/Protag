@@ -142,7 +142,7 @@ export function SongCollection({
                   accessibilityLabel={tagAllLabel}
                   style={({ pressed }) => [styles.tagAll, pressed && styles.tagAllPressed]}
                 >
-                  <Icon name="tag" size={iconSize.sm} color={colors.accentFg} />
+                  <Icon name="tag" size={iconSize.sm} color={colors.textDim} />
                 </Pressable>
               </ScrollView>
             )}
@@ -208,7 +208,10 @@ const styles = StyleSheet.create({
     borderRadius: touchTarget / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.accentTint,
+    // Dressed like the tag chips beside it: one of the row, not a call to action.
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   tagAllPressed: {
     opacity: 0.6,
