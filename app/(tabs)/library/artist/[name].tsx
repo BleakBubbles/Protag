@@ -57,6 +57,7 @@ export default function ArtistScreen() {
       songs={songs}
       tags={tags}
       label={artist.name}
+      tagPrompt={`Tag songs by ${artist.name}`}
     >
       {albums.length > 0 && (
         <CollectionSection title="Albums">

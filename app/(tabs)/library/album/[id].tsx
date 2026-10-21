@@ -49,6 +49,7 @@ export default function AlbumScreen() {
       songs={songs}
       tags={tags}
       label={album.title}
+      tagPrompt={`Tag songs in ${album.title}`}
     />
   );
 }

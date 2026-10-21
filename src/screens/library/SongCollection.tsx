@@ -29,6 +29,8 @@ export interface SongCollectionProps {
   tags: ReadonlyMap<number, readonly TagRow[]>;
   /** How the player names what's playing: "Playing · New Jeans". */
   label: string;
+  /** Beside the tag button while nothing's tagged: "Tag songs in New Jeans", "Tag songs by NewJeans". */
+  tagPrompt: string;
   /** Sections between the tags and the songs, like an artist's albums (use `CollectionSection`). */
   children?: ReactNode;
 }
@@ -52,6 +54,7 @@ export function SongCollection({
   songs,
   tags,
   label,
+  tagPrompt,
   children,
 }: SongCollectionProps) {
   const screen = useWindowDimensions();
@@ -133,10 +136,21 @@ export function SongCollection({
             {ids.length > 0 && (
               <CollectionSection title="Song tags">
                 {makeup.length === 0 ? (
-                  // Nothing tagged yet: words, not a lone icon, and an invitation.
-                  <View style={styles.sectionBody}>
-                    <Button label="Tag these songs" icon="tag" variant="secondary" onPress={() => openEditTags(ids)} />
-                  </View>
+                  // Nothing tagged yet: the same button, with words beside it
+                  // (not in it, so it stays small); the whole line is the target.
+                  <Pressable
+                    onPress={() => openEditTags(ids)}
+                    accessibilityRole="button"
+                    accessibilityLabel={tagPrompt}
+                    style={({ pressed }) => [styles.prompt, pressed && styles.tagAllPressed]}
+                  >
+                    <View style={styles.tagAll}>
+                      <Icon name="tag" size={iconSize.sm} color={colors.textDim} />
+                    </View>
+                    <Text style={styles.promptText} numberOfLines={1}>
+                      {tagPrompt}
+                    </Text>
+                  </Pressable>
                 ) : (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
                     {makeup.map(({ tag, count }) => (
@@ -223,8 +237,16 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     marginBottom: -spacing.sm,
   },
-  sectionBody: {
+  prompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     paddingHorizontal: spacing.lg,
+  },
+  promptText: {
+    ...font.body,
+    flexShrink: 1,
+    color: colors.textDim,
   },
   strip: {
     alignItems: 'center',
