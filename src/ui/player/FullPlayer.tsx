@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { StyleSheet, Text, View, type GestureResponderHandlers } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,7 +6,6 @@ import { albumArtUri } from '@/library/assets';
 import { openAlbum, openArtist, openSongTags } from '@/navigation';
 import { useNowPlaying, usePlaybackStatus, usePlayerActions } from '@/player/PlayerProvider';
 import type { QueueState } from '@/player/queue';
-import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { EmptyState } from '@/ui/EmptyState';
 import { IconButton } from '@/ui/IconButton';
 import { colors, font, spacing } from '@/ui/theme';
@@ -48,22 +46,12 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
   // Until the engine reports a duration, MediaStore's is close enough.
   const durationSec = status.durationSec > 0 ? status.durationSec : song.duration_ms / 1000;
 
-  // The artist · album line leads to their pages; with only one of them, straight there.
-  const [goingTo, setGoingTo] = useState(false);
-  const { artist, album, album_id: albumId } = song;
-  const destinations: SheetAction[] = [
-    ...(artist ? [{ label: `Go to ${artist}`, onPress: () => openArtist(artist) }] : []),
-    ...(album && albumId ? [{ label: `Go to ${album}`, onPress: () => openAlbum(albumId) }] : []),
-  ].map((d) => ({
-    ...d,
-    // Close the player first, so the page opens in view.
-    onPress: () => {
-      onClose();
-      d.onPress();
-    },
-  }));
-  const openDetails =
-    destinations.length === 0 ? undefined : destinations.length === 1 ? destinations[0].onPress : () => setGoingTo(true);
+  // Each name under the title opens its page; the player closes first, so the page opens in view.
+  const { artist, album_id: albumId } = song;
+  const goTo = (open: () => void) => () => {
+    onClose();
+    open();
+  };
 
   return (
     // Not a ScrollView: everything but the artwork has a fixed height, and the
@@ -85,7 +73,13 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
         <ArtworkSlot uri={albumArtUri(song.album_id)} />
       </View>
 
-      <TrackInfo title={song.title} artist={song.artist} album={song.album} onPressSubtitle={openDetails} />
+      <TrackInfo
+        title={song.title}
+        artist={song.artist}
+        album={song.album}
+        onPressArtist={artist ? goTo(() => openArtist(artist)) : undefined}
+        onPressAlbum={albumId ? goTo(() => openAlbum(albumId)) : undefined}
+      />
       <SeekBar positionSec={status.positionSec} durationSec={durationSec} onSeek={actions.seekTo} />
       <TransportControls
         playing={status.playing}
@@ -97,7 +91,6 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
         onToggleShuffle={actions.toggleShuffle}
         onCycleRepeat={actions.cycleRepeat}
       />
-      <ActionSheet visible={goingTo} actions={destinations} onClose={() => setGoingTo(false)} />
 
       {status.error && <Text style={styles.error}>Couldn't play this song: {status.error}</Text>}
     </View>
