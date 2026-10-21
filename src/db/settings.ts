@@ -12,6 +12,8 @@ export const SettingKey = {
   miniPlayerHint: 'miniPlayer.hint',
   /** JSON `FolderChoices`: which of the phone's audio folders are read (library/folders.ts). */
   libraryFolders: 'library.folders',
+  /** Epoch ms when the last complete library scan finished. */
+  lastScanAt: 'library.lastScanAt',
 } as const;
 
 export type SettingKey = (typeof SettingKey)[keyof typeof SettingKey];

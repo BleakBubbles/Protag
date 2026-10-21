@@ -1,6 +1,7 @@
 import * as MusicLibrary from 'expo-music-library';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { setSetting, SettingKey } from '../db/settings';
 import type { ScannedSong } from '../db/songs';
 import { toScannedSong, type SkipReason } from './assets';
 import { completeScan, recordScanPage } from './ingest';
@@ -112,5 +113,6 @@ export async function scanLibrary(
   const flagged = await completeScan(db, startedAt, summary.found, leftOut);
   summary.missing = flagged.missing;
   summary.hidden = flagged.hidden;
+  await setSetting(db, SettingKey.lastScanAt, String(Date.now()));
   return summary;
 }

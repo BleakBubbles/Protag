@@ -1,5 +1,6 @@
 import { ActivityIndicator, Linking, StyleSheet, View } from 'react-native';
 
+import type { ScanSummary } from '../../library/scan';
 import type { ScanState } from '../../library/useLibraryScan';
 import { Button } from '../Button';
 import { Card, CardActions, CardText } from '../Card';
@@ -48,13 +49,6 @@ export function ScanCard({ state, hasSongs, disabled, onScan, onChooseFolders }:
     );
   }
 
-  const skipped =
-    state.kind === 'done'
-      ? state.summary.skipped['too-short'] +
-        state.summary.skipped.unavailable +
-        state.summary.skipped['no-uri']
-      : 0;
-
   const title =
     state.kind === 'done'
       ? `${plural(state.summary.found, 'song')} found`
@@ -67,25 +61,7 @@ export function ScanCard({ state, hasSongs, disabled, onScan, onChooseFolders }:
       {!hasSongs && state.kind === 'idle' && (
         <CardText>ProTag reads the songs already on this phone.</CardText>
       )}
-      {state.kind === 'done' && skipped > 0 && (
-        <CardText>
-          Skipped {plural(skipped, 'short clip or unplayable file', 'short clips or unplayable files')}.
-        </CardText>
-      )}
-      {state.kind === 'done' && state.summary.missing > 0 && (
-        <CardText>
-          {plural(state.summary.missing, 'song')} no longer on this phone — their tags are kept in
-          case they come back.
-        </CardText>
-      )}
-      {state.kind === 'done' && state.summary.leftOut > 0 && (
-        <CardText>
-          Left out {plural(state.summary.leftOut, 'file')} in unticked folders, like voice messages
-          and recordings.
-          {state.summary.hidden > 0 &&
-            ` ${plural(state.summary.hidden, 'song')} from them ${state.summary.hidden === 1 ? 'is' : 'are'} hidden now; tags are kept.`}
-        </CardText>
-      )}
+      {state.kind === 'done' && <ScanSummaryText summary={state.summary} />}
       {state.kind === 'error' && <CardText tone="error">Scan failed: {state.message}</CardText>}
       <CardActions>
         {state.kind === 'done' && state.summary.leftOut > 0 && onChooseFolders && (
@@ -99,6 +75,34 @@ export function ScanCard({ state, hasSongs, disabled, onScan, onChooseFolders }:
         />
       </CardActions>
     </Card>
+  );
+}
+
+/** What a finished scan skipped, lost or left out; nothing when there's nothing to say. */
+export function ScanSummaryText({ summary }: { summary: ScanSummary }) {
+  const skipped = summary.skipped['too-short'] + summary.skipped.unavailable + summary.skipped['no-uri'];
+  return (
+    <>
+      {skipped > 0 && (
+        <CardText>
+          Skipped {plural(skipped, 'short clip or unplayable file', 'short clips or unplayable files')}.
+        </CardText>
+      )}
+      {summary.missing > 0 && (
+        <CardText>
+          {plural(summary.missing, 'song')} no longer on this phone — their tags are kept in case they
+          come back.
+        </CardText>
+      )}
+      {summary.leftOut > 0 && (
+        <CardText>
+          Left out {plural(summary.leftOut, 'file')} in unticked folders, like voice messages and
+          recordings.
+          {summary.hidden > 0 &&
+            ` ${plural(summary.hidden, 'song')} from them ${summary.hidden === 1 ? 'is' : 'are'} hidden now; tags are kept.`}
+        </CardText>
+      )}
+    </>
   );
 }
 

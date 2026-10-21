@@ -1,5 +1,6 @@
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
+import { getSetting, SettingKey } from '@/db/settings';
 import { countSongs } from '@/db/songs';
 import { listTags } from '@/db/tags';
 import { loadFolderChoices } from '@/library/libraryFolders';
@@ -9,18 +10,29 @@ import { usePlaylistImport } from '@/library/usePlaylistImport';
 import { openLibraryFolders } from '@/navigation';
 import { Button } from '@/ui/Button';
 import { Card, CardActions, CardText } from '@/ui/Card';
-import { formatDaysAgo, plural } from '@/ui/format';
+import { formatDaysAgo } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { ImportStatus } from '@/ui/library/ImportCards';
-import { ScanCard } from '@/ui/library/ScanCard';
-import { colors, font, spacing } from '@/ui/theme';
+import { LibraryOverview, type LibraryCounts } from '@/ui/library/LibraryOverview';
+import { colors, spacing } from '@/ui/theme';
 
-/** Rescan the device, import playlists, and back up tags — the library's housekeeping. */
+/** What ProTag sees on this phone, playlists, and tag backups — the library's housekeeping. */
 export default function ManageLibraryScreen() {
-  const { data: counts } = useLibraryQuery(async (db) => {
-    const [songs, tags, folders] = await Promise.all([countSongs(db), listTags(db), loadFolderChoices(db)]);
+  const { data: counts } = useLibraryQuery(async (db): Promise<LibraryCounts> => {
+    const [songs, tags, folders, lastScanAt] = await Promise.all([
+      countSongs(db),
+      listTags(db),
+      loadFolderChoices(db),
+      getSetting(db, SettingKey.lastScanAt),
+    ]);
     const choices = Object.values(folders);
-    return { songs, tags: tags.length, folders: choices.length, reading: choices.filter((f) => f.include).length };
+    return {
+      songs,
+      tags: tags.length,
+      folders: choices.length,
+      reading: choices.filter((f) => f.include).length,
+      lastScanAt: lastScanAt === null ? null : Number(lastScanAt),
+    };
   }, []);
   const scan = useLibraryScan();
   const imports = usePlaylistImport();
@@ -30,30 +42,14 @@ export default function ManageLibraryScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {counts && (
-        <Card label="Library">
-          <Text style={styles.stat}>{plural(counts.songs, 'song')}</Text>
-          <Text style={styles.stat}>{plural(counts.tags, 'tag')}</Text>
-        </Card>
+        <LibraryOverview
+          counts={counts}
+          state={scan.state}
+          disabled={busy}
+          onScan={scan.run}
+          onChooseFolders={openLibraryFolders}
+        />
       )}
-
-      <ScanCard
-        state={scan.state}
-        hasSongs={(counts?.songs ?? 0) > 0}
-        disabled={busy}
-        onScan={scan.run}
-        onChooseFolders={openLibraryFolders}
-      />
-
-      <Card title="Folders">
-        <CardText>
-          {counts && counts.folders > 0
-            ? `Reading ${counts.reading} of ${plural(counts.folders, 'folder')}. Ones that look like voice messages or recordings are left out.`
-            : 'ProTag reads every audio folder on this phone, except ones that look like voice messages or recordings.'}
-        </CardText>
-        <CardActions>
-          <Button label="Choose folders" icon="folder-outline" variant="secondary" onPress={openLibraryFolders} disabled={busy} />
-        </CardActions>
-      </Card>
 
       <Card title="Playlists">
         <CardText>
@@ -94,9 +90,5 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     gap: spacing.lg,
-  },
-  stat: {
-    ...font.heading,
-    color: colors.text,
   },
 });
