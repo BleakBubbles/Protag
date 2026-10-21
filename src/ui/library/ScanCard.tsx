@@ -40,9 +40,9 @@ export function ScanCard({ state, hasSongs, disabled, onScan, onChooseFolders }:
         <CardText>It only reads audio files — never photos, videos, or anything else.</CardText>
         <CardActions>
           {state.canAskAgain ? (
-            <Button label="Allow access" onPress={onScan} />
+            <Button label="Allow access" variant="tonal" onPress={onScan} />
           ) : (
-            <Button label="Open settings" onPress={() => Linking.openSettings()} />
+            <Button label="Open settings" icon="settings-outline" variant="tonal" onPress={() => Linking.openSettings()} />
           )}
         </CardActions>
       </Card>
@@ -64,15 +64,16 @@ export function ScanCard({ state, hasSongs, disabled, onScan, onChooseFolders }:
       {state.kind === 'done' && <ScanSummaryText summary={state.summary} />}
       {state.kind === 'error' && <CardText tone="error">Scan failed: {state.message}</CardText>}
       <CardActions>
-        {state.kind === 'done' && state.summary.leftOut > 0 && onChooseFolders && (
-          <Button label="Choose folders" variant="secondary" onPress={onChooseFolders} disabled={disabled} />
-        )}
         <Button
-          label={hasSongs ? 'Rescan library' : 'Scan my music'}
-          variant={hasSongs ? 'secondary' : 'primary'}
+          label={hasSongs ? 'Rescan' : 'Scan my music'}
+          icon={hasSongs ? 'refresh' : 'search'}
+          variant="tonal"
           onPress={onScan}
           disabled={disabled}
         />
+        {state.kind === 'done' && state.summary.leftOut > 0 && onChooseFolders && (
+          <Button label="Folders" icon="folder-outline" variant="secondary" onPress={onChooseFolders} disabled={disabled} />
+        )}
       </CardActions>
     </Card>
   );

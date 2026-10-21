@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { Children, type ReactNode } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { ButtonFillContext } from './Button';
 import { InfoButton, type InfoButtonProps } from './InfoButton';
 import { colors, font, iconSize, radius, spacing, touchTarget } from './theme';
 
@@ -11,13 +12,11 @@ export interface CardProps {
   title?: string;
   /** An (i) beside the title that explains the card, so the card itself can stay short. */
   info?: InfoButtonProps;
-  /** A card's one action, at the end of the title row. */
-  action?: ReactNode;
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;
 }
 
-export function Card({ label, title, info, action, children, style }: CardProps) {
+export function Card({ label, title, info, children, style }: CardProps) {
   return (
     <View style={[styles.card, style]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -30,8 +29,6 @@ export function Card({ label, title, info, action, children, style }: CardProps)
               <InfoButton {...info} />
             </View>
           )}
-          <View style={styles.spacer} />
-          {action}
         </View>
       ) : null}
       {children}
@@ -53,9 +50,22 @@ export function CardStatus({ children }: { children: ReactNode }) {
   );
 }
 
-/** A horizontal group of buttons inside a card. */
+/**
+ * A card's buttons, sharing its width equally: one button spans the card, two
+ * get half each. Main action first (tonal), the other after it (secondary).
+ */
 export function CardActions({ children }: { children: ReactNode }) {
-  return <View style={styles.actions}>{children}</View>;
+  return (
+    <ButtonFillContext.Provider value={true}>
+      <View style={styles.actions}>
+        {Children.toArray(children).map((child, i) => (
+          <View key={i} style={styles.slot}>
+            {child}
+          </View>
+        ))}
+      </View>
+    </ButtonFillContext.Provider>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -91,9 +101,6 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs - (touchTarget - iconSize.sm) / 2,
     marginRight: -(touchTarget - iconSize.sm) / 2,
   },
-  spacer: {
-    flex: 1,
-  },
   status: {
     ...font.label,
     color: colors.textFaint,
@@ -109,9 +116,10 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginTop: spacing.xs,
+  },
+  slot: {
+    flex: 1,
   },
 });

@@ -40,7 +40,7 @@ export function ImportPrompt({
     <Card title="Bring your playlists" info={PLAYLISTS_INFO}>
       <CardText>Turn playlists from another music app into tags.</CardText>
       <CardActions>
-        <Button label="Choose folder" icon="folder-open-outline" onPress={onChoose} disabled={disabled} />
+        <Button label="Choose folder" icon="folder-open-outline" variant="tonal" onPress={onChoose} disabled={disabled} />
         <Button label="Not now" variant="secondary" onPress={onDismiss} disabled={disabled} />
       </CardActions>
     </Card>
@@ -61,13 +61,10 @@ export function PlaylistsCard({
   onImport: () => void;
 }) {
   return (
-    <Card
-      title="Playlists"
-      info={PLAYLISTS_INFO}
-      action={
-        <Button label="Import" icon="download-outline" variant="tonal" onPress={onImport} disabled={disabled} />
-      }
-    >
+    <Card title="Playlists" info={PLAYLISTS_INFO}>
+      <CardActions>
+        <Button label="Import playlists" icon="download-outline" variant="tonal" onPress={onImport} disabled={disabled} />
+      </CardActions>
       <ImportProgress state={state} />
     </Card>
   );

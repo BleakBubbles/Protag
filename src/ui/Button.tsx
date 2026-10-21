@@ -1,13 +1,16 @@
+import { createContext, useContext } from 'react';
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Icon, type IconName } from './Icon';
 import { colors, font, iconSize, radius, spacing, touchTarget } from './theme';
 
 /**
+ * Every button is a pill, whatever its variant, so buttons side by side match.
+ *
  * - `primary`: filled accent, for the one main action on a screen.
  * - `tonal`: a soft accent tint, for actions that should be noticed without
- *   shouting, like the call to action in an empty state.
- * - `secondary`: outlined and neutral.
+ *   shouting: a card's main action, the call to action in an empty state.
+ * - `secondary`: outlined and neutral; a card's other action.
  */
 export type ButtonVariant = 'primary' | 'tonal' | 'secondary';
 
@@ -25,6 +28,12 @@ export interface ButtonProps {
 
 const SMALL_HEIGHT = 32;
 
+/**
+ * True inside a row whose buttons share its width equally (`CardActions`):
+ * each button stretches to its share instead of hugging its label.
+ */
+export const ButtonFillContext = createContext(false);
+
 const LABEL_COLOR: Record<ButtonVariant, string> = {
   primary: colors.onAccent,
   tonal: colors.accentFg,
@@ -41,6 +50,7 @@ export function Button({
   style,
 }: ButtonProps) {
   const color = LABEL_COLOR[variant];
+  const fill = useContext(ButtonFillContext);
   return (
     <Pressable
       onPress={onPress}
@@ -53,12 +63,15 @@ export function Button({
         variant === 'tonal' && styles.tonal,
         variant === 'secondary' && styles.secondary,
         size === 'small' && styles.small,
+        fill && styles.fill,
         (pressed || disabled) && styles.dimmed,
         style,
       ]}
     >
       {icon && <Icon name={icon} size={size === 'small' ? iconSize.sm - 4 : iconSize.sm} color={color} />}
-      <Text style={[styles.label, { color }]}>{label}</Text>
+      <Text style={[styles.label, { color }]} numberOfLines={1}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -70,20 +83,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     backgroundColor: colors.accent,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     minHeight: touchTarget,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     alignSelf: 'flex-start',
   },
   tonal: {
     backgroundColor: colors.accentTint,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.xl,
   },
   secondary: {
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  fill: {
+    alignSelf: 'stretch',
+    paddingHorizontal: spacing.md,
   },
   small: {
     minHeight: SMALL_HEIGHT,

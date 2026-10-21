@@ -59,8 +59,8 @@ export default function ManageLibraryScreen() {
         info={{
           topic: 'Backup',
           paragraphs: [
-            'Your tags live only on this phone. A reinstall or a lost phone would lose them, so export them now and then to keep them safe, or to move them to a new phone.',
-            'Importing a backup adds its tags to what’s here and never removes anything.',
+            'Your tags live only on this phone. A reinstall or a lost phone would lose them, so back them up now and then: Back up saves them as a file you can keep anywhere, or move to a new phone.',
+            'Restore adds the tags from a backup file to what’s here, and never removes anything.',
           ],
         }}
       >
@@ -70,8 +70,8 @@ export default function ManageLibraryScreen() {
         {backup.state.kind === 'imported' && <CardText>{backup.state.message}</CardText>}
         {backup.state.kind === 'error' && <CardText tone="error">{backup.state.message}</CardText>}
         <CardActions>
-          <Button label="Export tags" icon="share-outline" variant="tonal" onPress={backup.exportTags} disabled={busy} />
-          <Button label="Import" icon="download-outline" variant="secondary" onPress={backup.importTags} disabled={busy} />
+          <Button label="Back up" icon="share-outline" variant="tonal" onPress={backup.exportTags} disabled={busy} />
+          <Button label="Restore" icon="download-outline" variant="secondary" onPress={backup.importTags} disabled={busy} />
         </CardActions>
       </Card>
     </ScrollView>

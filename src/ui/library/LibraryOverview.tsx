@@ -79,7 +79,7 @@ export function LibraryOverview({ counts, state, disabled, onScan, onChooseFolde
             disabled={disabled}
           />
         )}
-        <Button label="Choose folders" icon="folder-outline" variant="secondary" onPress={onChooseFolders} disabled={disabled} />
+        <Button label="Folders" icon="folder-outline" variant="secondary" onPress={onChooseFolders} disabled={disabled} />
       </CardActions>
     </Card>
   );
