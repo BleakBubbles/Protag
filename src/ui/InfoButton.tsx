@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewInstance } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View, type ViewInstance } from 'react-native';
 
 import { IconButton } from './IconButton';
 import { colors, font, iconSize, radius, spacing } from './theme';
@@ -49,15 +49,14 @@ export function InfoButton({ topic, paragraphs }: InfoButtonProps) {
 }
 
 /**
- * Right-aligned under the (i), with a pointer at it; above it when there's
- * more room there. It always fits on screen: width is capped by the screen,
- * and when the text is taller than the room on either side (large system
- * fonts, a small phone, landscape), the bubble stops at the margin and its
- * text scrolls. Hidden for the one frame it takes to measure itself.
+ * Right-aligned under the (i), with a pointer at it; above it instead when
+ * it doesn't fit below and there's more room above. That covers large system
+ * fonts and short screens; text too long for either side isn't worth more
+ * machinery, since the explanations are a few lines. Hidden for the one frame
+ * it takes to measure itself.
  */
 function Bubble({ anchor, topic, paragraphs }: { anchor: Rect } & InfoButtonProps) {
   const screen = useWindowDimensions();
-  /** The text's full height, however much of it fits. */
   const [natural, setNatural] = useState<number | null>(null);
 
   const width = Math.min(MAX_WIDTH, screen.width - EDGE * 2);
@@ -67,22 +66,20 @@ function Bubble({ anchor, topic, paragraphs }: { anchor: Rect } & InfoButtonProp
   const roomBelow = screen.height - EDGE - below;
   const roomAbove = anchor.y - POINTER - EDGE;
   const placeBelow = natural === null || natural <= roomBelow || roomBelow >= roomAbove;
-  const height = natural === null ? undefined : Math.min(natural, placeBelow ? roomBelow : roomAbove);
-  const top = placeBelow ? below : anchor.y - POINTER - (height ?? 0);
+  const top = placeBelow ? below : anchor.y - POINTER - (natural ?? 0);
 
   return (
-    <View style={[styles.bubble, { width, left, top, height, opacity: natural === null ? 0 : 1 }]}>
+    <View
+      style={[styles.bubble, { width, left, top, opacity: natural === null ? 0 : 1 }]}
+      onLayout={(e) => setNatural(e.nativeEvent.layout.height)}
+    >
       <View style={[styles.pointer, { left: centre - left - POINTER }, placeBelow ? styles.pointerUp : styles.pointerDown]} />
-      <ScrollView bounces={false}>
-        <View style={styles.body} onLayout={(e) => setNatural(e.nativeEvent.layout.height)}>
-          <Text style={styles.topic}>{topic}</Text>
-          {paragraphs.map((text, i) => (
-            <Text key={i} style={styles.paragraph}>
-              {text}
-            </Text>
-          ))}
-        </View>
-      </ScrollView>
+      <Text style={styles.topic}>{topic}</Text>
+      {paragraphs.map((text, i) => (
+        <Text key={i} style={styles.paragraph}>
+          {text}
+        </Text>
+      ))}
     </View>
   );
 }
@@ -96,13 +93,11 @@ const styles = StyleSheet.create({
   // A step lighter than the cards it sits over; the dimmed app gives it its edge.
   bubble: {
     position: 'absolute',
+    padding: spacing.lg,
+    gap: spacing.sm,
     borderRadius: radius.lg,
     backgroundColor: colors.raised,
     elevation: 12,
-  },
-  body: {
-    padding: spacing.lg,
-    gap: spacing.sm,
   },
   // A square turned on its corner, half of it showing past the bubble's edge.
   pointer: {
