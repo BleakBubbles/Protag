@@ -271,16 +271,17 @@ export function useDropTarget(spot: NonNullable<PotSpot>) {
 const STROKE = 1.75;
 
 /**
- * The pot's + ("either") and × ("both"): two rounded bars, the × being the +
- * turned on its corner, so the two always match in size and weight.
+ * The pot's + ("either"), × ("both") and − ("not"): rounded bars, the × being
+ * the + turned on its corner and the − its crossbar alone, so all three match
+ * in size and weight.
  */
-export function Join({ both, size }: { both?: boolean; size: number }) {
+export function Join({ both, minus, size }: { both?: boolean; minus?: boolean; size: number }) {
   const arm = Math.round(size * 0.6);
   const bar = { backgroundColor: colors.textDim, borderRadius: STROKE / 2 };
   return (
     <View style={[styles.join, { width: size, height: size }, both && styles.turned]}>
       <View style={[bar, { width: arm, height: STROKE }]} />
-      <View style={[bar, styles.across, { width: STROKE, height: arm }]} />
+      {!minus && <View style={[bar, styles.across, { width: STROKE, height: arm }]} />}
     </View>
   );
 }

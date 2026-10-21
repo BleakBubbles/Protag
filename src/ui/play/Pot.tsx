@@ -137,13 +137,18 @@ export function Pot({
                 </View>
               ))}
               {draft.exclude.map((tagId) => (
-                <ExcludedChip
-                  key={`x${tagId}`}
-                  tagId={tagId}
-                  name={names.get(tagId) ?? ''}
-                  hue={hues.get(tagId) ?? colors.textDim}
-                  onTap={() => onTapExcluded(tagId)}
-                />
+                // Kept out reads as "minus": the − travels with its chip, like the +.
+                <View key={`x${tagId}`} style={styles.unit}>
+                  <View importantForAccessibility="no-hide-descendants">
+                    <Join minus size={SYMBOL} />
+                  </View>
+                  <ExcludedChip
+                    tagId={tagId}
+                    name={names.get(tagId) ?? ''}
+                    hue={hues.get(tagId) ?? colors.textDim}
+                    onTap={() => onTapExcluded(tagId)}
+                  />
+                </View>
               ))}
             </ScrollView>
           </FadeIn>
@@ -365,7 +370,10 @@ interface ExcludedChipProps {
   onTap: () => void;
 }
 
-/** A kept-out tag: a dim trace of its colour, crossed out in a red outline, like its tile. */
+/**
+ * A kept-out tag: a pill in its full colour, like any other ingredient (it
+ * shapes the mix as much as they do), after a − that says what it does.
+ */
 function ExcludedChip({ tagId, name, hue, onTap }: ExcludedChipProps) {
   const { handlers, lifting } = useDraggable({ kind: 'excluded', tagId }, { names: [name], colors: [hue] }, onTap);
   const drop = usePotDrop();
@@ -384,12 +392,13 @@ function ExcludedChip({ tagId, name, hue, onTap }: ExcludedChipProps) {
         drop({ kind: 'excluded', tagId }, { kind: 'pot' });
         AccessibilityInfo.announceForAccessibility(`${name} added to the mix`);
       }}
-      style={[styles.excluded, { backgroundColor: withAlpha(hue, 0.43) }, lifting && styles.lifting]}
+      style={[styles.chip, { backgroundColor: hue }, lifting && styles.lifting]}
     >
-      <Icon name="remove" size={iconSize.sm - 6} color={colors.exclude} />
-      <Text style={styles.excludedText} numberOfLines={1}>
-        {name}
-      </Text>
+      <View style={styles.segment}>
+        <Text style={styles.segmentText} numberOfLines={1}>
+          {name}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -571,21 +580,6 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.bg,
     opacity: 0.75,
-  },
-  excluded: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    height: CHIP,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: colors.exclude,
-  },
-  excludedText: {
-    ...font.label,
-    color: colors.textDim,
-    textDecorationLine: 'line-through',
   },
   actions: {
     height: ACTIONS,
