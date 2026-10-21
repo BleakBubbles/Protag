@@ -12,7 +12,8 @@ import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { Artwork } from '../../ui/player/Artwork';
 import { TagChip } from '../../ui/TagChip';
-import { colors, font, spacing } from '../../ui/theme';
+import { Icon } from '../../ui/Icon';
+import { colors, font, iconSize, spacing, touchTarget } from '../../ui/theme';
 
 const NO_TAGS: readonly TagRow[] = [];
 const MAX_PICTURE = 220;
@@ -28,7 +29,7 @@ export interface SongCollectionProps {
   tags: ReadonlyMap<number, readonly TagRow[]>;
   /** How the player names what's playing: "Playing · New Jeans". */
   label: string;
-  /** The button that tags every song here: "Tag album", "Tag all songs". */
+  /** What the tag-everything button does, for screen readers: "Tag album", "Tag all songs". */
   tagAllLabel: string;
   /** Between the buttons and the songs, like an artist's albums. */
   children?: ReactNode;
@@ -38,10 +39,10 @@ export interface SongCollectionProps {
  * An album's or an artist's page: their picture and name, Play (in order) and
  * Shuffle, a strip of how its songs are tagged, then the songs themselves.
  *
- * The strip leads with a button that tags every song at once (for someone who
- * thinks in albums, tagging one song at a time would be the friction that
- * sends them away), then each tag already used here with how many songs have
- * it: the album seen through ProTag's eyes. A tag opens its own page.
+ * The strip shows each tag already used here with how many songs have it (the
+ * album seen through ProTag's eyes; a tag opens its own page), and ends with a
+ * button that tags every song at once: for someone who thinks in albums,
+ * tagging one song at a time would be the friction that sends them away.
  */
 export function SongCollection({
   picture,
@@ -132,10 +133,17 @@ export function SongCollection({
             </View>
             {ids.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stripRow} contentContainerStyle={styles.strip}>
-                <Button label={tagAllLabel} icon="tag" variant="tonal" size="small" onPress={() => openEditTags(ids)} />
                 {makeup.map(({ tag, count }) => (
                   <TagChip key={tag.id} name={tag.name} color={tag.color} count={count} onPress={() => openTag(tag.id)} />
                 ))}
+                <Pressable
+                  onPress={() => openEditTags(ids)}
+                  accessibilityRole="button"
+                  accessibilityLabel={tagAllLabel}
+                  style={({ pressed }) => [styles.tagAll, pressed && styles.tagAllPressed]}
+                >
+                  <Icon name="tag" size={iconSize.sm} color={colors.accentFg} />
+                </Pressable>
               </ScrollView>
             )}
             {children}
@@ -186,9 +194,23 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     flexGrow: 0,
   },
+  // Centred when it fits; scrolls from the left when it doesn't.
   strip: {
+    flexGrow: 1,
+    justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
+  },
+  tagAll: {
+    width: touchTarget,
+    height: touchTarget,
+    borderRadius: touchTarget / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentTint,
+  },
+  tagAllPressed: {
+    opacity: 0.6,
   },
 });
