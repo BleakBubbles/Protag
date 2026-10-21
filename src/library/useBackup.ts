@@ -6,12 +6,13 @@ import { notifyLibraryChanged } from '../db/changes';
 import { getSetting, setSetting, SettingKey } from '../db/settings';
 import { plural } from '../ui/format';
 import { applyImport, BackupError, buildBackup, parseBackup, planImport, type ImportPlan } from './backup';
-import { pickBackupText, shareBackup } from './backupFile';
+import { pickBackupText, saveBackupTo, shareBackup } from './backupFile';
+import { pickFolder } from './saf';
 
 export type BackupState =
   | { kind: 'idle' }
   | { kind: 'working' }
-  | { kind: 'imported'; message: string }
+  | { kind: 'done'; message: string }
   | { kind: 'error'; message: string };
 
 /** The summary shown before importing: what will change, and what won't. */
@@ -45,7 +46,7 @@ function confirm(title: string, message: string, action: string): Promise<boolea
   );
 }
 
-/** Export and import of the tag backup, and when the last export happened. */
+/** Backing up and restoring tags, and when the last backup was made. */
 export function useBackup() {
   const db = useSQLiteContext();
   const [state, setState] = useState<BackupState>({ kind: 'idle' });
@@ -55,20 +56,40 @@ export function useBackup() {
     getSetting(db, SettingKey.lastBackupExport).then((value) => setLastExport(value ? Number(value) : null));
   }, [db]);
 
-  const exportTags = useCallback(async () => {
+  const recordBackup = useCallback(async () => {
+    const now = Date.now();
+    await setSetting(db, SettingKey.lastBackupExport, String(now));
+    setLastExport(now);
+  }, [db]);
+
+  /** Into a folder on the phone, picked each time (starting at the last one). */
+  const saveToPhone = useCallback(async () => {
+    const folder = await pickFolder(await getSetting(db, SettingKey.backupFolder));
+    if (!folder) return; // Backed out of the picker.
+    setState({ kind: 'working' });
+    try {
+      await setSetting(db, SettingKey.backupFolder, folder);
+      const name = await saveBackupTo(folder, await buildBackup(db));
+      await recordBackup();
+      setState({ kind: 'done', message: `Saved ${name}` });
+    } catch (error) {
+      setState({ kind: 'error', message: `Couldn't save the backup: ${String(error)}` });
+    }
+  }, [db, recordBackup]);
+
+  /** To another app, through the share sheet: Drive, email and so on. */
+  const sendToApp = useCallback(async () => {
     setState({ kind: 'working' });
     try {
       await shareBackup(await buildBackup(db));
-      const now = Date.now();
-      await setSetting(db, SettingKey.lastBackupExport, String(now));
-      setLastExport(now);
+      await recordBackup();
       setState({ kind: 'idle' });
     } catch (error) {
-      setState({ kind: 'error', message: `Export failed: ${String(error)}` });
+      setState({ kind: 'error', message: `Couldn't share the backup: ${String(error)}` });
     }
-  }, [db]);
+  }, [db, recordBackup]);
 
-  const importTags = useCallback(async () => {
+  const restore = useCallback(async () => {
     try {
       const text = await pickBackupText();
       if (text === null) return; // Backed out of the picker.
@@ -76,26 +97,26 @@ export function useBackup() {
       const plan = await planImport(db, parseBackup(text));
 
       if (plan.newTags === 0 && plan.newLinks === 0 && plan.newMixes.length === 0) {
-        setState({ kind: 'imported', message: 'Everything in that backup is already here.' });
+        setState({ kind: 'done', message: 'Everything in that backup is already here.' });
         return;
       }
-      if (!(await confirm('Import this backup?', describePlan(plan), 'Import'))) {
+      if (!(await confirm('Restore this backup?', describePlan(plan), 'Restore'))) {
         setState({ kind: 'idle' });
         return;
       }
       await applyImport(db, plan);
       notifyLibraryChanged();
       setState({
-        kind: 'imported',
-        message: `Imported. ${plural(plan.newLinks, 'tag')} added to ${plural(plan.matchedSongs, 'song')}.`,
+        kind: 'done',
+        message: `Restored. ${plural(plan.newLinks, 'tag')} added to ${plural(plan.matchedSongs, 'song')}.`,
       });
     } catch (error) {
       setState({
         kind: 'error',
-        message: error instanceof BackupError ? error.message : `Import failed: ${String(error)}`,
+        message: error instanceof BackupError ? error.message : `Restore failed: ${String(error)}`,
       });
     }
   }, [db]);
 
-  return { state, lastExport, exportTags, importTags, busy: state.kind === 'working' };
+  return { state, lastExport, saveToPhone, sendToApp, restore, busy: state.kind === 'working' };
 }

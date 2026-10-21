@@ -6,8 +6,10 @@ export const SettingKey = {
   playlistFolder: 'playlists.folderUri',
   /** 'dismissed' once the user declines the playlist import prompt. */
   playlistPrompt: 'playlists.prompt',
-  /** Epoch ms of the last tag backup export (the share sheet was completed). */
+  /** Epoch ms of the last tag backup (saved to a folder, or the share sheet completed). */
   lastBackupExport: 'backup.lastExportAt',
+  /** SAF tree URI of the folder backups were last saved to; the picker opens there. */
+  backupFolder: 'backup.folderUri',
   /** 'shown' once the user has seen how to bring back a hidden mini-player. */
   miniPlayerHint: 'miniPlayer.hint',
   /** JSON `FolderChoices`: which of the phone's audio folders are read (library/folders.ts). */

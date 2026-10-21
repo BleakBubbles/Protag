@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { getSetting, SettingKey } from '@/db/settings';
@@ -8,6 +9,7 @@ import { useBackup } from '@/library/useBackup';
 import { useLibraryScan } from '@/library/useLibraryScan';
 import { usePlaylistImport } from '@/library/usePlaylistImport';
 import { openLibraryFolders } from '@/navigation';
+import { ActionSheet } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
 import { Card, CardActions, CardStatus, CardText } from '@/ui/Card';
 import { formatDaysAgo } from '@/ui/format';
@@ -38,6 +40,7 @@ export default function ManageLibraryScreen() {
   const imports = usePlaylistImport();
   const backup = useBackup();
   const busy = scan.busy || imports.busy || backup.busy;
+  const [backingUp, setBackingUp] = useState(false);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -65,15 +68,26 @@ export default function ManageLibraryScreen() {
         }}
       >
         <CardStatus>
-          {backup.lastExport ? `Last exported ${formatDaysAgo(backup.lastExport)}` : 'Not exported yet'}
+          {backup.lastExport ? `Last backed up ${formatDaysAgo(backup.lastExport)}` : 'Not backed up yet'}
         </CardStatus>
-        {backup.state.kind === 'imported' && <CardText>{backup.state.message}</CardText>}
+        {backup.state.kind === 'done' && <CardText>{backup.state.message}</CardText>}
         {backup.state.kind === 'error' && <CardText tone="error">{backup.state.message}</CardText>}
         <CardActions>
-          <Button label="Back up" icon="share-outline" variant="tonal" onPress={backup.exportTags} disabled={busy} />
-          <Button label="Restore" icon="download-outline" variant="secondary" onPress={backup.importTags} disabled={busy} />
+          <Button label="Back up" icon="save-outline" variant="tonal" onPress={() => setBackingUp(true)} disabled={busy} />
+          <Button label="Restore" icon="download-outline" variant="secondary" onPress={backup.restore} disabled={busy} />
         </CardActions>
       </Card>
+
+      {/* Where to: Android's share sheet only lists apps, so saving on the phone is its own choice. */}
+      <ActionSheet
+        visible={backingUp}
+        title="Back up your tags"
+        actions={[
+          { label: 'Save to a folder on this phone', onPress: backup.saveToPhone },
+          { label: 'Send to an app (Drive, email…)', onPress: backup.sendToApp },
+        ]}
+        onClose={() => setBackingUp(false)}
+      />
     </ScrollView>
   );
 }

@@ -1,5 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { cacheDirectory, readAsStringAsync, writeAsStringAsync } from 'expo-file-system/legacy';
+import { cacheDirectory, readAsStringAsync, StorageAccessFramework, writeAsStringAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 import type { BackupFile } from './backup';
@@ -11,9 +11,21 @@ export function backupFileName(date: Date): string {
 }
 
 /**
- * Hand the backup to Android's share sheet, which reaches wherever the user
- * keeps things: Drive, Files, email, another phone. Resolves when the sheet
- * closes; Android doesn't say whether it was actually saved anywhere.
+ * Write the backup as a file in a folder the user picked (`pickFolder`), and
+ * return its name. Android's share sheet only lists apps, and many phones
+ * offer no "save to files" there, so this is the way to keep it on the phone.
+ */
+export async function saveBackupTo(folderUri: string, backup: BackupFile): Promise<string> {
+  const name = backupFileName(new Date());
+  const uri = await StorageAccessFramework.createFileAsync(folderUri, name, 'application/json');
+  await writeAsStringAsync(uri, JSON.stringify(backup, null, 2));
+  return name;
+}
+
+/**
+ * Hand the backup to Android's share sheet, which reaches other apps: Drive,
+ * email, a chat with yourself. Resolves when the sheet closes; Android doesn't
+ * say whether it was actually saved anywhere.
  */
 export async function shareBackup(backup: BackupFile): Promise<void> {
   const uri = `${cacheDirectory}${backupFileName(new Date())}`;
