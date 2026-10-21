@@ -10,10 +10,12 @@ import { countSongs } from '@/db/songs';
 import { buildDescendantMap, listAllTagsWithCounts } from '@/db/tags';
 import type { TagWithCounts } from '@/db/types';
 import { openLibrary } from '@/navigation';
-import { usePlayQuery } from '@/player/PlayerProvider';
+import { distinctAlbums } from '@/library/mixArt';
+import { usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
+import { queueForQuery } from '@/player/sources';
 import { describeQuery } from '@/query/describe';
 import { dropInPot, tapExcluded, tapIngredient, tapTag, type PotItem, type PotSpot } from '@/query/pot';
-import { countMatching } from '@/query/run';
+import { countMatching, findSongs } from '@/query/run';
 import {
   buildQuery,
   EMPTY_DRAFT,
@@ -27,10 +29,15 @@ import { Button } from '@/ui/Button';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { ingredientKey, Pot, type ShuffleCount } from '@/ui/play/Pot';
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
+import { PreviewSheet } from '@/ui/play/PreviewSheet';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { colors, font, spacing, tagColor } from '@/ui/theme';
+
+/** Covers in the pot's preview line, and how many of the most-played songs to find them among. */
+const COVERS = 5;
+const COVER_SAMPLE = 60;
 
 /**
  * Shuffle tab: build something to shuffle. The pot sits on top like a text field
@@ -96,6 +103,8 @@ function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const editingMix = mixes.find((m) => m.id === editingId) ?? null;
   const [saving, setSaving] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const { playQueue } = usePlayerActions();
 
   const names = useMemo(() => new Map(tags.map((t) => [t.id, t.name])), [tags]);
   const hues = useMemo(() => new Map(tags.map((t) => [t.id, tagColor(t.color)])), [tags]);
@@ -126,11 +135,21 @@ function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
   // The Shuffle label changes once per tap, when the new count is in, rather
   // than first showing the new pot with the old number.
   const [counted, setCounted] = useState<ShuffleCount | null>(null);
+  const [covers, setCovers] = useState<readonly string[]>([]);
   const [ingredientCounts, setIngredientCounts] = useState<ReadonlyMap<string, number>>(new Map());
   useEffect(() => {
     let live = true;
     const empty = isEmptyDraft(current);
-    countMatching(db, query, descendants).then((count) => live && setCounted({ empty, count }));
+    // The covers arrive with the count, so the preview line changes once too:
+    // the most-played albums first, like a mix card's artwork.
+    Promise.all([
+      countMatching(db, query, descendants),
+      empty ? [] : findSongs(db, query, { order: 'played', limit: COVER_SAMPLE, descendants }),
+    ]).then(([count, sample]) => {
+      if (!live) return;
+      setCounted({ empty, count });
+      setCovers(distinctAlbums(sample, COVERS));
+    });
     // Each ingredient on its own (exclusions aside), so combining visibly narrows.
     // Keyed by its tags, so a count never shows on the wrong chip while they move.
     Promise.all(
@@ -168,6 +187,8 @@ function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
   const tap = useCallback((id: number) => setDraft(tapTag(current, id)), [current]);
   const drag = usePotDragRoot((item: PotItem, spot: PotSpot) => setDraft(dropInPot(current, item, spot)));
   const still = drag.active === null;
+  // An unchanged mix plays under its own name.
+  const playLabel = editingMix && sameDraft(current, editingMix.draft) ? editingMix.name : undefined;
 
   return (
     <PotDragContext.Provider value={drag}>
@@ -178,15 +199,11 @@ function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
           hues={hues}
           ingredientCounts={ingredientCounts}
           counted={counted}
+          covers={covers}
+          onPreview={() => setPreviewing(true)}
           editing={editingMix?.name ?? null}
           onSave={() => setSaving(true)}
-          onShuffle={() =>
-            // An unchanged mix plays under its own name.
-            playQuery(query, {
-              draft: current,
-              label: editingMix && sameDraft(current, editingMix.draft) ? editingMix.name : undefined,
-            })
-          }
+          onShuffle={() => playQuery(query, { draft: current, label: playLabel })}
           onClear={() => setDraft(EMPTY_DRAFT)}
           onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
           onTapExcluded={(tagId) => setDraft(tapExcluded(current, tagId))}
@@ -223,6 +240,17 @@ function Builder({ tags, descendants, mixes, openRequest }: BuilderProps) {
             notifyLibraryChanged();
           }}
           onClose={() => setSaving(false)}
+        />
+        <PreviewSheet
+          visible={previewing}
+          draft={current}
+          description={describeQuery(query, names)}
+          names={names}
+          onClose={() => setPreviewing(false)}
+          onPlay={async (songId) => {
+            const request = await queueForQuery(db, query);
+            playQueue(request.ids, { startId: songId, shuffle: true, label: playLabel ?? request.label, draft: current });
+          }}
         />
         <DragGhost />
       </View>

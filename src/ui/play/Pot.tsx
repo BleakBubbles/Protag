@@ -1,16 +1,22 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { albumArtUri } from '../../library/assets';
 import type { PotItem } from '../../query/pot';
 import type { QueryDraft } from '../../query/types';
 import { formatCount, plural } from '../format';
 import { Icon } from '../Icon';
 import { IconButton } from '../IconButton';
+import { Artwork } from '../player/Artwork';
 import { colors, font, iconSize, radius, spacing, touchTarget } from '../theme';
 import { Join, useDraggable, useDropTarget, usePotDragState, usePotDrop } from './PotDrag';
 import { withAlpha } from './TagTile';
 
-const TOP = 24;
+/** The top line: tall enough for the cover stack. */
+const TOP = 32;
+const COVER = 28;
+/** How much each cover tucks under the one before it. */
+const COVER_OVERLAP = 8;
 const CHIP = 36;
 /** Two rows of chips; more scroll. Fixed, so the pot never changes height. */
 const CONTENT = CHIP * 2 + spacing.sm;
@@ -38,6 +44,9 @@ export interface PotProps {
   ingredientCounts: ReadonlyMap<string, number>;
   /** The latest finished count; the Shuffle button shows it as one change. */
   counted: ShuffleCount | null;
+  /** A few of the matching songs' albums (ids), for the cover stack; updated with `counted`. */
+  covers: readonly string[];
+  onPreview: () => void;
   /** The name of the mix opened for editing, if any. */
   editing: string | null;
   onSave: () => void;
@@ -65,6 +74,8 @@ export function Pot({
   hues,
   ingredientCounts,
   counted,
+  covers,
+  onPreview,
   editing,
   onSave,
   onShuffle,
@@ -87,9 +98,14 @@ export function Pot({
   return (
     <View ref={pot.ref} style={[styles.pot, pot.hovered && active?.kind !== 'ingredient' && styles.potHovered]}>
       <View style={styles.top}>
-        <Text style={styles.hint} numberOfLines={1}>
-          {hintFor(draft, active, hover, editing)}
-        </Text>
+        {/* While something's lifted, or the pot is empty, this line explains; otherwise it previews. */}
+        {active || empty ? (
+          <Text style={styles.hint} numberOfLines={1}>
+            {hintFor(active, hover)}
+          </Text>
+        ) : (
+          <PreviewLine covers={covers} counted={counted} editing={editing} onPress={onPreview} />
+        )}
         <View style={styles.clearSlot}>
           {!empty && (
             <IconButton icon="close" label="Empty the mix" size={iconSize.sm} color={colors.textDim} onPress={onClear} />
@@ -182,13 +198,8 @@ function shuffleText(counted: ShuffleCount | null): { title: string; count: stri
   return { title: empty ? 'Shuffle all' : 'Shuffle', count: plural(count, 'song'), none: false };
 }
 
-/** The pot's top line: what letting go will do, what's being edited, or what to try next. */
-function hintFor(
-  draft: QueryDraft,
-  active: PotItem | null,
-  hover: string,
-  editing: string | null
-): string {
+/** The pot's top line while it's empty or something's lifted: how to start, or what letting go will do. */
+function hintFor(active: PotItem | null, hover: string): string {
   if (active) {
     if (hover.startsWith('i')) return 'Let go to combine: songs need both';
     if (hover === 'keepOut') return 'Let go to keep its songs out';
@@ -196,13 +207,51 @@ function hintFor(
     if (hover === 'pot') return active.kind === 'excluded' ? 'Let go to add it' : 'Drop it on another to combine';
     return 'Let go to take it out';
   }
-  if (draft.ingredients.length === 0 && draft.exclude.length === 0) {
-    return 'Tap tags below, or hold one to drag it';
-  }
-  if (editing) return `Editing “${editing}”`;
-  if (draft.ingredients.some((tags) => tags.length > 1)) return 'Tap a combined one to split it';
-  if (draft.ingredients.length >= 2) return 'Drag one onto another for songs with both';
-  return 'Tap one here to send it back';
+  return 'Tap tags below, or hold one to drag it';
+}
+
+/**
+ * A glance at what the pot would play: a few of its albums' covers, the song
+ * count (and the mix's name when editing one), and the way into the full list.
+ */
+function PreviewLine({
+  covers,
+  counted,
+  editing,
+  onPress,
+}: {
+  covers: readonly string[];
+  counted: ShuffleCount | null;
+  editing: string | null;
+  onPress: () => void;
+}) {
+  const none = counted?.count === 0;
+  const count = counted === null ? null : plural(counted.count, 'song');
+  const text = [editing, none ? 'No songs match' : count].filter(Boolean).join(' · ');
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={none}
+      accessibilityRole="button"
+      accessibilityLabel={`${text}. Preview the songs`}
+      style={({ pressed }) => [styles.preview, pressed && styles.previewPressed]}
+    >
+      {covers.length > 0 && (
+        <View style={styles.covers}>
+          {covers.map((album, i) => (
+            <View key={album} style={[styles.cover, i > 0 && styles.coverTucked]}>
+              <Artwork uri={albumArtUri(album)} size={COVER} />
+            </View>
+          ))}
+        </View>
+      )}
+      <Text style={styles.previewText} numberOfLines={1}>
+        {text}
+        {!none && <Text style={styles.previewLink}>{text ? ' · ' : ''}Preview</Text>}
+      </Text>
+      {!none && <Icon name="chevron-forward" size={iconSize.sm - 6} color={colors.accentFg} />}
+    </Pressable>
+  );
 }
 
 /** Fades its children in when it mounts: how the first chips replace the empty well. */
@@ -395,6 +444,37 @@ const styles = StyleSheet.create({
     ...font.caption,
     flex: 1,
     color: colors.textDim,
+  },
+  preview: {
+    flex: 1,
+    height: TOP,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radius.pill,
+  },
+  previewPressed: {
+    opacity: 0.7,
+  },
+  covers: {
+    flexDirection: 'row',
+  },
+  // Each cover in a ring of the pot's colour, so they read as separate when stacked.
+  cover: {
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: colors.surfaceAlt,
+  },
+  coverTucked: {
+    marginLeft: -COVER_OVERLAP,
+  },
+  previewText: {
+    ...font.label,
+    flexShrink: 1,
+    color: colors.textDim,
+  },
+  previewLink: {
+    color: colors.accentFg,
   },
   // The close button keeps its full touch area, overhanging this short row.
   clearSlot: {
