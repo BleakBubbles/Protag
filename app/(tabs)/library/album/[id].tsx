@@ -49,7 +49,6 @@ export default function AlbumScreen() {
       songs={songs}
       tags={tags}
       label={album.title}
-      tagAllLabel="Tag album"
     />
   );
 }

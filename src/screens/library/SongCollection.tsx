@@ -29,20 +29,20 @@ export interface SongCollectionProps {
   tags: ReadonlyMap<number, readonly TagRow[]>;
   /** How the player names what's playing: "Playing · New Jeans". */
   label: string;
-  /** What the tag-everything button does, for screen readers: "Tag album", "Tag all songs". */
-  tagAllLabel: string;
-  /** Between the buttons and the songs, like an artist's albums. */
+  /** Sections between the buttons and the tags, like an artist's albums (use `CollectionSection`). */
   children?: ReactNode;
 }
 
 /**
  * An album's or an artist's page: their picture and name, Play (in order) and
- * Shuffle, a strip of how its songs are tagged, then the songs themselves.
+ * Shuffle, then labelled sections, ending with the songs.
  *
- * The strip shows each tag already used here with how many songs have it (the
- * album seen through ProTag's eyes; a tag opens its own page), and ends with a
- * button that tags every song at once: for someone who thinks in albums,
- * tagging one song at a time would be the friction that sends them away.
+ * "Tags on these songs", just above the songs, shows each tag used here and
+ * how many songs have it (the album seen through ProTag's eyes; a tag opens
+ * its own page). Its label says where they come from: in ProTag only songs
+ * carry tags, never the album or artist itself. It ends with a button that
+ * tags every song at once: for someone who thinks in albums, tagging one song
+ * at a time would be the friction that sends them away.
  */
 export function SongCollection({
   picture,
@@ -52,7 +52,6 @@ export function SongCollection({
   songs,
   tags,
   label,
-  tagAllLabel,
   children,
 }: SongCollectionProps) {
   const screen = useWindowDimensions();
@@ -131,26 +130,46 @@ export function SongCollection({
                 <Button label="Shuffle" icon="shuffle" variant="secondary" onPress={() => play(undefined, true)} disabled={ids.length === 0} />
               </CardActions>
             </View>
-            {ids.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stripRow} contentContainerStyle={styles.strip}>
-                {makeup.map(({ tag, count }) => (
-                  <TagChip key={tag.id} name={tag.name} color={tag.color} count={count} onPress={() => openTag(tag.id)} />
-                ))}
-                <Pressable
-                  onPress={() => openEditTags(ids)}
-                  accessibilityRole="button"
-                  accessibilityLabel={tagAllLabel}
-                  style={({ pressed }) => [styles.tagAll, pressed && styles.tagAllPressed]}
-                >
-                  <Icon name="tag" size={iconSize.sm} color={colors.textDim} />
-                </Pressable>
-              </ScrollView>
-            )}
             {children}
+            {ids.length > 0 && (
+              <CollectionSection title="Tags on these songs">
+                {makeup.length === 0 ? (
+                  // Nothing tagged yet: words, not a lone icon, and an invitation.
+                  <View style={styles.sectionBody}>
+                    <Button label="Tag these songs" icon="tag" variant="secondary" onPress={() => openEditTags(ids)} />
+                  </View>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
+                    {makeup.map(({ tag, count }) => (
+                      <TagChip key={tag.id} name={tag.name} color={tag.color} count={count} onPress={() => openTag(tag.id)} />
+                    ))}
+                    <Pressable
+                      onPress={() => openEditTags(ids)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Tag all these songs"
+                      style={({ pressed }) => [styles.tagAll, pressed && styles.tagAllPressed]}
+                    >
+                      <Icon name="tag" size={iconSize.sm} color={colors.textDim} />
+                    </Pressable>
+                  </ScrollView>
+                )}
+              </CollectionSection>
+            )}
+            {ids.length > 0 && <Text style={[styles.sectionTitle, styles.songsTitle]}>Songs</Text>}
           </View>
         }
       />
     </>
+  );
+}
+
+/** A labelled part of an album or artist page ("Albums", "Tags on these songs"), full width. */
+export function CollectionSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {children}
+    </View>
   );
 }
 
@@ -190,14 +209,24 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     paddingHorizontal: spacing.lg,
   },
-  stripRow: {
+  section: {
     alignSelf: 'stretch',
-    flexGrow: 0,
+    gap: spacing.sm,
   },
-  // Centred when it fits; scrolls from the left when it doesn't.
+  sectionTitle: {
+    ...font.label,
+    color: colors.textDim,
+    paddingHorizontal: spacing.lg,
+  },
+  // The song list follows straight on, so its heading lines up with the others.
+  songsTitle: {
+    alignSelf: 'stretch',
+    marginBottom: -spacing.sm,
+  },
+  sectionBody: {
+    paddingHorizontal: spacing.lg,
+  },
   strip: {
-    flexGrow: 1,
-    justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
