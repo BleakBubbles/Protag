@@ -8,8 +8,14 @@ import { useDraggable, usePotDrop } from './PotDrag';
 
 export const TAG_TILE_HEIGHT = 64;
 const BADGE = 20;
-/** How strongly each state shows the tag's colour (1 = solid). */
-const WASH: Record<TagChoice, number> = { include: 1, off: 0.5, exclude: 0.43 };
+/** How strongly each state shows the tag's colour (1 = solid). Kept out is still part of the mix, so it's solid too. */
+const WASH: Record<TagChoice, number> = { include: 1, off: 0.5, exclude: 1 };
+
+/** The ring that says a tag is in the mix, and how: white for in, red for kept out. */
+const RING: Record<Exclude<TagChoice, 'off'>, string> = { include: colors.text, exclude: colors.exclude };
+/** The ring sits this far outside the tile, with a sliver of background between. TagGrid's gap leaves room for two. */
+const RING_GAP = 2;
+const RING_WIDTH = 2;
 
 /** What a tap turns each state into: in or out of the pot. Excluding is by dragging. */
 const AFTER_TAP: Record<TagChoice, TagChoice> = { off: 'include', include: 'off', exclude: 'off' };
@@ -49,22 +55,21 @@ export interface TagTileProps {
  * A tag in the Shuffle tab's builder: a big, forgiving target that's coloured
  * like the tag. A tap drops it into the pot (or takes it back out); holding it
  * lifts it, to drag onto something in the pot. Each state is unmistakable:
- * off is a soft wash, in the pot lights up in full colour with a check,
- * excluded keeps a dim trace of its colour (so you still see *which* tag)
- * inside a red outline, with a minus and the name struck through.
+ * off is a soft wash; anything in the mix is full colour with a ring around
+ * it, white with a check when it's in, red with a minus when it's kept out.
+ * The ring sits just outside the tile, so it shows against any tag colour.
  */
 export function TagTile({ tagId, name, color, songCount, choice, width, onPress, expanded, onToggleExpanded }: TagTileProps) {
   const hue = tagColor(color);
   const included = choice === 'include';
   const excluded = choice === 'exclude';
-  const ink = included ? colors.bg : colors.text;
 
   // While pressed, the tile already shows the colour the tap leads to, so
   // releasing only adds or removes the marks.
   const { handlers, pressed, lifting } = useDraggable({ kind: 'tile', tagId }, { names: [name], colors: [hue] }, onPress);
   const drop = usePotDrop();
   const shown = pressed ? AFTER_TAP[choice] : choice;
-  const text = shown === 'include' ? colors.bg : colors.text;
+  const text = shown === 'off' ? colors.text : colors.bg;
 
   return (
     <View style={[styles.tile, { width }, lifting && styles.lifting]}>
@@ -85,21 +90,18 @@ export function TagTile({ tagId, name, color, songCount, choice, width, onPress,
         }}
         style={[styles.main, { backgroundColor: withAlpha(hue, WASH[shown]) }]}
       >
-        <Text
-          style={[styles.name, { color: text }, excluded && styles.struck]}
-          numberOfLines={1}
-        >
+        <Text style={[styles.name, { color: text }]} numberOfLines={1}>
           {name}
         </Text>
-        <Text style={[styles.count, { color: excluded ? colors.exclude : shown === 'include' ? text : colors.textDim }]}>
+        <Text style={[styles.count, { color: shown === 'off' ? colors.textDim : text }]}>
           {`${formatCount(songCount)} ${songCount === 1 ? 'song' : 'songs'}`}
         </Text>
       </View>
 
-      {/* A layer on top rather than a border on the tile: it can't shift the
+      {/* A layer outside rather than a border on the tile: it can't shift the
           text, and the tile never has a border removed (which on Android once
           left its contents blank). */}
-      {excluded && <View style={styles.outline} pointerEvents="none" />}
+      {choice !== 'off' && <View style={[styles.ring, { borderColor: RING[choice] }]} pointerEvents="none" />}
 
       {choice !== 'off' && (
         <View
@@ -121,7 +123,7 @@ export function TagTile({ tagId, name, color, songCount, choice, width, onPress,
           <Ionicons
             name={expanded ? 'chevron-up' : 'chevron-down'}
             size={iconSize.sm - 2}
-            color={included ? ink : colors.textDim}
+            color={choice === 'off' ? colors.textDim : colors.bg}
           />
         </Pressable>
       )}
@@ -130,37 +132,33 @@ export function TagTile({ tagId, name, color, songCount, choice, width, onPress,
 }
 
 const styles = StyleSheet.create({
+  // Not clipped, so the ring can sit outside it; the coloured part clips itself.
   tile: {
     height: TAG_TILE_HEIGHT,
-    borderRadius: radius.md,
-    overflow: 'hidden',
   },
   // Picked up: what's left behind is a faint outline of where it came from.
   lifting: {
     opacity: 0.35,
   },
-  outline: {
+  ring: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.exclude,
+    top: -RING_GAP - RING_WIDTH,
+    right: -RING_GAP - RING_WIDTH,
+    bottom: -RING_GAP - RING_WIDTH,
+    left: -RING_GAP - RING_WIDTH,
+    borderRadius: radius.md + RING_GAP + RING_WIDTH,
+    borderWidth: RING_WIDTH,
   },
   main: {
     flex: 1,
+    borderRadius: radius.md,
+    overflow: 'hidden',
     justifyContent: 'space-between',
     padding: spacing.md,
     paddingRight: spacing.md + BADGE,
   },
   name: {
     ...font.listTitle,
-  },
-  struck: {
-    color: colors.textDim,
-    textDecorationLine: 'line-through',
   },
   count: {
     ...font.caption,

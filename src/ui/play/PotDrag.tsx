@@ -275,9 +275,19 @@ const STROKE = 1.75;
  * the + turned on its corner and the − its crossbar alone, so all three match
  * in size and weight.
  */
-export function Join({ both, minus, size }: { both?: boolean; minus?: boolean; size: number }) {
+export function Join({
+  both,
+  minus,
+  size,
+  color = colors.textDim,
+}: {
+  both?: boolean;
+  minus?: boolean;
+  size: number;
+  color?: string;
+}) {
   const arm = Math.round(size * 0.6);
-  const bar = { backgroundColor: colors.textDim, borderRadius: STROKE / 2 };
+  const bar = { backgroundColor: color, borderRadius: STROKE / 2 };
   return (
     <View style={[styles.join, { width: size, height: size }, both && styles.turned]}>
       <View style={[bar, { width: arm, height: STROKE }]} />

@@ -140,7 +140,7 @@ export function Pot({
                 // Kept out reads as "minus": the − travels with its chip, like the +.
                 <View key={`x${tagId}`} style={styles.unit}>
                   <View importantForAccessibility="no-hide-descendants">
-                    <Join minus size={SYMBOL} />
+                    <Join minus size={SYMBOL} color={colors.exclude} />
                   </View>
                   <ExcludedChip
                     tagId={tagId}
@@ -372,7 +372,8 @@ interface ExcludedChipProps {
 
 /**
  * A kept-out tag: a pill in its full colour, like any other ingredient (it
- * shapes the mix as much as they do), after a − that says what it does.
+ * shapes the mix as much as they do), inside a red rim, after a red −: the
+ * same red ring that marks it on its tile.
  */
 function ExcludedChip({ tagId, name, hue, onTap }: ExcludedChipProps) {
   const { handlers, lifting } = useDraggable({ kind: 'excluded', tagId }, { names: [name], colors: [hue] }, onTap);
@@ -392,9 +393,9 @@ function ExcludedChip({ tagId, name, hue, onTap }: ExcludedChipProps) {
         drop({ kind: 'excluded', tagId }, { kind: 'pot' });
         AccessibilityInfo.announceForAccessibility(`${name} added to the mix`);
       }}
-      style={[styles.chip, { backgroundColor: hue }, lifting && styles.lifting]}
+      style={[styles.chip, styles.keptOut, lifting && styles.lifting]}
     >
-      <View style={styles.segment}>
+      <View style={[styles.part, { backgroundColor: hue }]}>
         <Text style={styles.segmentText} numberOfLines={1}>
           {name}
         </Text>
@@ -542,6 +543,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: TRAY_INSET,
     backgroundColor: colors.border,
+  },
+  keptOut: {
+    borderColor: colors.exclude,
+    padding: TRAY_INSET - 1,
   },
   segmentRow: {
     flexDirection: 'row',

@@ -7,7 +7,8 @@ import { spacing, tagColor } from '../theme';
 import { TagTile } from './TagTile';
 
 const COLUMNS = 2;
-const GAP = spacing.sm;
+/** Room between tiles for both their rings (TagTile) and a sliver of space. */
+const GAP = spacing.md;
 /** Left border plus padding of a subtag block. */
 const INDENT = 2 + spacing.md;
 
