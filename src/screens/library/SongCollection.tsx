@@ -29,7 +29,7 @@ export interface SongCollectionProps {
   tags: ReadonlyMap<number, readonly TagRow[]>;
   /** How the player names what's playing: "Playing · New Jeans". */
   label: string;
-  /** Sections between the buttons and the tags, like an artist's albums (use `CollectionSection`). */
+  /** Sections between the tags and the songs, like an artist's albums (use `CollectionSection`). */
   children?: ReactNode;
 }
 
@@ -37,10 +37,10 @@ export interface SongCollectionProps {
  * An album's or an artist's page: their picture and name, Play (in order) and
  * Shuffle, then labelled sections, ending with the songs.
  *
- * "Tags on these songs", just above the songs, shows each tag used here and
- * how many songs have it (the album seen through ProTag's eyes; a tag opens
- * its own page). Its label says where they come from: in ProTag only songs
- * carry tags, never the album or artist itself. It ends with a button that
+ * "Song tags", first after the buttons, shows each tag used here and how many
+ * songs have it: a summary of the album or artist seen through ProTag's eyes
+ * (a tag opens its own page). Its label says where they come from: in ProTag
+ * only songs carry tags, never the album or artist itself. It ends with a button that
  * tags every song at once: for someone who thinks in albums, tagging one song
  * at a time would be the friction that sends them away.
  */
@@ -130,9 +130,8 @@ export function SongCollection({
                 <Button label="Shuffle" icon="shuffle" variant="secondary" onPress={() => play(undefined, true)} disabled={ids.length === 0} />
               </CardActions>
             </View>
-            {children}
             {ids.length > 0 && (
-              <CollectionSection title="Tags on these songs">
+              <CollectionSection title="Song tags">
                 {makeup.length === 0 ? (
                   // Nothing tagged yet: words, not a lone icon, and an invitation.
                   <View style={styles.sectionBody}>
@@ -155,6 +154,7 @@ export function SongCollection({
                 )}
               </CollectionSection>
             )}
+            {children}
             {ids.length > 0 && <Text style={[styles.sectionTitle, styles.songsTitle]}>Songs</Text>}
           </View>
         }
@@ -163,7 +163,7 @@ export function SongCollection({
   );
 }
 
-/** A labelled part of an album or artist page ("Albums", "Tags on these songs"), full width. */
+/** A labelled part of an album or artist page ("Song tags", "Albums"), full width. */
 export function CollectionSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={styles.section}>
