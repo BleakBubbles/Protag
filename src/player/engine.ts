@@ -23,27 +23,26 @@ export interface EngineStatus {
   error: string | null;
 }
 
-/**
- * The current song, plus the songs a skip either way would reach, by URI. The
- * engine keeps those ready, so next and previous work from the lock screen,
- * the notification and headphones without waiting on JS.
- */
-export interface EngineWindow {
-  previous: string | null;
-  current: { uri: string; nowPlaying: NowPlaying };
-  next: string | null;
-}
+/** What happens at the ends: stop, wrap around, or play the same song again. */
+export type EngineRepeat = 'off' | 'all' | 'one';
 
 export interface AudioEngine {
   status: EngineStatus;
   /**
-   * Make `window.current` the playing song, with its neighbours ready. Moving
-   * to a neighbour is a plain skip; the same song again changes nothing but
-   * its neighbours. Starts playback when `autoplay` is true; never pauses.
+   * Hand over a whole play order (song URIs) and start at `index`, optionally
+   * part-way in. The engine holds all of it, so next and previous work from
+   * the lock screen, notification and headphones without JS.
    */
-  show(window: EngineWindow, autoplay: boolean): void;
-  /** Repeat-one: a song ending starts again; skipping still moves on. */
-  setRepeatOne(on: boolean): void;
+  setOrder(
+    uris: readonly string[],
+    index: number,
+    options: { autoplay: boolean; positionSec?: number; repeat: EngineRepeat }
+  ): void;
+  /** Move within the current order. */
+  skipTo(index: number, autoplay: boolean): void;
+  setRepeat(repeat: EngineRepeat): void;
+  /** What the lock screen shows; call when the current song changes. */
+  setNowPlaying(nowPlaying: NowPlaying): void;
   play(): void;
   pause(): void;
   seekTo(seconds: number): Promise<void>;
@@ -53,11 +52,11 @@ export interface EngineCallbacks {
   /** The last song played to its end, with nothing after it. */
   onEnded: () => void;
   /**
-   * Playback moved to a neighbour without ProTag asking: a lock-screen or
-   * headphone skip, or a song ending into the next. Follow it, then `show`
-   * the new window.
+   * Playback moved to another song without ProTag asking: a lock-screen or
+   * headphone skip, a song ending into the next, or repeat-all wrapping
+   * round. `index` is into the order last set.
    */
-  onMoved: (direction: 'next' | 'previous') => void;
+  onMoved: (index: number) => void;
 }
 
 export type UseAudioEngine = (callbacks: EngineCallbacks) => AudioEngine;

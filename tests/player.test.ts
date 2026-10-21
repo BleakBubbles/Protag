@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { freshDatabase, insertSong } from './helpers/db.ts';
+import { getSongUris } from '../src/db/songs.ts';
 import { addTagToSong, createTag } from '../src/db/tags.ts';
 import { artworkCacheKey, isNativeLoadableUrl } from '../src/player/artworkUrls.ts';
 import { queueForQuery } from '../src/player/sources.ts';
@@ -75,4 +76,18 @@ test('days ago counts calendar days, not 24-hour spans', () => {
   assert.equal(formatDaysAgo(new Date(2026, 9, 7, 23, 50).getTime(), now), 'yesterday');
   assert.equal(formatDaysAgo(new Date(2026, 9, 1).getTime(), now), '7 days ago');
   assert.equal(formatDaysAgo(new Date(2026, 5, 1).getTime(), now), '4 months ago');
+});
+
+test('a queue’s URIs come back in queue order, each song holding its place', async () => {
+  const db = await freshDatabase();
+  const a = await insertSong(db, 'A');
+  const b = await insertSong(db, 'B');
+  const uris = await getSongUris(db as never, [b, 999, a, b]);
+  assert.deepEqual(uris, [
+    'content://media/external/audio/media/B',
+    'content://protag/missing/999',
+    'content://media/external/audio/media/A',
+    'content://media/external/audio/media/B',
+  ]);
+  db.close();
 });

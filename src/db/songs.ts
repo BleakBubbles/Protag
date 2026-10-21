@@ -122,6 +122,21 @@ export async function getSongsByIds(
   return ids.map((id) => byId.get(id)).filter((r): r is SongRow => r !== undefined);
 }
 
+/**
+ * Each song's URI, in the order given: what the player hands the audio
+ * engine for a whole queue. One query however long the queue (no bound
+ * parameter per id), and a song that's gone still holds its place.
+ */
+export async function getSongUris(db: SQLiteDatabase, ids: readonly number[]): Promise<string[]> {
+  const rows = await db.getAllAsync<{ id: number; uri: string }>(
+    'SELECT id, uri FROM songs WHERE id IN (SELECT value FROM json_each(?))',
+    JSON.stringify(ids)
+  );
+  const byId = new Map(rows.map((r) => [r.id, r.uri]));
+  // An unplayable placeholder keeps later songs at their indexes; playing it shows an error.
+  return ids.map((id) => byId.get(id) ?? `content://protag/missing/${id}`);
+}
+
 export async function listSongs(
   db: SQLiteDatabase,
   options: { search?: string; limit?: number; offset?: number } = {}
