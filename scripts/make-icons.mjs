@@ -43,11 +43,14 @@ write('icon.png', icon);
 write('favicon.png', icon, 48);
 
 // Android adaptive icon: a 108dp canvas of which the launcher shows the middle
-// 72dp, so the logo's square maps to 2/3 of it. The background is a plain colour
-// set in app.json.
-write('android-icon-foreground.png', compose({ color: MARK, scale: 72 / 108 }));
+// 72dp. At 72/108 the logo's square would fill exactly that; a little more
+// zooms the P in (the logo has room around the mark, and the stem runs off the
+// bottom anyway). Past ~0.9 the bowl nears the edge of round launcher masks.
+// The background is a plain colour set in app.json.
+const ADAPTIVE_SCALE = 0.82;
+write('android-icon-foreground.png', compose({ color: MARK, scale: ADAPTIVE_SCALE }));
 // Themed (Material You) icons: the launcher recolours this; only the shape matters.
-write('android-icon-monochrome.png', compose({ color: '#FFFFFF', scale: 72 / 108 }));
+write('android-icon-monochrome.png', compose({ color: '#FFFFFF', scale: ADAPTIVE_SCALE }));
 
 // The mark alone, cropped to its own bounds (stem ending at the logo's bottom
 // edge), in the light colour for the app's dark background. Used by the splash
