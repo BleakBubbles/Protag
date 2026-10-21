@@ -11,9 +11,9 @@ import { CardActions } from '../../ui/Card';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { Artwork } from '../../ui/player/Artwork';
+import { TagButton } from '../../ui/TagButton';
 import { TagChip } from '../../ui/TagChip';
-import { Icon } from '../../ui/Icon';
-import { colors, font, iconSize, spacing, touchTarget } from '../../ui/theme';
+import { colors, font, spacing } from '../../ui/theme';
 
 const NO_TAGS: readonly TagRow[] = [];
 const MAX_PICTURE = 220;
@@ -136,34 +136,16 @@ export function SongCollection({
             {ids.length > 0 && (
               <CollectionSection title="Song tags">
                 {makeup.length === 0 ? (
-                  // Nothing tagged yet: the same button, with words beside it
-                  // (not in it, so it stays small); the whole line is the target.
-                  <Pressable
-                    onPress={() => openEditTags(ids)}
-                    accessibilityRole="button"
-                    accessibilityLabel={tagPrompt}
-                    style={({ pressed }) => [styles.prompt, pressed && styles.tagAllPressed]}
-                  >
-                    <View style={styles.tagAll}>
-                      <Icon name="tag" size={iconSize.sm} color={colors.textDim} />
-                    </View>
-                    <Text style={styles.promptText} numberOfLines={1}>
-                      {tagPrompt}
-                    </Text>
-                  </Pressable>
+                  // Nothing tagged yet: the same button, with words beside it.
+                  <View style={styles.prompt}>
+                    <TagButton onPress={() => openEditTags(ids)} label={tagPrompt} showLabel />
+                  </View>
                 ) : (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
                     {makeup.map(({ tag, count }) => (
                       <TagChip key={tag.id} name={tag.name} color={tag.color} count={count} onPress={() => openTag(tag.id)} />
                     ))}
-                    <Pressable
-                      onPress={() => openEditTags(ids)}
-                      accessibilityRole="button"
-                      accessibilityLabel="Tag all these songs"
-                      style={({ pressed }) => [styles.tagAll, pressed && styles.tagAllPressed]}
-                    >
-                      <Icon name="tag" size={iconSize.sm} color={colors.textDim} />
-                    </Pressable>
+                    <TagButton onPress={() => openEditTags(ids)} label={tagPrompt} />
                   </ScrollView>
                 )}
               </CollectionSection>
@@ -239,32 +221,11 @@ const styles = StyleSheet.create({
   },
   prompt: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
     paddingHorizontal: spacing.lg,
-  },
-  promptText: {
-    ...font.body,
-    flexShrink: 1,
-    color: colors.textDim,
   },
   strip: {
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-  },
-  tagAll: {
-    width: touchTarget,
-    height: touchTarget,
-    borderRadius: touchTarget / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Dressed like the tag chips beside it: one of the row, not a call to action.
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  tagAllPressed: {
-    opacity: 0.6,
   },
 });

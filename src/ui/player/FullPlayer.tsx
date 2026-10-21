@@ -3,14 +3,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { SongRow } from '@/db/types';
 import { albumArtUri } from '@/library/assets';
-import { openAlbum, openArtist, openSongTags } from '@/navigation';
+import { openAlbum, openArtist, openTag } from '@/navigation';
 import { useNowPlaying, usePlaybackStatus, usePlayerActions } from '@/player/PlayerProvider';
 import type { QueueState } from '@/player/queue';
 import { EmptyState } from '@/ui/EmptyState';
 import { IconButton } from '@/ui/IconButton';
-import { colors, font, spacing } from '@/ui/theme';
+import { colors, font, spacing, touchTarget } from '@/ui/theme';
 import { ArtworkSlot } from './ArtworkSlot';
 import { SeekBar } from './SeekBar';
+import { SongTagsRow } from './SongTagsRow';
 import { SourceLine } from './SourceLine';
 import { TrackInfo } from './TrackInfo';
 import { TransportControls } from './TransportControls';
@@ -67,8 +68,8 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
         <View style={styles.topRow}>
           <IconButton icon="chevron-down" label="Close player" onPress={onClose} />
           <SourceLine queue={queue} onClose={onClose} />
-          {/* Tag while listening — the moment the opinion is fresh. */}
-          <IconButton icon="tag" label="Edit tags for this song" onPress={() => openSongTags(song.id)} />
+          {/* Free for now (tagging moved under the title); it keeps the pill centred. */}
+          <View style={styles.topSpacer} />
         </View>
         <ArtworkSlot uri={albumArtUri(song.album_id)} />
       </View>
@@ -80,6 +81,7 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
         onPressArtist={artist ? goTo(() => openArtist(artist)) : undefined}
         onPressAlbum={albumId ? goTo(() => openAlbum(albumId)) : undefined}
       />
+      <SongTagsRow songId={song.id} onOpenTag={(tagId) => goTo(() => openTag(tagId))()} />
       <SeekBar positionSec={status.positionSec} durationSec={durationSec} onSeek={actions.seekTo} />
       <TransportControls
         playing={status.playing}
@@ -117,6 +119,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'stretch',
+  },
+  topSpacer: {
+    width: touchTarget,
   },
   error: {
     ...font.body,
