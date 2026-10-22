@@ -275,7 +275,7 @@ function PreviewLine({
   );
 }
 
-/** Fades its children in when it mounts: how the first chips replace the empty well. */
+/** Fades its children in when it mounts: how the first tiles replace the empty well. */
 function FadeIn({ children }: { children: ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -319,7 +319,7 @@ function IngredientTile({ index, others, tags, look, count, width, onTap }: Ingr
   const drop = usePotDrop();
   const spoken = label.join(' and ');
 
-  // Every drop a chip can take part in, as a named action: combining with each
+  // Every drop a tile can take part in, as a named action: combining with each
   // other ingredient, and (a lone tag only, as with dragging) keeping it out.
   const actions = [
     { name: 'activate', label: combined ? 'Split it' : 'Take it out' },
@@ -433,7 +433,7 @@ function Face({ look }: { look: Look }) {
 
 const faceStyle = (look: Look) => [{ backgroundColor: look.hue ?? colors.raised }, look.hue === null && styles.withPicture];
 
-/** What floats under the finger: the chip as it looks here. */
+/** What floats under the finger: its tags as pills. */
 const ghostOf = (looks: readonly Look[]) => ({ parts: [...looks] });
 
 /** Slides over the buttons while something is lifted; dropping a tag here excludes it. */
