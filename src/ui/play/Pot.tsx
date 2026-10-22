@@ -58,6 +58,8 @@ export interface PotProps {
   onClear: () => void;
   onTapIngredient: (index: number) => void;
   onTapExcluded: (ref: Ref) => void;
+  /** Opens the browser of tags, artists and albums; absent while it's open. */
+  onAdd?: () => void;
 }
 
 /**
@@ -85,6 +87,7 @@ export function Pot({
   onClear,
   onTapIngredient,
   onTapExcluded,
+  onAdd,
 }: PotProps) {
   const { active, hover } = usePotDragState();
   const pot = useDropTarget({ kind: 'pot' });
@@ -150,9 +153,17 @@ export function Pot({
             </ScrollView>
           </FadeIn>
         ) : (
-          <View style={styles.well}>
-            <Text style={styles.wellText}>Tap or drag tags here</Text>
-          </View>
+          <Pressable
+            onPress={onAdd}
+            disabled={!onAdd}
+            accessibilityRole={onAdd ? 'button' : undefined}
+            style={({ pressed }) => [styles.well, pressed && styles.dimmed]}
+          >
+            {onAdd && <Icon name="add" size={iconSize.md} color={colors.textDim} />}
+            <Text style={[styles.wellText, onAdd && styles.wellAction]}>
+              {onAdd ? 'Add tags, artists or albums' : 'Tap or drag tags here'}
+            </Text>
+          </Pressable>
         )}
       </View>
 
@@ -522,6 +533,8 @@ const styles = StyleSheet.create({
   },
   well: {
     flex: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.md,
@@ -532,6 +545,9 @@ const styles = StyleSheet.create({
   wellText: {
     ...font.label,
     color: colors.textFaint,
+  },
+  wellAction: {
+    color: colors.textDim,
   },
   // A constant border that only changes colour: never added or removed (see TagTile's outline).
   chip: {

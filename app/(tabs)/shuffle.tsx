@@ -1,8 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Animated,
+  BackHandler,
+  Easing,
+  Keyboard,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { listAlbums, listArtists, type AlbumSummary, type ArtistSummary } from '@/db/albums';
 import { notifyLibraryChanged } from '@/db/changes';
@@ -60,10 +71,14 @@ const ROW = 12;
 /** Search results are one flat grid: no tag opens to show subtags. */
 const NO_CHILDREN = new Map<number | null, TagWithCounts[]>();
 
+/** How far the browser rises as it opens. */
+const RISE = 48;
+
 /**
  * Shuffle tab: build something to shuffle. The pot sits on top like a text field
- * over its keyboard; the tag tiles below go into it by tap or by drag, with a
- * live count. Saved mixes live in their own tab; "Edit" there opens one here
+ * over its keyboard; below it, the browser of tags, artists and albums slides up
+ * when asked for (tap the pot, or Add), and they go into the pot by tap or by
+ * drag, with a live count. Saved mixes live in their own tab; "Edit" there opens one here
  * (the `edit` param, a mix id), and the player's "Edit in Shuffle" opens what's
  * playing (the `draft` param, as JSON).
  */
@@ -152,6 +167,35 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
 
   const [picking, setPicking] = useState<'artists' | 'albums' | null>(null);
 
+  // The browser stays built while folded away, so it reopens where it was.
+  const [browsing, setBrowsing] = useState(false);
+  const reveal = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(reveal, {
+      toValue: browsing ? 1 : 0,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [browsing, reveal]);
+  const fold = useCallback(() => {
+    Keyboard.dismiss();
+    setSearch('');
+    setSearching(false);
+    setBrowsing(false);
+  }, []);
+  // Back folds the browser before it leaves the tab.
+  useFocusEffect(
+    useCallback(() => {
+      if (!browsing) return;
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        fold();
+        return true;
+      });
+      return () => sub.remove();
+    }, [browsing, fold])
+  );
+
   // Everything an ingredient can be, by ref: its name, a tag's colour, an artist's or album's picture.
   const tagIds = useMemo(() => new Set(tags.map((t) => t.id)), [tags]);
   const names = useMemo(() => {
@@ -231,6 +275,8 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
         : mixes.find((m) => sameDraft(m.draft, openRequest.draft));
     setDraft('draft' in openRequest ? openRequest.draft : (mix?.draft ?? EMPTY_DRAFT));
     setEditingId(mix?.id ?? null);
+    // Opened to be changed, so what to change it with comes up too.
+    setBrowsing(true);
     router.setParams({ edit: undefined, draft: undefined });
   }, [openRequest, mixes]);
 
@@ -308,100 +354,138 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
           onPreview={() => setPreviewing(true)}
           editing={editingMix?.name ?? null}
           onSave={() => setSaving(true)}
-          onShuffle={() => playQuery(query, { draft: current, label: playLabel })}
+          onShuffle={() => {
+            playQuery(query, { draft: current, label: playLabel });
+            fold();
+          }}
           onClear={() => setDraft(EMPTY_DRAFT)}
           onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
           onTapExcluded={(ref) => setDraft(tapExcluded(current, ref))}
+          onAdd={browsing ? undefined : () => setBrowsing(true)}
         />
 
-        <ScrollView
-          style={styles.screen}
-          contentContainerStyle={styles.content}
-          scrollEnabled={still}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
-          <View style={styles.section}>
-            {searching ? (
-              <SearchRow value={search} onChangeText={setSearch} onClose={closeSearch} />
-            ) : (
-              <SectionHead
-                tall
-                label="Your tags"
-                sort={SORT_LABEL[sorts.tags]}
-                onSort={() => changeSorts({ ...sorts, tags: nextTagSort(sorts.tags) })}
-              >
-                <SearchButton onPress={() => setSearching(true)} />
-              </SectionHead>
-            )}
-            {found ? (
-              found.tags.length > 0 ? (
-                <TagGrid
-                  tags={found.tags}
-                  childrenOf={NO_CHILDREN}
-                  expanded={expanded}
-                  choiceOf={choiceOf}
-                  onTap={tap}
-                  onToggleExpanded={toggleExpanded}
-                  width={screenWidth - spacing.lg * 2}
-                  parentOf={parentName}
-                />
-              ) : (
-                <Text style={styles.hint}>{nothingFound ? `Nothing matches “${term}”.` : 'No tags match.'}</Text>
-              )
-            ) : tags.length === 0 ? (
-              <Text style={styles.hint}>Tag some songs in the Library to mix them here.</Text>
-            ) : (
-              <TagGrid
-                tags={children.get(null) ?? []}
-                childrenOf={children}
-                expanded={expanded}
-                choiceOf={choiceOf}
-                onTap={tap}
-                onToggleExpanded={toggleExpanded}
-                width={screenWidth - spacing.lg * 2}
-              />
-            )}
-          </View>
+        <View style={styles.screen}>
+          {/* Folded away: just the way to open it. */}
+          <Animated.View
+            pointerEvents={browsing ? 'none' : 'auto'}
+            style={[styles.folded, { opacity: reveal.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}
+          >
+            {!potEmpty && <Button label="Add more" icon="add" variant="tonal" onPress={() => setBrowsing(true)} />}
+          </Animated.View>
 
-          {/* Artists and albums: ingredients too, after the tags, as pictures. */}
-          {artistRow.length > 0 && (
-            <View style={styles.section}>
-              <SectionHead
-                label="Artists"
-                sort={SORT_LABEL[sorts.artists]}
-                onSort={() => changeSorts({ ...sorts, artists: nextMusicSort(sorts.artists) })}
-              />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} keyboardShouldPersistTaps="handled" style={styles.bleed} contentContainerStyle={styles.pictureRow}>
-                {artistRow.map((a) => {
-                  const ref = artistRef(a.name);
-                  return (
-                    <PictureTile key={ref} refId={ref} name={a.name} cover={a.coverAlbumId} round choice={choiceOf(ref)} onPress={() => tap(ref)} />
-                  );
-                })}
-                {artists.length > ROW && <SeeAllTile label="All artists" round onPress={() => setPicking('artists')} />}
-              </ScrollView>
+          <Animated.View
+            pointerEvents={browsing ? 'auto' : 'none'}
+            importantForAccessibility={browsing ? 'auto' : 'no-hide-descendants'}
+            style={[
+              styles.browser,
+              {
+                opacity: reveal,
+                transform: [{ translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [RISE, 0] }) }],
+              },
+            ]}
+          >
+            <View style={styles.browserHead}>
+              <Text style={styles.browserTitle}>Add to the mix</Text>
+              <Pressable
+                onPress={fold}
+                hitSlop={spacing.sm}
+                accessibilityRole="button"
+                accessibilityLabel="Done adding"
+                style={({ pressed }) => [styles.done, pressed && styles.pressed]}
+              >
+                <Text style={styles.doneText}>Done</Text>
+              </Pressable>
             </View>
-          )}
-          {albumRow.length > 0 && (
-            <View style={styles.section}>
-              <SectionHead
-                label="Albums"
-                sort={SORT_LABEL[sorts.albums]}
-                onSort={() => changeSorts({ ...sorts, albums: nextMusicSort(sorts.albums) })}
-              />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} keyboardShouldPersistTaps="handled" style={styles.bleed} contentContainerStyle={styles.pictureRow}>
-                {albumRow.map((a) => {
-                  const ref = albumRef(a.albumId);
-                  return (
-                    <PictureTile key={ref} refId={ref} name={a.title} cover={a.albumId} round={false} choice={choiceOf(ref)} onPress={() => tap(ref)} />
-                  );
-                })}
-                {albums.length > ROW && <SeeAllTile label="All albums" round={false} onPress={() => setPicking('albums')} />}
-              </ScrollView>
-            </View>
-          )}
-        </ScrollView>
+            <ScrollView
+              style={styles.screen}
+              contentContainerStyle={styles.content}
+              scrollEnabled={still}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
+              <View style={styles.section}>
+                {searching ? (
+                  <SearchRow value={search} onChangeText={setSearch} onClose={closeSearch} />
+                ) : (
+                  <SectionHead
+                    tall
+                    label="Your tags"
+                    sort={SORT_LABEL[sorts.tags]}
+                    onSort={() => changeSorts({ ...sorts, tags: nextTagSort(sorts.tags) })}
+                  >
+                    <SearchButton onPress={() => setSearching(true)} />
+                  </SectionHead>
+                )}
+                {found ? (
+                  found.tags.length > 0 ? (
+                    <TagGrid
+                      tags={found.tags}
+                      childrenOf={NO_CHILDREN}
+                      expanded={expanded}
+                      choiceOf={choiceOf}
+                      onTap={tap}
+                      onToggleExpanded={toggleExpanded}
+                      width={screenWidth - spacing.lg * 2}
+                      parentOf={parentName}
+                    />
+                  ) : (
+                    <Text style={styles.hint}>{nothingFound ? `Nothing matches “${term}”.` : 'No tags match.'}</Text>
+                  )
+                ) : tags.length === 0 ? (
+                  <Text style={styles.hint}>Tag some songs in the Library to mix them here.</Text>
+                ) : (
+                  <TagGrid
+                    tags={children.get(null) ?? []}
+                    childrenOf={children}
+                    expanded={expanded}
+                    choiceOf={choiceOf}
+                    onTap={tap}
+                    onToggleExpanded={toggleExpanded}
+                    width={screenWidth - spacing.lg * 2}
+                  />
+                )}
+              </View>
+
+              {/* Artists and albums: ingredients too, after the tags, as pictures. */}
+              {artistRow.length > 0 && (
+                <View style={styles.section}>
+                  <SectionHead
+                    label="Artists"
+                    sort={SORT_LABEL[sorts.artists]}
+                    onSort={() => changeSorts({ ...sorts, artists: nextMusicSort(sorts.artists) })}
+                  />
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} keyboardShouldPersistTaps="handled" style={styles.bleed} contentContainerStyle={styles.pictureRow}>
+                    {artistRow.map((a) => {
+                      const ref = artistRef(a.name);
+                      return (
+                        <PictureTile key={ref} refId={ref} name={a.name} cover={a.coverAlbumId} round choice={choiceOf(ref)} onPress={() => tap(ref)} />
+                      );
+                    })}
+                    {artists.length > ROW && <SeeAllTile label="All artists" round onPress={() => setPicking('artists')} />}
+                  </ScrollView>
+                </View>
+              )}
+              {albumRow.length > 0 && (
+                <View style={styles.section}>
+                  <SectionHead
+                    label="Albums"
+                    sort={SORT_LABEL[sorts.albums]}
+                    onSort={() => changeSorts({ ...sorts, albums: nextMusicSort(sorts.albums) })}
+                  />
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} keyboardShouldPersistTaps="handled" style={styles.bleed} contentContainerStyle={styles.pictureRow}>
+                    {albumRow.map((a) => {
+                      const ref = albumRef(a.albumId);
+                      return (
+                        <PictureTile key={ref} refId={ref} name={a.title} cover={a.albumId} round={false} choice={choiceOf(ref)} onPress={() => tap(ref)} />
+                      );
+                    })}
+                    {albums.length > ROW && <SeeAllTile label="All albums" round={false} onPress={() => setPicking('albums')} />}
+                  </ScrollView>
+                </View>
+              )}
+            </ScrollView>
+          </Animated.View>
+        </View>
 
         <MusicPicker
           visible={picking !== null}
@@ -462,6 +546,36 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
     gap: spacing.xl,
+  },
+  folded: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    paddingTop: spacing.xl,
+  },
+  browser: {
+    ...StyleSheet.absoluteFill,
+  },
+  browserHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+  },
+  browserTitle: {
+    ...font.heading,
+    color: colors.text,
+  },
+  done: {
+    paddingVertical: spacing.xs,
+    paddingLeft: spacing.md,
+  },
+  doneText: {
+    ...font.label,
+    color: colors.accentFg,
+  },
+  pressed: {
+    opacity: 0.5,
   },
   // A picture row runs to the screen's edges, starting in line with the grid.
   bleed: {
