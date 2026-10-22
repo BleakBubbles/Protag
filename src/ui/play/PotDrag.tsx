@@ -1,5 +1,5 @@
 import { AndroidHaptics, performAndroidHapticsAsync } from 'expo-haptics';
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import {
   Animated,
   StyleSheet,
@@ -26,6 +26,9 @@ const GHOST_LIFT = 64;
 const PICTURE_LIFT = 124;
 const GHOST_PICTURE = 72;
 const PILL_PICTURE = 24;
+/** A lifted tile: about a pot tile's size, each tag's share this wide. */
+const GHOST_TILE = 40;
+const GHOST_SHARE = 130;
 
 /**
  * How one part of the pot looks: its name, a tag's colour, or an artist's or
@@ -347,18 +350,26 @@ export function DragGhost() {
     );
   }
 
+  // A tile, as in the pot: each tag an equal share, a × in the gap between.
   return (
     <Animated.View pointerEvents="none" style={[styles.ghost, { transform: position.getTranslateTransform() }]}>
-      {/* A combination rides in its tray, as in the pot. */}
-      <View style={[styles.pill, parts.length > 1 && styles.tray]}>
+      <View style={[styles.tile, { width: Math.min(GHOST_WIDTH, parts.length * GHOST_SHARE) }]}>
         {parts.map((part, i) => (
-          <View key={i} style={styles.segment}>
+          <Fragment key={i}>
             {i > 0 && (
               <View style={styles.times}>
-                <Join both size={18} />
+                <Join both size={18} color={colors.text} />
               </View>
             )}
-            <View style={[styles.name, { backgroundColor: part.hue ?? colors.raised }, part.hue === null && styles.withPicture]}>
+            <View
+              style={[
+                styles.share,
+                { backgroundColor: part.hue ?? colors.raised },
+                part.hue === null && styles.withPicture,
+                i > 0 && styles.joinedLeft,
+                i < parts.length - 1 && styles.joinedRight,
+              ]}
+            >
               {part.hue === null && (
                 <Artwork
                   uri={part.cover ? albumArtUri(part.cover) : null}
@@ -370,7 +381,7 @@ export function DragGhost() {
                 {part.name}
               </Text>
             </View>
-          </View>
+          </Fragment>
         ))}
       </View>
     </Animated.View>
@@ -386,34 +397,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 12,
   },
-  pill: {
+  // On the page's colour, so the gap around a × shows it, as in the pot.
+  tile: {
     flexDirection: 'row',
-    height: 40,
-    borderRadius: radius.pill,
-    overflow: 'hidden',
+    height: GHOST_TILE,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg,
     transform: [{ scale: 1.06 }],
   },
-  tray: {
-    padding: 3,
-    backgroundColor: colors.border,
-  },
-  segment: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  name: {
-    alignSelf: 'stretch',
+  share: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs + 2,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    borderRadius: radius.md,
+  },
+  joinedLeft: {
+    borderTopLeftRadius: radius.sm - 2,
+    borderBottomLeftRadius: radius.sm - 2,
+  },
+  joinedRight: {
+    borderTopRightRadius: radius.sm - 2,
+    borderBottomRightRadius: radius.sm - 2,
   },
   withPicture: {
-    paddingLeft: 6,
+    paddingLeft: spacing.sm,
   },
   nameText: {
     ...font.label,
+    flexShrink: 1,
     color: colors.bg,
   },
   neutralText: {
@@ -437,7 +450,9 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   times: {
-    paddingHorizontal: 2,
+    width: 18 + spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   join: {
     alignItems: 'center',
