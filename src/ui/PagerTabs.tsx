@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Pressable, StyleSheet, View, type ScrollViewInstance } from 'react-native';
+import { Animated, Keyboard, Pressable, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 
 import { colors, font, spacing } from './theme';
 
@@ -42,7 +42,10 @@ export function PagerTabs<T extends string>({ pages, value, onChange, swipeEnabl
 
   useEffect(() => setShown((prev) => (prev.has(value) ? prev : new Set(prev).add(value))), [value]);
   // A tab tap changes `value`; the pages slide to it (a swipe is already there).
+  // Leaving a page puts its keyboard away: a search field still focused on a
+  // page off screen would keep taking the typing, and pull the pages back to it.
   useEffect(() => {
+    Keyboard.dismiss();
     if (width > 0) pager.current?.scrollTo({ x: index * width, animated: true });
   }, [index, width]);
 
@@ -100,6 +103,7 @@ export function PagerTabs<T extends string>({ pages, value, onChange, swipeEnabl
         scrollEnabled={swipeEnabled}
         showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={Keyboard.dismiss}
         contentOffset={{ x: index * width, y: 0 }}
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: true })}
