@@ -446,17 +446,20 @@ function KeepOut({ shown }: { shown: boolean }) {
 }
 
 const styles = StyleSheet.create({
+  // On the page's own background, like everything else: the pot is the top of
+  // the screen, set off from the tags by a line rather than as a card.
   pot: {
-    margin: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
     gap: spacing.sm,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.bg,
   },
+  // Something lifted over it: a teal wash says it'll land here.
   potHovered: {
-    borderColor: colors.accentFg,
+    backgroundColor: colors.accentTint,
   },
   top: {
     height: TOP,
@@ -486,7 +489,7 @@ const styles = StyleSheet.create({
   cover: {
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: colors.surfaceAlt,
+    borderColor: colors.bg,
   },
   coverTucked: {
     marginLeft: -COVER_OVERLAP,
@@ -658,7 +661,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     borderRadius: radius.pill,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.bg,
   },
   keepOutInner: {
     flex: 1,
