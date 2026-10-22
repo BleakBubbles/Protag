@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, type ReactNode } from 'react';
 import {
   AccessibilityInfo,
   Animated,
+  Easing,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -49,6 +50,8 @@ const BADGE = 18;
  */
 const HALF_FITS = 12;
 const PICTURE_CHARS = 3;
+/** How long a tile takes to slide to its new place when the pot changes around it. */
+const GLIDE_MS = 180;
 
 /** Songs the whole pot would play, with whether the pot was empty when counted. */
 export interface ShuffleCount {
@@ -157,27 +160,27 @@ export function Pot({
               contentContainerStyle={styles.tiles}
             >
               {draft.ingredients.map((tags, index) => (
-                <IngredientTile
-                  key={ingredientKey(tags)}
-                  index={index}
-                  others={spoken.flatMap((other, i) => (i === index ? [] : [{ index: i, label: other }]))}
-                  tags={tags}
-                  look={look}
-                  count={ingredientCounts.get(ingredientKey(tags)) ?? null}
-                  width={fitsHalf(tags.map(look)) ? (rowWidth - GAP) / 2 : rowWidth}
-                  onLayout={shown.onTileLayout(ingredientKey(tags))}
-                  onTap={() => onTapIngredient(index)}
-                />
+                <Glide key={ingredientKey(tags)} onLayout={shown.onTileLayout(ingredientKey(tags))}>
+                  <IngredientTile
+                    index={index}
+                    others={spoken.flatMap((other, i) => (i === index ? [] : [{ index: i, label: other }]))}
+                    tags={tags}
+                    look={look}
+                    count={ingredientCounts.get(ingredientKey(tags)) ?? null}
+                    width={fitsHalf(tags.map(look)) ? (rowWidth - GAP) / 2 : rowWidth}
+                    onTap={() => onTapIngredient(index)}
+                  />
+                </Glide>
               ))}
               {draft.exclude.map((ref) => (
-                <ExcludedTile
-                  key={excludedKey(ref)}
-                  refId={ref}
-                  look={look(ref)}
-                  width={(rowWidth - GAP) / 2}
-                  onLayout={shown.onTileLayout(excludedKey(ref))}
-                  onTap={() => onTapExcluded(ref)}
-                />
+                <Glide key={excludedKey(ref)} onLayout={shown.onTileLayout(excludedKey(ref))}>
+                  <ExcludedTile
+                    refId={ref}
+                    look={look(ref)}
+                    width={(rowWidth - GAP) / 2}
+                    onTap={() => onTapExcluded(ref)}
+                  />
+                </Glide>
               ))}
             </ScrollView>
           </FadeIn>
@@ -334,6 +337,39 @@ function useShowNewTiles(keys: readonly string[]) {
   };
 }
 
+/**
+ * Slides a tile from where it was to where it is now whenever the pot's
+ * layout moves it (a tile before it left, or merged), so you can follow
+ * where everything went rather than see it jump.
+ */
+function Glide({ onLayout, children }: { onLayout: (e: LayoutChangeEvent) => void; children: ReactNode }) {
+  const offset = useRef(new Animated.ValueXY()).current;
+  const last = useRef<{ x: number; y: number } | null>(null);
+  return (
+    <Animated.View
+      style={{ transform: offset.getTranslateTransform() }}
+      onLayout={(e) => {
+        const { x, y } = e.nativeEvent.layout;
+        const was = last.current;
+        last.current = { x, y };
+        if (was && (was.x !== x || was.y !== y)) {
+          // Back to where it was, on screen, then on to its new place.
+          offset.setValue({ x: was.x - x, y: was.y - y });
+          Animated.timing(offset, {
+            toValue: { x: 0, y: 0 },
+            duration: GLIDE_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }).start();
+        }
+        onLayout(e);
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 /** Fades its children in when it mounts: how the first tiles replace the empty well. */
 function FadeIn({ children }: { children: ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -358,7 +394,6 @@ interface IngredientTileProps {
   look: (ref: Ref) => Look;
   count: number | null;
   width: number;
-  onLayout: (e: LayoutChangeEvent) => void;
   onTap: () => void;
 }
 
@@ -369,7 +404,7 @@ interface IngredientTileProps {
  * gap between, so it reads as one thing that's picked up, dropped and split
  * together. Its song count sits at the end, in the colour's ink.
  */
-function IngredientTile({ index, others, tags, look, count, width, onLayout, onTap }: IngredientTileProps) {
+function IngredientTile({ index, others, tags, look, count, width, onTap }: IngredientTileProps) {
   const looks = tags.map(look);
   const label = looks.map((l) => l.name);
   const { handlers, lifting } = useDraggable({ kind: 'ingredient', index }, ghostOf(looks), onTap);
@@ -402,7 +437,6 @@ function IngredientTile({ index, others, tags, look, count, width, onLayout, onT
     <View
       ref={target.ref}
       {...handlers}
-      onLayout={onLayout}
       accessible
       accessibilityRole="button"
       accessibilityLabel={`${spoken}${combined ? ', songs with all of them' : ''}${count !== null ? `, ${count} songs` : ''}`}
@@ -434,7 +468,6 @@ interface ExcludedTileProps {
   refId: Ref;
   look: Look;
   width: number;
-  onLayout: (e: LayoutChangeEvent) => void;
   onTap: () => void;
 }
 
@@ -443,14 +476,13 @@ interface ExcludedTileProps {
  * shapes the mix as much as they do), in a red ring with a − badge: exactly
  * how it's marked on its tile below.
  */
-function ExcludedTile({ refId, look, width, onLayout, onTap }: ExcludedTileProps) {
+function ExcludedTile({ refId, look, width, onTap }: ExcludedTileProps) {
   const { name } = look;
   const { handlers, lifting } = useDraggable({ kind: 'excluded', ref: refId }, ghostOf([look]), onTap);
   const drop = usePotDrop();
   return (
     <View
       {...handlers}
-      onLayout={onLayout}
       accessible
       accessibilityRole="button"
       accessibilityLabel={`${name}, kept out`}
