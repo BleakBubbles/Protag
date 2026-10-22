@@ -14,7 +14,7 @@ import { useSongSelection } from '@/ui/hooks/useSongSelection';
 import { IconButton } from '@/ui/IconButton';
 import { ScanCard } from '@/ui/library/ScanCard';
 import { LogoMark } from '@/ui/LogoMark';
-import { SegmentedControl } from '@/ui/SegmentedControl';
+import { PagerTabs } from '@/ui/PagerTabs';
 import { colors, font, spacing } from '@/ui/theme';
 
 type LibraryView = 'tags' | 'songs' | 'artists' | 'albums';
@@ -26,13 +26,6 @@ const libraryHeader = {
   headerLeft: undefined,
   headerRight: () => <IconButton icon="settings-outline" label="Manage library" onPress={openManageLibrary} />,
 };
-
-const SEGMENTS = [
-  { value: 'tags', label: 'Tags' },
-  { value: 'songs', label: 'Songs' },
-  { value: 'artists', label: 'Artists' },
-  { value: 'albums', label: 'Albums' },
-] as const;
 
 
 /**
@@ -92,18 +85,18 @@ export default function LibraryScreen() {
   return (
     <View style={styles.screen}>
       <Stack.Screen options={header} />
-      <View style={styles.segments}>
-        <SegmentedControl segments={SEGMENTS} value={view} onChange={switchView} />
-      </View>
-      {view === 'tags' ? (
-        <TagsView selection={selection} onLooseSongs={setLooseIds} />
-      ) : view === 'songs' ? (
-        <SongsView />
-      ) : view === 'artists' ? (
-        <ArtistsView />
-      ) : (
-        <AlbumsView />
-      )}
+      {/* No swiping away mid-selection, where a stray swipe would lose it; tapping a tab still ends it. */}
+      <PagerTabs
+        value={view}
+        onChange={switchView}
+        swipeEnabled={!selection.selecting}
+        pages={[
+          { value: 'tags', label: 'Tags', render: () => <TagsView selection={selection} onLooseSongs={setLooseIds} /> },
+          { value: 'songs', label: 'Songs', render: () => <SongsView /> },
+          { value: 'artists', label: 'Artists', render: () => <ArtistsView /> },
+          { value: 'albums', label: 'Albums', render: () => <AlbumsView /> },
+        ]}
+      />
     </View>
   );
 }
@@ -137,9 +130,5 @@ const styles = StyleSheet.create({
   welcomeText: {
     ...font.body,
     color: colors.textDim,
-  },
-  segments: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
   },
 });
