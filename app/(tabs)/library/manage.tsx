@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { getSetting, SettingKey } from '@/db/settings';
@@ -9,7 +8,6 @@ import { useBackup } from '@/library/useBackup';
 import { useLibraryScan } from '@/library/useLibraryScan';
 import { usePlaylistImport } from '@/library/usePlaylistImport';
 import { openLibraryFolders } from '@/navigation';
-import { ActionSheet } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
 import { Card, CardActions, CardStatus, CardText } from '@/ui/Card';
 import { formatDaysAgo } from '@/ui/format';
@@ -40,7 +38,6 @@ export default function ManageLibraryScreen() {
   const imports = usePlaylistImport();
   const backup = useBackup();
   const busy = scan.busy || imports.busy || backup.busy;
-  const [backingUp, setBackingUp] = useState(false);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -62,7 +59,8 @@ export default function ManageLibraryScreen() {
         info={{
           topic: 'Backup',
           paragraphs: [
-            'Your tags live only on this phone. A reinstall or a lost phone would lose them, so back them up now and then: Back up saves them as a file you can keep anywhere, or move to a new phone.',
+            'Your tags live only on this phone. A reinstall or a lost phone would lose them, so back them up now and then, as a file you can keep anywhere or move to a new phone.',
+            'Save puts the file in a folder on this phone. Share sends it to another app, like Drive or email.',
             'Restore adds the tags from a backup file to what’s here, and never removes anything.',
           ],
         }}
@@ -73,21 +71,12 @@ export default function ManageLibraryScreen() {
         {backup.state.kind === 'done' && <CardText>{backup.state.message}</CardText>}
         {backup.state.kind === 'error' && <CardText tone="error">{backup.state.message}</CardText>}
         <CardActions>
-          <Button label="Back up" icon="save-outline" variant="tonal" onPress={() => setBackingUp(true)} disabled={busy} />
+          <Button label="Save" icon="save-outline" variant="tonal" onPress={backup.saveToPhone} disabled={busy} />
+          <Button label="Share" icon="share-social-outline" variant="secondary" onPress={backup.sendToApp} disabled={busy} />
           <Button label="Restore" icon="download-outline" variant="secondary" onPress={backup.restore} disabled={busy} />
         </CardActions>
       </Card>
 
-      {/* Where to: Android's share sheet only lists apps, so saving on the phone is its own choice. */}
-      <ActionSheet
-        visible={backingUp}
-        title="Back up your tags"
-        actions={[
-          { label: 'Save to a folder on this phone', onPress: backup.saveToPhone },
-          { label: 'Send to an app (Drive, email…)', onPress: backup.sendToApp },
-        ]}
-        onClose={() => setBackingUp(false)}
-      />
     </ScrollView>
   );
 }

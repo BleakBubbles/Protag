@@ -7,10 +7,11 @@ import { listMixes, saveMixAs } from '@/db/mixes';
 import { openShuffle } from '@/navigation';
 import type { QueueState } from '@/player/queue';
 import { isEmptyDraft, sameDraft } from '@/query/types';
-import { ActionSheet } from '@/ui/ActionSheet';
-import { formatCount, plural } from '@/ui/format';
+import { formatCount } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { Marquee } from '@/ui/Marquee';
+import { useAnchor } from '@/ui/Popover';
+import { PopupMenu } from '@/ui/PopupMenu';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { colors, font, radius, spacing } from '@/ui/theme';
 
@@ -33,7 +34,7 @@ export function SourceLine({ queue, onClose }: SourceLineProps) {
   const db = useSQLiteContext();
   const draft = queue.source?.draft;
   const { data: mixes } = useLibraryQuery((db) => listMixes(db), []);
-  const [menu, setMenu] = useState(false);
+  const menu = useAnchor();
   const [saving, setSaving] = useState(false);
   /** The room between the buttons either side. */
   const [room, setRoom] = useState(0);
@@ -62,14 +63,16 @@ export function SourceLine({ queue, onClose }: SourceLineProps) {
   return (
     <View style={styles.slot} onLayout={(e) => setRoom(e.nativeEvent.layout.width)}>
       {tappable ? (
-        <Pressable
-          onPress={() => setMenu(true)}
-          accessibilityRole="button"
-          accessibilityHint={saved ? 'Opens options for this mix' : 'Opens options to save this as a mix'}
-          style={({ pressed }) => [styles.pill, styles.filled, pressed && styles.pressed]}
-        >
-          {line}
-        </Pressable>
+        <View ref={menu.ref} collapsable={false}>
+          <Pressable
+            onPress={menu.open}
+            accessibilityRole="button"
+            accessibilityHint={saved ? 'Opens options for this mix' : 'Opens options to save this as a mix'}
+            style={({ pressed }) => [styles.pill, styles.filled, pressed && styles.pressed]}
+          >
+            {line}
+          </Pressable>
+        </View>
       ) : (
         // Same box without the fill, so the text sits in the same place either way.
         <View style={styles.pill}>{line}</View>
@@ -77,9 +80,8 @@ export function SourceLine({ queue, onClose }: SourceLineProps) {
 
       {tappable && (
         <>
-          <ActionSheet
-            visible={menu}
-            title={`${saved?.name ?? label} · ${plural(queue.order.length, 'song')}`}
+          <PopupMenu
+            anchor={menu.rect}
             actions={[
               ...(saved ? [] : [{ label: 'Save as mix', onPress: () => setSaving(true) }]),
               {
@@ -90,7 +92,7 @@ export function SourceLine({ queue, onClose }: SourceLineProps) {
                 },
               },
             ]}
-            onClose={() => setMenu(false)}
+            onClose={menu.close}
           />
           <PromptDialog
             visible={saving}

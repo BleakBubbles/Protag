@@ -25,9 +25,9 @@ import { buildTagIndex } from '@/library/tagTree';
 import { openAddSongs, openTag } from '@/navigation';
 import { useNowPlaying, usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
 import { buildQuery, EMPTY_DRAFT } from '@/query/types';
-import { ActionSheet, type SheetAction } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
-import { ColorSheet } from '@/ui/ColorSheet';
+import { ChoiceDialog } from '@/ui/ChoiceDialog';
+import { ColorPopover } from '@/ui/ColorPopover';
 import { EmptyState } from '@/ui/EmptyState';
 import { FAB_CLEARANCE, useFabFold } from '@/ui/Fab';
 import { FabMenu } from '@/ui/FabMenu';
@@ -36,6 +36,8 @@ import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useSongSelection } from '@/ui/hooks/useSongSelection';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { IconButton } from '@/ui/IconButton';
+import { useAnchor } from '@/ui/Popover';
+import { PopupMenu, type MenuAction } from '@/ui/PopupMenu';
 import { SelectionBar } from '@/ui/library/SelectionBar';
 import { SONG_ROW_HEIGHT, SongRow } from '@/ui/library/SongRow';
 import { TagRow } from '@/ui/library/TagRow';
@@ -46,7 +48,7 @@ import { colors, font, headerTitleStyle, iconSize, spacing, tagColor } from '@/u
 const NO_TAGS: readonly Tag[] = [];
 const SHUFFLE_SIZE = 52;
 
-type Dialog = 'menu' | 'rename' | 'color' | 'move' | 'add-subtag' | null;
+type Dialog = 'rename' | 'move' | 'add-subtag' | null;
 
 /** One tag: its subtags, every song under it (subtags included), and shuffle. */
 export default function TagScreen() {
@@ -57,6 +59,9 @@ export default function TagScreen() {
   const { playQueue } = usePlayerActions();
   const { song: current, queue } = useNowPlaying();
   const [dialog, setDialog] = useState<Dialog>(null);
+  /** The ⋯ menu and the colour picker, each floating from what opened it. */
+  const menuAnchor = useAnchor();
+  const colorAnchor = useAnchor();
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
 
   const fab = useFabFold();
@@ -137,13 +142,13 @@ export default function TagScreen() {
     }
   };
 
-  const menu: SheetAction[] = [
+  const menu: MenuAction[] = [
     { label: 'Rename', onPress: () => setDialog('rename') },
     { label: 'Move to…', onPress: () => setDialog('move') },
     { label: 'Delete', destructive: true, onPress: confirmDelete },
   ];
 
-  const moveTargets: SheetAction[] =
+  const moveTargets: MenuAction[] =
     data && tag
       ? [
           { label: 'Top level', disabled: tag.parent_id === null, onPress: () => moveTo(null) },
@@ -197,21 +202,25 @@ export default function TagScreen() {
           <Text style={styles.titleText} numberOfLines={1}>
             {tag.name}
           </Text>
-          <Pressable
-            onPress={() => setDialog('color')}
-            hitSlop={15}
-            accessibilityRole="button"
-            accessibilityLabel={`Colour: ${tag.color ?? 'none'}. Change colour`}
-            style={({ pressed }) => [
-              styles.titleDot,
-              { backgroundColor: tagColor(tag.color) },
-              pressed && styles.titleDotPressed,
-            ]}
-          />
+          <View ref={colorAnchor.ref} collapsable={false}>
+            <Pressable
+              onPress={colorAnchor.open}
+              hitSlop={15}
+              accessibilityRole="button"
+              accessibilityLabel={`Colour: ${tag.color ?? 'none'}. Change colour`}
+              style={({ pressed }) => [
+                styles.titleDot,
+                { backgroundColor: tagColor(tag.color) },
+                pressed && styles.titleDotPressed,
+              ]}
+            />
+          </View>
         </View>
       ) : null,
     headerRight: () => (
-      <IconButton icon="ellipsis-horizontal" label="Tag options" onPress={() => setDialog('menu')} />
+      <View ref={menuAnchor.ref} collapsable={false}>
+        <IconButton icon="ellipsis-horizontal" label="Tag options" onPress={menuAnchor.open} />
+      </View>
     ),
   };
 
@@ -340,22 +349,21 @@ export default function TagScreen() {
           />
         )
       )}
-      <ActionSheet visible={dialog === 'menu'} title={tag?.name} actions={menu} onClose={() => setDialog(null)} />
-      <ActionSheet
+      <PopupMenu anchor={menuAnchor.rect} actions={menu} onClose={menuAnchor.close} />
+      <ChoiceDialog
         visible={dialog === 'move'}
         title={`Move "${tag?.name ?? ''}" to`}
-        actions={moveTargets}
+        choices={moveTargets}
         onClose={() => setDialog(null)}
       />
-      <ColorSheet
-        visible={dialog === 'color'}
-        title={`Colour for "${tag?.name ?? ''}"`}
+      <ColorPopover
+        anchor={colorAnchor.rect}
         selected={tag?.color}
         onSelect={async (color) => {
           await setTagColor(db, id, color);
           notifyLibraryChanged();
         }}
-        onClose={() => setDialog(null)}
+        onClose={colorAnchor.close}
       />
       <PromptDialog
         visible={dialog === 'rename'}

@@ -22,7 +22,7 @@ import { countSongs } from '@/db/songs';
 import { getSetting, setSetting, SettingKey } from '@/db/settings';
 import { buildDescendantMap, listAllTagsWithCounts, listTagPlays } from '@/db/tags';
 import type { TagWithCounts } from '@/db/types';
-import { openLibrary } from '@/navigation';
+import { openLibrary, openPotPicker, openPotPreview } from '@/navigation';
 import { distinctAlbums } from '@/library/mixArt';
 import { matchesQuery, searchKey } from '@/library/search';
 import {
@@ -34,8 +34,7 @@ import {
   sortTags,
   type ShuffleSorts,
 } from '@/library/sorts';
-import { usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
-import { queueForQuery } from '@/player/sources';
+import { usePlayQuery } from '@/player/PlayerProvider';
 import { describeQuery } from '@/query/describe';
 import { dropInPot, tapExcluded, tapIngredient, tapTag, type PotItem, type PotSpot } from '@/query/pot';
 import { albumRef, artistRef, readRef, type Ref } from '@/query/refs';
@@ -50,13 +49,11 @@ import {
   type QueryDraft,
 } from '@/query/types';
 import { Button } from '@/ui/Button';
-import { plural } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
-import { MusicPicker } from '@/ui/play/MusicPicker';
 import { PictureTile, SeeAllTile } from '@/ui/play/PictureTile';
 import { ingredientKey, Pot, type Look, type ShuffleCount } from '@/ui/play/Pot';
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
-import { PreviewSheet } from '@/ui/play/PreviewSheet';
+import { usePotDraft } from '@/ui/play/PotDraft';
 import { SearchButton, SearchRow, SectionHead } from '@/ui/play/SectionHead';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
@@ -156,16 +153,12 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const playQuery = usePlayQuery();
-  const [draft, setDraft] = useState<QueryDraft>(EMPTY_DRAFT);
+  const [draft, setDraft] = usePotDraft();
   const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
   /** The mix opened for editing, by id, so a rename elsewhere doesn't lose it. */
   const [editingId, setEditingId] = useState<number | null>(null);
   const editingMix = mixes.find((m) => m.id === editingId) ?? null;
   const [saving, setSaving] = useState(false);
-  const [previewing, setPreviewing] = useState(false);
-  const { playQueue } = usePlayerActions();
-
-  const [picking, setPicking] = useState<'artists' | 'albums' | null>(null);
 
   // The browser stays built while folded away, so it reopens where it was.
   const [browsing, setBrowsing] = useState(false);
@@ -351,7 +344,7 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
           ingredientCounts={ingredientCounts}
           counted={counted}
           covers={covers}
-          onPreview={() => setPreviewing(true)}
+          onPreview={() => openPotPreview(playLabel)}
           editing={editingMix?.name ?? null}
           onSave={() => setSaving(true)}
           onShuffle={() => {
@@ -461,7 +454,7 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
                         <PictureTile key={ref} refId={ref} name={a.name} cover={a.coverAlbumId} round choice={choiceOf(ref)} onPress={() => tap(ref)} />
                       );
                     })}
-                    {artists.length > ROW && <SeeAllTile label="All artists" round onPress={() => setPicking('artists')} />}
+                    {artists.length > ROW && <SeeAllTile label="All artists" round onPress={() => openPotPicker('artists')} />}
                   </ScrollView>
                 </View>
               )}
@@ -479,26 +472,13 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
                         <PictureTile key={ref} refId={ref} name={a.title} cover={a.albumId} round={false} choice={choiceOf(ref)} onPress={() => tap(ref)} />
                       );
                     })}
-                    {albums.length > ROW && <SeeAllTile label="All albums" round={false} onPress={() => setPicking('albums')} />}
+                    {albums.length > ROW && <SeeAllTile label="All albums" round={false} onPress={() => openPotPicker('albums')} />}
                   </ScrollView>
                 </View>
               )}
             </ScrollView>
           </Animated.View>
         </View>
-
-        <MusicPicker
-          visible={picking !== null}
-          title={picking === 'albums' ? 'Albums' : 'Artists'}
-          items={
-            picking === 'albums'
-              ? music.albums.map((a) => ({ ref: albumRef(a.albumId), name: a.title, detail: a.artist ?? plural(a.songs, 'song'), cover: a.albumId, round: false }))
-              : music.artists.map((a) => ({ ref: artistRef(a.name), name: a.name, detail: plural(a.songs, 'song'), cover: a.coverAlbumId, round: true }))
-          }
-          choiceOf={choiceOf}
-          onTap={tap}
-          onClose={() => setPicking(null)}
-        />
 
         <PromptDialog
           visible={saving}
@@ -512,17 +492,6 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
             notifyLibraryChanged();
           }}
           onClose={() => setSaving(false)}
-        />
-        <PreviewSheet
-          visible={previewing}
-          draft={current}
-          description={describeQuery(query, names)}
-          names={names}
-          onClose={() => setPreviewing(false)}
-          onPlay={async (songId) => {
-            const request = await queueForQuery(db, query);
-            playQueue(request.ids, { startId: songId, shuffle: true, label: playLabel ?? request.label, draft: current });
-          }}
         />
         <DragGhost />
       </View>

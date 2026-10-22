@@ -45,4 +45,12 @@ export const openShuffle = (open?: { mixId: number } | { draft: QueryDraft }) =>
         : { pathname: '/shuffle', params: { draft: JSON.stringify(open.draft) } }
   );
 
+/** Every artist or album, to put in the Shuffle tab's pot. */
+export const openPotPicker = (kind: 'artists' | 'albums') =>
+  router.push({ pathname: '/pot/pick', params: { kind } });
+
+/** The songs the Shuffle tab's pot would play; `label` is the name they'd play under, if not the usual. */
+export const openPotPreview = (label?: string) =>
+  router.push({ pathname: '/pot/preview', params: label ? { label } : {} });
+
 // The full player isn't a route: it's a sheet over the tabs (usePlayerSheet).

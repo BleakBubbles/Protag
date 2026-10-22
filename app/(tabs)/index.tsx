@@ -14,13 +14,14 @@ import { usePlayQuery } from '@/player/PlayerProvider';
 import { describeQuery } from '@/query/describe';
 import { isTagRef, type Ref } from '@/query/refs';
 import { buildQuery, pruneDraft } from '@/query/types';
-import { ActionSheet } from '@/ui/ActionSheet';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { Icon } from '@/ui/Icon';
 import { MixCard } from '@/ui/play/MixCard';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
+import type { Rect } from '@/ui/Popover';
+import { PopupMenu } from '@/ui/PopupMenu';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { colors, font, iconSize, radius, spacing, tagColor } from '@/ui/theme';
 
@@ -55,8 +56,8 @@ export default function MixesScreen() {
     return { songs, tags, tagIds, mixes, mixArt, albumTitles };
   }, []);
 
-  /** The mix whose long-press options are open, and the one being renamed. */
-  const [menuMix, setMenuMix] = useState<Mix | null>(null);
+  /** The mix whose long-press menu is open (and where its card is), and the one being renamed. */
+  const [menu, setMenu] = useState<{ mix: Mix; at: Rect } | null>(null);
   const [renaming, setRenaming] = useState<Mix | null>(null);
 
   if (!data) return <View style={styles.screen} />;
@@ -126,25 +127,24 @@ export default function MixesScreen() {
               color={tagColor(colorOf.get(item.draft.ingredients.flat().find(isTagRef) ?? -1) ?? null)}
               width={cardWidth}
               onPress={() => play(item)}
-              onLongPress={() => setMenuMix(item)}
+              onLongPress={(at) => setMenu({ mix: item, at })}
             />
           )
         }
       />
 
-      <ActionSheet
-        visible={menuMix !== null}
-        title={menuMix?.name}
+      <PopupMenu
+        anchor={menu?.at ?? null}
         actions={
-          menuMix
+          menu
             ? [
-                { label: 'Edit', onPress: () => openShuffle({ mixId: menuMix.id }) },
-                { label: 'Rename', onPress: () => setRenaming(menuMix) },
-                { label: 'Delete', destructive: true, onPress: () => confirmDelete(menuMix) },
+                { label: 'Edit', onPress: () => openShuffle({ mixId: menu.mix.id }) },
+                { label: 'Rename', onPress: () => setRenaming(menu.mix) },
+                { label: 'Delete', destructive: true, onPress: () => confirmDelete(menu.mix) },
               ]
             : []
         }
-        onClose={() => setMenuMix(null)}
+        onClose={() => setMenu(null)}
       />
       <PromptDialog
         visible={renaming !== null}

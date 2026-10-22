@@ -1,5 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef } from 'react';
+import { Pressable, StyleSheet, Text, View, type ViewInstance } from 'react-native';
 
+import type { Rect } from '../Popover';
 import { colors, font, radius, spacing } from '../theme';
 import { ArtMosaic } from './ArtMosaic';
 
@@ -14,7 +16,8 @@ export interface MixCardProps {
   /** The card is this wide and its artwork square. */
   width: number;
   onPress: () => void;
-  onLongPress: () => void;
+  /** With where the card is, for its menu to float from. */
+  onLongPress: (at: Rect) => void;
 }
 
 /**
@@ -23,10 +26,12 @@ export interface MixCardProps {
  * cards line up whatever their text.
  */
 export function MixCard({ name, description, albumIds, color, width, onPress, onLongPress }: MixCardProps) {
+  const ref = useRef<ViewInstance>(null);
   return (
     <Pressable
+      ref={ref}
       onPress={onPress}
-      onLongPress={onLongPress}
+      onLongPress={() => ref.current?.measureInWindow((x, y, w, h) => onLongPress({ x, y, width: w, height: h }))}
       accessibilityRole="button"
       accessibilityLabel={`Shuffle ${name}: ${description}`}
       accessibilityHint="Long press for more options"
