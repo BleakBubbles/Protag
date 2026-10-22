@@ -1,5 +1,16 @@
 import { Fragment, useEffect, useRef, type ReactNode } from 'react';
-import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Animated,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+  type LayoutChangeEvent,
+  type ScrollViewInstance,
+} from 'react-native';
 
 import { albumArtUri } from '../../library/assets';
 import type { PotItem } from '../../query/pot';
@@ -107,6 +118,8 @@ export function Pot({
   const pot = useDropTarget({ kind: 'pot' });
   const empty = draft.ingredients.length === 0 && draft.exclude.length === 0;
   const shuffle = shuffleText(counted);
+  const keys = [...draft.ingredients.map(ingredientKey), ...draft.exclude.map(excludedKey)];
+  const shown = useShowNewTiles(keys);
 
   /** Each ingredient as a screen reader says it ("kpop and chill"), for naming what to combine with. */
   const spoken = draft.ingredients.map((tags) => tags.map((ref) => look(ref).name).join(' and '));
@@ -136,7 +149,13 @@ export function Pot({
       <View style={styles.content}>
         {!empty ? (
           <FadeIn>
-            <ScrollView scrollEnabled={active === null} contentContainerStyle={styles.tiles}>
+            <ScrollView
+              ref={shown.ref}
+              onScroll={shown.onScroll}
+              scrollEventThrottle={32}
+              scrollEnabled={active === null}
+              contentContainerStyle={styles.tiles}
+            >
               {draft.ingredients.map((tags, index) => (
                 <IngredientTile
                   key={ingredientKey(tags)}
@@ -146,15 +165,17 @@ export function Pot({
                   look={look}
                   count={ingredientCounts.get(ingredientKey(tags)) ?? null}
                   width={fitsHalf(tags.map(look)) ? (rowWidth - GAP) / 2 : rowWidth}
+                  onLayout={shown.onTileLayout(ingredientKey(tags))}
                   onTap={() => onTapIngredient(index)}
                 />
               ))}
               {draft.exclude.map((ref) => (
                 <ExcludedTile
-                  key={`x${ref}`}
+                  key={excludedKey(ref)}
                   refId={ref}
                   look={look(ref)}
                   width={(rowWidth - GAP) / 2}
+                  onLayout={shown.onTileLayout(excludedKey(ref))}
                   onTap={() => onTapExcluded(ref)}
                 />
               ))}
@@ -275,6 +296,44 @@ function PreviewLine({
   );
 }
 
+const excludedKey = (ref: Ref) => `x${ref}`;
+
+/**
+ * Scrolls the pot to a tile just added, when it lands below (or above) what's
+ * showing: past two rows, an addition would otherwise happen out of sight.
+ * Only additions: the tiles a merge, removal or keep-out touches are ones
+ * already in view. Filling the pot all at once (opening a mix) stays at the top.
+ */
+function useShowNewTiles(keys: readonly string[]) {
+  const ref = useRef<ScrollViewInstance>(null);
+  const scrollY = useRef(0);
+  const known = useRef<ReadonlySet<string>>(new Set(keys));
+  const added = useRef<ReadonlySet<string>>(new Set());
+  const current = new Set(keys);
+  if (keys.some((k) => !known.current.has(k))) {
+    added.current = known.current.size === 0 ? new Set() : new Set(keys.filter((k) => !known.current.has(k)));
+    known.current = current;
+  } else if (current.size !== known.current.size) {
+    known.current = current;
+  }
+
+  return {
+    ref,
+    onScroll: (e: { nativeEvent: { contentOffset: { y: number } } }) => {
+      scrollY.current = e.nativeEvent.contentOffset.y;
+    },
+    onTileLayout: (key: string) => (e: LayoutChangeEvent) => {
+      if (!added.current.has(key)) return;
+      added.current = new Set();
+      const { y, height } = e.nativeEvent.layout;
+      const top = y - RING;
+      const bottom = y + height + RING;
+      if (bottom > scrollY.current + CONTENT) ref.current?.scrollTo({ y: bottom - CONTENT, animated: true });
+      else if (top < scrollY.current) ref.current?.scrollTo({ y: top, animated: true });
+    },
+  };
+}
+
 /** Fades its children in when it mounts: how the first tiles replace the empty well. */
 function FadeIn({ children }: { children: ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -299,6 +358,7 @@ interface IngredientTileProps {
   look: (ref: Ref) => Look;
   count: number | null;
   width: number;
+  onLayout: (e: LayoutChangeEvent) => void;
   onTap: () => void;
 }
 
@@ -309,7 +369,7 @@ interface IngredientTileProps {
  * gap between, so it reads as one thing that's picked up, dropped and split
  * together. Its song count sits at the end, in the colour's ink.
  */
-function IngredientTile({ index, others, tags, look, count, width, onTap }: IngredientTileProps) {
+function IngredientTile({ index, others, tags, look, count, width, onLayout, onTap }: IngredientTileProps) {
   const looks = tags.map(look);
   const label = looks.map((l) => l.name);
   const { handlers, lifting } = useDraggable({ kind: 'ingredient', index }, ghostOf(looks), onTap);
@@ -342,6 +402,7 @@ function IngredientTile({ index, others, tags, look, count, width, onTap }: Ingr
     <View
       ref={target.ref}
       {...handlers}
+      onLayout={onLayout}
       accessible
       accessibilityRole="button"
       accessibilityLabel={`${spoken}${combined ? ', songs with all of them' : ''}${count !== null ? `, ${count} songs` : ''}`}
@@ -373,6 +434,7 @@ interface ExcludedTileProps {
   refId: Ref;
   look: Look;
   width: number;
+  onLayout: (e: LayoutChangeEvent) => void;
   onTap: () => void;
 }
 
@@ -381,13 +443,14 @@ interface ExcludedTileProps {
  * shapes the mix as much as they do), in a red ring with a − badge: exactly
  * how it's marked on its tile below.
  */
-function ExcludedTile({ refId, look, width, onTap }: ExcludedTileProps) {
+function ExcludedTile({ refId, look, width, onLayout, onTap }: ExcludedTileProps) {
   const { name } = look;
   const { handlers, lifting } = useDraggable({ kind: 'excluded', ref: refId }, ghostOf([look]), onTap);
   const drop = usePotDrop();
   return (
     <View
       {...handlers}
+      onLayout={onLayout}
       accessible
       accessibilityRole="button"
       accessibilityLabel={`${name}, kept out`}
