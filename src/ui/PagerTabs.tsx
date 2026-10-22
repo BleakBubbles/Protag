@@ -28,8 +28,8 @@ export interface PagerTabsProps<T extends string> {
  * Tabs that sit on the content they switch: a line across the screen with a
  * bar on the current tab, over pages you can also swipe between. The bar and
  * labels follow the pages as they move, so the tabs plainly drive them. A page
- * is only built the first time it's shown, then kept, so switching back is
- * instant.
+ * is only built when it's first needed (shown, or next to one being swiped),
+ * then kept, so switching back is instant.
  */
 export function PagerTabs<T extends string>({ pages, value, onChange, swipeEnabled = true }: PagerTabsProps<T>) {
   const [width, setWidth] = useState(0);
@@ -40,7 +40,9 @@ export function PagerTabs<T extends string>({ pages, value, onChange, swipeEnabl
   const index = Math.max(0, pages.findIndex((p) => p.value === value));
   const [shown, setShown] = useState<ReadonlySet<T>>(() => new Set([value]));
 
-  useEffect(() => setShown((prev) => (prev.has(value) ? prev : new Set(prev).add(value))), [value]);
+  const show = (...values: T[]) =>
+    setShown((prev) => (values.every((v) => prev.has(v)) ? prev : new Set([...prev, ...values])));
+  useEffect(() => show(value), [value]);
   // A tab tap changes `value`; the pages slide to it (a swipe is already there).
   // Leaving a page puts its keyboard away: a search field still focused on a
   // page off screen would keep taking the typing, and pull the pages back to it.
@@ -100,10 +102,17 @@ export function PagerTabs<T extends string>({ pages, value, onChange, swipeEnabl
         onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
         horizontal
         pagingEnabled
+        // A flick settles quickly, one page at a time, rather than coasting.
+        decelerationRate="fast"
+        disableIntervalMomentum
         scrollEnabled={swipeEnabled}
         showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        onScrollBeginDrag={Keyboard.dismiss}
+        onScrollBeginDrag={() => {
+          Keyboard.dismiss();
+          // Build the pages either side now, so the one coming in isn't blank until it lands.
+          show(...[pages[index - 1], pages[index + 1]].filter((p) => p !== undefined).map((p) => p.value));
+        }}
         contentOffset={{ x: index * width, y: 0 }}
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: true })}
