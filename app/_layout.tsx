@@ -9,7 +9,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DATABASE_NAME, migrate } from '@/db/schema';
 import { PlayerProvider } from '@/player/PlayerProvider';
 import { fontAssets } from '@/ui/fonts';
-import { PotDraftProvider } from '@/ui/play/PotDraft';
 import { stackScreenOptions } from '@/ui/stackOptions';
 
 // Keep the splash screen up until fonts are ready, so text never reflows from
@@ -39,16 +38,12 @@ export default function RootLayout() {
         <StatusBar style="light" />
         {/* Above the navigator, so playback survives switching tabs and screens. */}
         <PlayerProvider>
-          <PotDraftProvider>
-            <Stack screenOptions={stackScreenOptions}>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              {/* Focused tasks cover everything, the mini-player included. */}
-              <Stack.Screen name="add-songs/[tagId]" options={{ presentation: 'modal', title: '' }} />
-              <Stack.Screen name="edit-tags" options={{ presentation: 'modal', title: '' }} />
-              <Stack.Screen name="pot/pick" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="pot/preview" options={{ presentation: 'modal' }} />
-            </Stack>
-          </PotDraftProvider>
+          <Stack screenOptions={stackScreenOptions}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            {/* Focused tasks cover everything, the mini-player included. */}
+            <Stack.Screen name="add-songs/[tagId]" options={{ presentation: 'modal', title: '' }} />
+            <Stack.Screen name="edit-tags" options={{ presentation: 'modal', title: '' }} />
+          </Stack>
         </PlayerProvider>
       </SQLiteProvider>
     </SafeAreaProvider>

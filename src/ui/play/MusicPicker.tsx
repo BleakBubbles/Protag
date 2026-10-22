@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { albumArtUri } from '../../library/assets';
 import { matchesQuery, searchKey } from '../../library/search';
 import type { Ref } from '../../query/refs';
 import type { TagChoice } from '../../query/types';
+import { BottomSheet } from '../BottomSheet';
 import { Artwork } from '../player/Artwork';
 import { SearchField } from '../SearchField';
 import { colors, font, iconSize, spacing } from '../theme';
@@ -23,20 +24,26 @@ export interface PickerItem {
 }
 
 export interface MusicPickerProps {
+  visible: boolean;
   /** "Artists", "Albums". */
   title: string;
   items: readonly PickerItem[];
   choiceOf: (ref: Ref) => TagChoice;
   onTap: (ref: Ref) => void;
+  onClose: () => void;
 }
 
 /**
  * Every artist (or album), searchable, for the ones the Shuffle tab's row
  * doesn't show. A tap puts one in the pot or takes it out, as on a tile, and
- * the list stays to pick several.
+ * the sheet stays open to pick several.
  */
-export function MusicPicker({ title, items, choiceOf, onTap }: MusicPickerProps) {
+export function MusicPicker({ visible, title, items, choiceOf, onTap, onClose }: MusicPickerProps) {
+  const screen = useWindowDimensions();
   const [query, setQuery] = useState('');
+  useEffect(() => {
+    if (visible) setQuery('');
+  }, [visible]);
 
   const searchable = useMemo(() => items.map((item) => ({ item, key: searchKey([item.name, item.detail]) })), [items]);
   const trimmed = query.trim();
@@ -46,7 +53,8 @@ export function MusicPicker({ title, items, choiceOf, onTap }: MusicPickerProps)
   );
 
   return (
-      <View style={styles.screen}>
+    <BottomSheet visible={visible} title={title} onClose={onClose}>
+      <View style={{ height: screen.height * 0.62 }}>
         <View style={styles.search}>
           <SearchField value={query} onChangeText={setQuery} placeholder={`Search ${title.toLowerCase()}`} />
         </View>
@@ -88,17 +96,13 @@ export function MusicPicker({ title, items, choiceOf, onTap }: MusicPickerProps)
           }}
         />
       </View>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
   search: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
   },
   row: {
