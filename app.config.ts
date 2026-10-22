@@ -11,6 +11,7 @@ const DEV = process.env.APP_VARIANT === 'development';
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: DEV ? 'ProTag Dev' : 'ProTag',
+  slug: 'protag',
   // Its own link scheme too, so a protag:// link never asks which ProTag to open.
   scheme: DEV ? 'protag-dev' : 'protag',
   ios: { ...config.ios, bundleIdentifier: DEV ? 'com.protag.app.dev' : 'com.protag.app' },
