@@ -7,6 +7,7 @@ import {
   BackHandler,
   Easing,
   Keyboard,
+  LayoutAnimation,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -70,6 +71,9 @@ const COVER_SAMPLE = 60;
 const ROW = 12;
 /** Search results are one flat grid: no tag opens to show subtags. */
 const NO_CHILDREN = new Map<number | null, TagWithCounts[]>();
+
+/** Tiles in the pot slide to their new places as it changes, so a merge shows where everything went. */
+const RESETTLE = LayoutAnimation.create(180, 'easeInEaseOut', 'opacity');
 
 /** How far the browser rises as it opens. */
 const RISE = 48;
@@ -336,8 +340,12 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
   );
   const choiceOf = useCallback((ref: Ref) => tagChoice(current, ref), [current]);
   // Pot changes apply to the pruned draft: it's what's on screen, so its indices are the ones tapped.
-  const tap = useCallback((ref: Ref) => setDraft(tapTag(current, ref)), [current]);
-  const drag = usePotDragRoot((item: PotItem, spot: PotSpot) => setDraft(dropInPot(current, item, spot)));
+  const change = useCallback((next: QueryDraft) => {
+    LayoutAnimation.configureNext(RESETTLE);
+    setDraft(next);
+  }, []);
+  const tap = useCallback((ref: Ref) => change(tapTag(current, ref)), [current, change]);
+  const drag = usePotDragRoot((item: PotItem, spot: PotSpot) => change(dropInPot(current, item, spot)));
   const still = drag.active === null;
   // An unchanged mix plays under its own name.
   const playLabel = editingMix && sameDraft(current, editingMix.draft) ? editingMix.name : undefined;
@@ -359,8 +367,8 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
             fold();
           }}
           onClear={() => setDraft(EMPTY_DRAFT)}
-          onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
-          onTapExcluded={(ref) => setDraft(tapExcluded(current, ref))}
+          onTapIngredient={(index) => change(tapIngredient(current, index))}
+          onTapExcluded={(ref) => change(tapExcluded(current, ref))}
           onAdd={browsing ? undefined : () => setBrowsing(true)}
         />
 

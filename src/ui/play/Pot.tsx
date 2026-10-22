@@ -1,5 +1,5 @@
-import { useEffect, useRef, type ReactNode } from 'react';
-import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Fragment, useEffect, useRef, type ReactNode } from 'react';
+import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { albumArtUri } from '../../library/assets';
 import type { PotItem } from '../../query/pot';
@@ -18,14 +18,26 @@ const TOP = 32;
 const COVER = 28;
 /** How much each cover tucks under the one before it. */
 const COVER_OVERLAP = 8;
-const CHIP = 36;
-/** Two rows of chips; more scroll. Fixed, so the pot never changes height. */
-const CONTENT = CHIP * 2 + spacing.sm;
+const TILE = 40;
+/** Between tiles: room for two rings (a kept-out tile's) and a sliver of space, as in the tag grid. */
+const GAP = spacing.md;
+/** A kept-out tile's ring, outside the tile, with a sliver of background between. */
+const RING_GAP = 2;
+const RING_WIDTH = 2;
+const RING = RING_GAP + RING_WIDTH;
+/** Two rows of tiles; more scroll. Fixed, so the pot never changes height. */
+const CONTENT = TILE * 2 + GAP + RING * 2;
 const ACTIONS = 56;
-/** The tray's rim around a combination's pills. */
-const TRAY_INSET = 3;
-/** The + between ingredients and the × inside a combination. */
+/** The gap holding the × between a combination's tags. */
 const SYMBOL = 18;
+const BADGE = 18;
+/**
+ * How many characters of names a combination of two fits in half the width;
+ * past that (or with three or more) it takes the whole row rather than cut
+ * names short. A picture counts for a few.
+ */
+const HALF_FITS = 12;
+const PICTURE_CHARS = 3;
 
 /** Songs the whole pot would play, with whether the pot was empty when counted. */
 export interface ShuffleCount {
@@ -90,6 +102,8 @@ export function Pot({
   onAdd,
 }: PotProps) {
   const { active, hover } = usePotDragState();
+  const screen = useWindowDimensions();
+  const rowWidth = screen.width - spacing.lg * 2 - RING * 2;
   const pot = useDropTarget({ kind: 'pot' });
   const empty = draft.ingredients.length === 0 && draft.exclude.length === 0;
   const shuffle = shuffleText(counted);
@@ -122,33 +136,27 @@ export function Pot({
       <View style={styles.content}>
         {!empty ? (
           <FadeIn>
-            <ScrollView scrollEnabled={active === null} contentContainerStyle={styles.chips}>
+            <ScrollView scrollEnabled={active === null} contentContainerStyle={styles.tiles}>
               {draft.ingredients.map((tags, index) => (
-                // The + travels with the chip after it, so a wrapped row never ends on one.
-                <View key={ingredientKey(tags)} style={styles.unit}>
-                  {index > 0 && (
-                    <View importantForAccessibility="no-hide-descendants">
-                      <Join size={SYMBOL} />
-                    </View>
-                  )}
-                  <IngredientChip
-                    index={index}
-                    others={spoken.flatMap((other, i) => (i === index ? [] : [{ index: i, label: other }]))}
-                    tags={tags}
-                    look={look}
-                    count={ingredientCounts.get(ingredientKey(tags)) ?? null}
-                    onTap={() => onTapIngredient(index)}
-                  />
-                </View>
+                <IngredientTile
+                  key={ingredientKey(tags)}
+                  index={index}
+                  others={spoken.flatMap((other, i) => (i === index ? [] : [{ index: i, label: other }]))}
+                  tags={tags}
+                  look={look}
+                  count={ingredientCounts.get(ingredientKey(tags)) ?? null}
+                  width={fitsHalf(tags.map(look)) ? (rowWidth - GAP) / 2 : rowWidth}
+                  onTap={() => onTapIngredient(index)}
+                />
               ))}
               {draft.exclude.map((ref) => (
-                // Kept out reads as "minus": the − travels with its chip, like the +.
-                <View key={`x${ref}`} style={styles.unit}>
-                  <View importantForAccessibility="no-hide-descendants">
-                    <Join minus size={SYMBOL} color={colors.exclude} />
-                  </View>
-                  <ExcludedChip refId={ref} look={look(ref)} onTap={() => onTapExcluded(ref)} />
-                </View>
+                <ExcludedTile
+                  key={`x${ref}`}
+                  refId={ref}
+                  look={look(ref)}
+                  width={(rowWidth - GAP) / 2}
+                  onTap={() => onTapExcluded(ref)}
+                />
               ))}
             </ScrollView>
           </FadeIn>
@@ -276,22 +284,32 @@ function FadeIn({ children }: { children: ReactNode }) {
   return <Animated.View style={[styles.fill, { opacity }]}>{children}</Animated.View>;
 }
 
-interface IngredientChipProps {
+/** Whether an ingredient's names fit in half the row: one always does; two short ones do. */
+function fitsHalf(looks: readonly Look[]): boolean {
+  if (looks.length === 1) return true;
+  if (looks.length > 2) return false;
+  return looks.reduce((n, l) => n + l.name.length + (l.hue === null ? PICTURE_CHARS : 0), 0) <= HALF_FITS;
+}
+
+interface IngredientTileProps {
   index: number;
   /** The other ingredients, to offer combining with each (screen readers can't drag). */
   others: readonly { index: number; label: string }[];
   tags: readonly Ref[];
   look: (ref: Ref) => Look;
   count: number | null;
+  width: number;
   onTap: () => void;
 }
 
 /**
- * One ingredient. A lone tag is a pill in its colour with its song count; a
- * combination is a tray holding its tags' pills, joined by ×, so they read as
- * one thing that's picked up, dropped and split together.
+ * One ingredient, as a small tile like the tag tiles below: a lone tag in its
+ * colour, an artist or album on neutral with its picture. A combination is
+ * its tags' tiles fused side by side, each an equal share, with a × in the
+ * gap between, so it reads as one thing that's picked up, dropped and split
+ * together. Its song count sits at the end, in the colour's ink.
  */
-function IngredientChip({ index, others, tags, look, count, onTap }: IngredientChipProps) {
+function IngredientTile({ index, others, tags, look, count, width, onTap }: IngredientTileProps) {
   const looks = tags.map(look);
   const label = looks.map((l) => l.name);
   const { handlers, lifting } = useDraggable({ kind: 'ingredient', index }, ghostOf(looks), onTap);
@@ -329,55 +347,41 @@ function IngredientChip({ index, others, tags, look, count, onTap }: IngredientC
       accessibilityLabel={`${spoken}${combined ? ', songs with all of them' : ''}${count !== null ? `, ${count} songs` : ''}`}
       accessibilityActions={actions}
       onAccessibilityAction={(e) => act(e.nativeEvent.actionName)}
-      style={[
-        styles.chip,
-        combined ? styles.tray : { backgroundColor: looks[0].hue ?? colors.raised },
-        target.hovered && styles.chipHovered,
-        lifting && styles.lifting,
-      ]}
+      style={[styles.tile, { width }, target.hovered && styles.tileHovered, lifting && styles.lifting]}
     >
-      {combined ? (
-        <>
-          {looks.map((l, i) => (
-            <View key={tags[i]} style={styles.segmentRow}>
-              {i > 0 && (
-                <View style={styles.times}>
-                  <Join both size={SYMBOL} />
-                </View>
-              )}
-              <View style={[styles.part, faceStyle(l)]}>
-                <Face look={l} />
+      {looks.map((l, i) => {
+        const last = i === looks.length - 1;
+        return (
+          <Fragment key={tags[i]}>
+            {i > 0 && (
+              <View style={styles.times} importantForAccessibility="no-hide-descendants">
+                <Join both size={SYMBOL} color={colors.text} />
               </View>
+            )}
+            <View style={[styles.share, faceStyle(l), i > 0 && styles.joinedLeft, !last && styles.joinedRight]}>
+              <Face look={l} />
+              {last && <Text style={[styles.countText, l.hue === null && styles.neutralCount]}>{counted}</Text>}
             </View>
-          ))}
-          <Text style={styles.trayCount}>{counted}</Text>
-        </>
-      ) : (
-        <>
-          <View style={[styles.segment, looks[0].hue === null && styles.withPicture]}>
-            <Face look={looks[0]} />
-          </View>
-          <View style={styles.count}>
-            <Text style={[styles.countText, looks[0].hue === null && styles.neutralCount]}>{counted}</Text>
-          </View>
-        </>
-      )}
+          </Fragment>
+        );
+      })}
     </View>
   );
 }
 
-interface ExcludedChipProps {
+interface ExcludedTileProps {
   refId: Ref;
   look: Look;
+  width: number;
   onTap: () => void;
 }
 
 /**
- * A kept-out tag: a pill in its full colour, like any other ingredient (it
- * shapes the mix as much as they do), inside a red rim, after a red −: the
- * same red ring that marks it on its tile.
+ * A kept-out tag: a tile in its full colour, like any other ingredient (it
+ * shapes the mix as much as they do), in a red ring with a − badge: exactly
+ * how it's marked on its tile below.
  */
-function ExcludedChip({ refId, look, onTap }: ExcludedChipProps) {
+function ExcludedTile({ refId, look, width, onTap }: ExcludedTileProps) {
   const { name } = look;
   const { handlers, lifting } = useDraggable({ kind: 'excluded', ref: refId }, ghostOf([look]), onTap);
   const drop = usePotDrop();
@@ -396,10 +400,14 @@ function ExcludedChip({ refId, look, onTap }: ExcludedChipProps) {
         drop({ kind: 'excluded', ref: refId }, { kind: 'pot' });
         AccessibilityInfo.announceForAccessibility(`${name} added to the mix`);
       }}
-      style={[styles.chip, styles.keptOut, lifting && styles.lifting]}
+      style={[styles.tile, { width }, lifting && styles.lifting]}
     >
-      <View style={[styles.part, faceStyle(look)]}>
+      <View style={[styles.share, faceStyle(look)]}>
         <Face look={look} />
+      </View>
+      <View pointerEvents="none" style={styles.ring} />
+      <View pointerEvents="none" style={styles.badge}>
+        <Icon name="remove" size={BADGE - 4} color={colors.bg} />
       </View>
     </View>
   );
@@ -526,11 +534,6 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
   },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
   well: {
     flex: 1,
     flexDirection: 'row',
@@ -549,51 +552,12 @@ const styles = StyleSheet.create({
   wellAction: {
     color: colors.textDim,
   },
-  // A constant border that only changes colour: never added or removed (see TagTile's outline).
-  chip: {
-    flexDirection: 'row',
-    height: CHIP,
-    borderRadius: radius.pill,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    overflow: 'hidden',
-    backgroundColor: colors.bg,
-  },
-  chipHovered: {
-    borderColor: colors.text,
-    transform: [{ scale: 1.08 }],
-  },
   lifting: {
     opacity: 0.3,
   },
-  unit: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  tray: {
-    alignItems: 'center',
-    padding: TRAY_INSET,
-    backgroundColor: colors.border,
-  },
-  keptOut: {
-    borderColor: colors.exclude,
-    padding: TRAY_INSET - 1,
-  },
-  segmentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-  },
-  segment: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs + 2,
-    paddingHorizontal: spacing.md,
-  },
-  // A picture sits close to the pill's rounded end.
+  // A picture sits close to the tile's edge.
   withPicture: {
-    paddingLeft: TRAY_INSET + 2,
+    paddingLeft: spacing.sm,
   },
   neutralText: {
     color: colors.text,
@@ -602,34 +566,80 @@ const styles = StyleSheet.create({
     color: colors.textDim,
     opacity: 1,
   },
-  part: {
+  // Gives way to the count, ending in … when a name is too long for its share.
+  segmentText: {
+    ...font.label,
+    flexShrink: 1,
+    color: colors.bg,
+  },
+  // The × stands in its own gap of background, like the space between two tiles.
+  times: {
+    width: SYMBOL + spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tiles: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: GAP,
+    padding: RING,
+  },
+  // A constant border that only changes colour: never added or removed (see TagTile's outline).
+  tile: {
+    flexDirection: 'row',
+    height: TILE,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  tileHovered: {
+    borderColor: colors.text,
+    transform: [{ scale: 1.04 }],
+  },
+  // Each tag's equal share of a tile, its name on its colour.
+  share: {
+    flex: 1,
     alignSelf: 'stretch',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs + 2,
-    paddingHorizontal: spacing.md - TRAY_INSET,
-    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    borderRadius: radius.md - 2,
   },
-  segmentText: {
-    ...font.label,
-    color: colors.bg,
+  // Where two shares meet at a ×, their corners are tighter, like tiles fused.
+  joinedLeft: {
+    borderTopLeftRadius: radius.sm - 2,
+    borderBottomLeftRadius: radius.sm - 2,
   },
-  times: {
-    paddingHorizontal: 2,
+  joinedRight: {
+    borderTopRightRadius: radius.sm - 2,
+    borderBottomRightRadius: radius.sm - 2,
   },
-  trayCount: {
-    ...font.caption,
-    color: colors.textDim,
-    paddingLeft: spacing.sm,
-    paddingRight: spacing.md - TRAY_INSET,
+  ring: {
+    position: 'absolute',
+    top: -RING,
+    right: -RING,
+    bottom: -RING,
+    left: -RING,
+    borderRadius: radius.md + RING,
+    borderWidth: RING_WIDTH,
+    borderColor: colors.exclude,
   },
-  count: {
+  badge: {
+    position: 'absolute',
+    top: -BADGE / 3,
+    right: -BADGE / 3,
+    width: BADGE,
+    height: BADGE,
+    borderRadius: BADGE / 2,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingRight: spacing.md,
-    paddingLeft: spacing.xs,
+    backgroundColor: colors.exclude,
   },
   countText: {
     ...font.caption,
+    marginLeft: 'auto',
+    paddingLeft: spacing.xs,
     color: colors.bg,
     opacity: 0.75,
   },
