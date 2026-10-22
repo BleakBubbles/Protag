@@ -102,9 +102,9 @@ export function PagerTabs<T extends string>({ pages, value, onChange, swipeEnabl
         onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
         horizontal
         pagingEnabled
-        // A flick settles quickly, one page at a time, rather than coasting.
-        decelerationRate="fast"
-        disableIntervalMomentum
+        // Android picks the page from where a flick would coast to, so less
+        // friction than its 'normal' (0.985) lets a shorter flick turn the page.
+        decelerationRate={0.99}
         scrollEnabled={swipeEnabled}
         showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
