@@ -77,6 +77,9 @@ const NO_CHILDREN = new Map<number | null, TagWithCounts[]>();
 const MIN_ART = 96;
 const COVER_MARGIN = spacing.lg;
 
+/** How long the cover takes to become the pot, and back. */
+const OPEN_MS = 280;
+
 /** How far the browser rises as it opens. */
 const RISE = 48;
 /** The floating Done button's height. */
@@ -187,15 +190,19 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
   const [fullRoom, setFullRoom] = useState(0);
   /** The cover's height apart from its artwork, which doesn't change with it. */
   const [coverRest, setCoverRest] = useState(0);
+  // Two clocks on one timing: `reveal` for fades and slides, on the native
+  // driver; `grow` for the frame's size and colour, which it can't drive.
   const reveal = useRef(new Animated.Value(0)).current;
+  const grow = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(reveal, {
-      toValue: browsing ? 1 : 0,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [browsing, reveal]);
+    const timing = { toValue: browsing ? 1 : 0, duration: OPEN_MS, easing: Easing.inOut(Easing.cubic) };
+    Animated.parallel([
+      Animated.timing(reveal, { ...timing, useNativeDriver: true }),
+      Animated.timing(grow, { ...timing, useNativeDriver: false }),
+    ]).start();
+  }, [browsing, reveal, grow]);
+  /** The open pot's height, for the frame to grow to. */
+  const [potHeight, setPotHeight] = useState(0);
   const fold = useCallback(() => {
     Keyboard.dismiss();
     setSearch('');
@@ -403,15 +410,13 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
           setFullRoom((full) => Math.max(full, height));
         }}
       >
-        {/* Open: the pot to build in, at the top, settling into place as the
-            cover above lifts away into it. */}
+        {/* Open: the pot to build in, at the top. Its contents appear as the
+            frame below lands in its place. */}
         <Animated.View
           pointerEvents={browsing ? 'auto' : 'none'}
           importantForAccessibility={browsing ? 'auto' : 'no-hide-descendants'}
-          style={{
-            opacity: reveal,
-            transform: [{ translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [RISE, 0] }) }],
-          }}
+          onLayout={(e) => setPotHeight(e.nativeEvent.layout.height)}
+          style={[styles.potSlot, { opacity: reveal.interpolate({ inputRange: [0, 0.55, 1], outputRange: [0, 0, 1] }) }]}
         >
           <Pot
             draft={current}
@@ -440,7 +445,7 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
             style={[
               styles.browser,
               {
-                opacity: reveal,
+                opacity: reveal.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0, 0, 1] }),
                 transform: [{ translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [RISE, 0] }) }],
               },
             ]}
@@ -549,18 +554,38 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
           </Animated.View>
         </View>
 
-        {/* Folded: the mix as a cover in the middle of the screen. Opening, it
-            rises and fades into the pot; folding plays that back. */}
+        {/* The card becoming the pot: a frame that starts as the cover's card
+            and stretches to the pot's place, corners straightening and colour
+            melting into the page, while what's inside swaps over. Only there
+            mid-change; at rest the card and the pot draw themselves. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.frame,
+            {
+              opacity: grow.interpolate({ inputRange: [0, 0.02, 0.98, 1], outputRange: [0, 1, 1, 0] }),
+              top: grow.interpolate({ inputRange: [0, 1], outputRange: [coverTop, 0] }),
+              left: grow.interpolate({ inputRange: [0, 1], outputRange: [spacing.lg, 0] }),
+              right: grow.interpolate({ inputRange: [0, 1], outputRange: [spacing.lg, 0] }),
+              height: grow.interpolate({ inputRange: [0, 1], outputRange: [coverHeight, Math.max(potHeight, 1)] }),
+              borderRadius: grow.interpolate({ inputRange: [0, 1], outputRange: [radius.lg, 0] }),
+              backgroundColor: grow.interpolate({ inputRange: [0, 1], outputRange: [colors.surface, colors.bg] }),
+            },
+          ]}
+        />
+
+        {/* Folded: the mix as a card in the middle of the screen. Opening, its
+            contents fade early as the frame carries its shape up. */}
         <Animated.View
           pointerEvents={browsing ? 'none' : 'box-none'}
           importantForAccessibility={browsing ? 'no-hide-descendants' : 'auto'}
           style={[
             styles.coverSlot,
             {
-              opacity: reveal.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+              opacity: reveal.interpolate({ inputRange: [0, 0.3, 1], outputRange: [1, 0, 0] }),
               transform: [
-                { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [0, -RISE * 2] }) },
-                { scale: reveal.interpolate({ inputRange: [0, 1], outputRange: [1, 0.9] }) },
+                { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [0, -RISE] }) },
+                { scale: reveal.interpolate({ inputRange: [0, 1], outputRange: [1, 0.96] }) },
               ],
             },
           ]}
@@ -642,10 +667,18 @@ const styles = StyleSheet.create({
     paddingBottom: DONE + spacing.lg * 2,
     gap: spacing.xl,
   },
-  // Over everything; the cover inside is placed by `coverTop`. Empty space passes taps through.
+  // Layers, back to front: the browser, the growing frame, the pot, the cover.
+  frame: {
+    position: 'absolute',
+    zIndex: 1,
+  },
+  potSlot: {
+    zIndex: 2,
+  },
+  // The cover inside is placed by `coverTop`. Empty space passes taps through.
   coverSlot: {
     ...StyleSheet.absoluteFill,
-    zIndex: 1,
+    zIndex: 3,
   },
   browser: {
     ...StyleSheet.absoluteFill,
