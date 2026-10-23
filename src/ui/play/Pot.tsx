@@ -129,23 +129,24 @@ export function Pot({
 
   return (
     <View ref={pot.ref} style={[styles.pot, pot.hovered && active?.kind !== 'ingredient' && styles.potHovered]}>
-      <View style={styles.top}>
-        {/* While something's lifted, or the pot is empty, this line explains; otherwise it previews. */}
-        {active || empty ? (
-          <Text style={styles.hint} numberOfLines={1}>
-            {hintFor(active, hover)}
-          </Text>
-        ) : (
-          <PreviewLine covers={covers} counted={counted} editing={editing} onPress={onPreview} />
-        )}
-        <View style={styles.clearSlot}>
-          {!empty && (
-            <IconButton icon="close" label="Empty the mix" size={iconSize.sm} color={colors.textDim} onPress={onClear} />
+      {/* Empty, the well takes this line's room too (same height overall). */}
+      {!empty && (
+        <View style={styles.top}>
+          {/* While something's lifted this line explains; otherwise it previews. */}
+          {active ? (
+            <Text style={styles.hint} numberOfLines={1}>
+              {hintFor(active, hover)}
+            </Text>
+          ) : (
+            <PreviewLine covers={covers} counted={counted} editing={editing} onPress={onPreview} />
           )}
+          <View style={styles.clearSlot}>
+            <IconButton icon="close" label="Empty the mix" size={iconSize.sm} color={colors.textDim} onPress={onClear} />
+          </View>
         </View>
-      </View>
+      )}
 
-      <View style={styles.content}>
+      <View style={[styles.content, empty && styles.contentTall]}>
         {!empty ? (
           <FadeIn>
             <ScrollView
@@ -181,8 +182,9 @@ export function Pot({
             </ScrollView>
           </FadeIn>
         ) : (
+          // It says what letting go will do while something's held over it, like the top line does.
           <View style={styles.well}>
-            <Text style={styles.wellText}>Tap your tags or drag them here</Text>
+            <Text style={styles.wellText}>{active ? hintFor(active, hover) : 'Tap your tags or drag them here'}</Text>
           </View>
         )}
       </View>
@@ -250,7 +252,7 @@ function shuffleText(counted: ShuffleCount | null): { title: string; count: stri
   return { title: empty ? 'Shuffle all' : 'Shuffle', count: plural(count, 'song'), none: false };
 }
 
-/** The pot's top line while something's lifted (what letting go will do), and blank while it's empty. */
+/** What letting go of something lifted will do, said in the pot's top line (or its well, while empty). */
 function hintFor(active: PotItem | null, hover: string): string {
   if (active) {
     if (hover.startsWith('i')) return 'Let go to combine: songs need both';
@@ -259,7 +261,6 @@ function hintFor(active: PotItem | null, hover: string): string {
     if (hover === 'pot') return active.kind === 'excluded' ? 'Let go to add it' : 'Drop it on another to combine';
     return 'Let go to take it out';
   }
-  // Empty and still: the well below says it all.
   return '';
 }
 
@@ -634,6 +635,9 @@ const styles = StyleSheet.create({
   },
   content: {
     height: CONTENT,
+  },
+  contentTall: {
+    height: TOP + spacing.sm + CONTENT,
   },
   fill: {
     flex: 1,
