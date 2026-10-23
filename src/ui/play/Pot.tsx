@@ -182,7 +182,7 @@ export function Pot({
           </FadeIn>
         ) : (
           <View style={styles.well}>
-            <Text style={styles.wellText}>Tap or drag tags here</Text>
+            <Text style={styles.wellText}>Tap your tags or drag them here</Text>
           </View>
         )}
       </View>
