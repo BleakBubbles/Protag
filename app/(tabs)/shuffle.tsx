@@ -6,7 +6,6 @@ import {
   BackHandler,
   Easing,
   Keyboard,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -50,20 +49,20 @@ import {
 } from '@/query/types';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
-import { Icon } from '@/ui/Icon';
 import { plural } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { MusicPicker } from '@/ui/play/MusicPicker';
 import { PictureTile, SeeAllTile } from '@/ui/play/PictureTile';
 import { ingredientKey, Pot, type Look, type ShuffleCount } from '@/ui/play/Pot';
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
+import { FoldHandle } from '@/ui/play/FoldHandle';
 import { COVER_ART, PotCover } from '@/ui/play/PotCover';
 import { PreviewSheet } from '@/ui/play/PreviewSheet';
 import { SearchButton, SearchRow, SectionHead } from '@/ui/play/SectionHead';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
 import { PromptDialog } from '@/ui/PromptDialog';
-import { colors, font, iconSize, radius, spacing, tagColor, touchTarget } from '@/ui/theme';
+import { colors, font, radius, spacing, tagColor } from '@/ui/theme';
 
 /** Covers in the pot's preview line, and how many of the most-played songs to find them among. */
 const COVERS = 5;
@@ -82,10 +81,6 @@ const OPEN_MS = 280;
 
 /** How far the browser rises as it opens. */
 const RISE = 48;
-/** The floating Done button's height. */
-const DONE = touchTarget + 4;
-/** How far the tag list has to be pulled down, from its top, to fold the browser. */
-const PULL = 72;
 
 /**
  * Shuffle tab: build something to shuffle. The pot sits on top like a text field
@@ -209,30 +204,6 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
     setSearching(false);
     setBrowsing(false);
   }, []);
-  // Pulling the list down from its top folds the browser too, like pushing a
-  // drawer shut. Only a clearly downward pull, and never mid-drag of a tile.
-  const listTop = useRef(0);
-  const pullFrom = useRef<{ x: number; y: number } | null>(null);
-  const pullToFold = {
-    onScroll: (e: { nativeEvent: { contentOffset: { y: number } } }) => {
-      listTop.current = e.nativeEvent.contentOffset.y;
-    },
-    scrollEventThrottle: 32,
-    onTouchStart: (e: { nativeEvent: { pageX: number; pageY: number } }) => {
-      pullFrom.current = listTop.current <= 0 ? { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY } : null;
-    },
-    onTouchMove: (e: { nativeEvent: { pageX: number; pageY: number } }) => {
-      const from = pullFrom.current;
-      if (!from || drag.active !== null) return;
-      const dy = e.nativeEvent.pageY - from.y;
-      const dx = Math.abs(e.nativeEvent.pageX - from.x);
-      if (dy < 0 || dx > dy) pullFrom.current = null; // Scrolling, or sideways: not a pull.
-      else if (dy > PULL) {
-        pullFrom.current = null;
-        fold();
-      }
-    },
-  };
   // Back folds the browser before it leaves the tab.
   useFocusEffect(
     useCallback(() => {
@@ -450,13 +421,13 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
               },
             ]}
           >
+            <FoldHandle onFold={fold} />
             <ScrollView
               style={styles.screen}
               contentContainerStyle={styles.content}
               scrollEnabled={still}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
-              {...pullToFold}
             >
               <View style={styles.section}>
                 {searching ? (
@@ -539,18 +510,6 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
                 </View>
               )}
             </ScrollView>
-            {/* Floats over the list, under the thumb, taking no room from the tags. */}
-            <View style={styles.doneDock} pointerEvents="box-none">
-              <Pressable
-                onPress={fold}
-                accessibilityRole="button"
-                accessibilityLabel="Done adding"
-                style={({ pressed }) => [styles.done, pressed && styles.donePressed]}
-              >
-                <Icon name="chevron-down" size={iconSize.sm} color={colors.text} />
-                <Text style={styles.doneText}>Done</Text>
-              </Pressable>
-            </View>
           </Animated.View>
         </View>
 
@@ -660,11 +619,10 @@ const styles = StyleSheet.create({
   centered: {
     justifyContent: 'center',
   },
+  // The fold handle above stands in for the top padding.
   content: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    // Room to scroll the last row clear of the floating Done.
-    paddingBottom: DONE + spacing.lg * 2,
+    paddingBottom: spacing.lg,
     gap: spacing.xl,
   },
   // Layers, back to front: the browser, the growing frame, the pot, the cover.
@@ -682,31 +640,6 @@ const styles = StyleSheet.create({
   },
   browser: {
     ...StyleSheet.absoluteFill,
-  },
-  doneDock: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: spacing.lg,
-    alignItems: 'center',
-  },
-  done: {
-    height: DONE,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.lg,
-    borderRadius: radius.pill,
-    backgroundColor: colors.raised,
-    elevation: 8,
-  },
-  donePressed: {
-    backgroundColor: colors.border,
-  },
-  doneText: {
-    ...font.label,
-    color: colors.text,
   },
   // A picture row runs to the screen's edges, starting in line with the grid.
   bleed: {
