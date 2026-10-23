@@ -120,7 +120,7 @@ export default function ShuffleScreen() {
   if (data.songs === 0) {
     return (
       <View style={[styles.screen, styles.centered]}>
-        <EmptyState icon="musical-notes-outline" title="No music yet" body="Scan your music from the Library tab to get started.">
+        <EmptyState large icon="shuffle" title="Nothing to shuffle yet" body="Scan your music from the Library tab, then pick tags here to shuffle.">
           <Button label="Go to Library" onPress={openLibrary} />
         </EmptyState>
       </View>

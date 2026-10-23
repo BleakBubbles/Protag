@@ -65,7 +65,7 @@ export default function MixesScreen() {
   if (data.songs === 0) {
     return (
       <View style={[styles.screen, styles.centered]}>
-        <EmptyState icon="musical-notes-outline" title="No music yet" body="Scan your music from the Library tab to get started.">
+        <EmptyState large icon="albums-outline" title="No mixes yet" body="Scan your music from the Library tab first. Mixes you save in Shuffle will live here.">
           <Button label="Go to Library" onPress={openLibrary} />
         </EmptyState>
       </View>
@@ -76,6 +76,7 @@ export default function MixesScreen() {
     return (
       <View style={[styles.screen, styles.centered]}>
         <EmptyState
+          large
           icon="albums-outline"
           title="Your mixes live here"
           body="Pick tags in Shuffle, then save them with the bookmark. A mix keeps up as you tag more songs."

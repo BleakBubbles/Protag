@@ -12,13 +12,15 @@ export interface EmptyStateProps {
   body?: string;
   /** Buttons or anything else to offer a way forward. */
   children?: ReactNode;
+  /** For a whole tab with nothing in it yet: a bigger icon and title. */
+  large?: boolean;
 }
 
-export function EmptyState({ icon, art, title, body, children }: EmptyStateProps) {
+export function EmptyState({ icon, art, title, body, children, large }: EmptyStateProps) {
   return (
     <View style={styles.container}>
-      {art ?? (icon ? <Icon name={icon} size={48} color={colors.textFaint} /> : null)}
-      <Text style={styles.title}>{title}</Text>
+      {art ?? (icon ? <Icon name={icon} size={large ? 64 : 48} color={colors.textFaint} /> : null)}
+      <Text style={[styles.title, large && styles.titleLarge]}>{title}</Text>
       {body ? <Text style={styles.body}>{body}</Text> : null}
       {/* A row, so buttons centre here whatever their own alignSelf. */}
       {children ? <View style={styles.actions}>{children}</View> : null}
@@ -37,6 +39,9 @@ const styles = StyleSheet.create({
     ...font.heading,
     color: colors.text,
     textAlign: 'center',
+  },
+  titleLarge: {
+    ...font.title,
   },
   body: {
     ...font.body,
