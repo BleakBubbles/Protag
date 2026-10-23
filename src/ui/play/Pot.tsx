@@ -39,7 +39,9 @@ const RING_WIDTH = 2;
 const RING = RING_GAP + RING_WIDTH;
 /** Two rows of tiles; more scroll. Fixed, so the pot never changes height. */
 const CONTENT = TILE * 2 + GAP + RING * 2;
-const ACTIONS = 56;
+/** The Shuffle button, a circle; the row is its height. */
+const SHUFFLE = 64;
+const ACTIONS = SHUFFLE;
 /** The gap holding the × between a combination's tags. */
 const SYMBOL = 18;
 const BADGE = 18;
@@ -72,7 +74,7 @@ export interface PotProps {
   look: (ref: Ref) => Look;
   /** Songs per ingredient, by `ingredientKey`, once counted. */
   ingredientCounts: ReadonlyMap<string, number>;
-  /** The latest finished count; the Shuffle button shows it as one change. */
+  /** The latest finished count; the top line shows it as one change, and Shuffle says it to screen readers. */
   counted: ShuffleCount | null;
   /** A few of the matching songs' albums (ids), for the cover stack; updated with `counted`. */
   covers: readonly string[];
@@ -199,15 +201,17 @@ export function Pot({
         )}
       </View>
 
-      {/* The two ways to finish: keep it, or hear it. Equal in size; Shuffle,
-          the usual one, is filled and on the thumb side. */}
+      {/* The two ways to finish: keep it, or hear it. Shuffle is the round
+          button every music app puts on a playlist, on the thumb side; saving
+          is a quiet word beside it. The song count is in the line at the top. */}
       <View style={styles.actions}>
         <Pressable
           onPress={onSave}
           disabled={empty}
           accessibilityRole="button"
           accessibilityState={{ disabled: empty }}
-          style={({ pressed }) => [styles.finish, styles.save, (pressed || empty) && styles.dimmed]}
+          hitSlop={spacing.sm}
+          style={({ pressed }) => [styles.save, (pressed || empty) && styles.dimmed]}
         >
           <Icon name={editing ? 'bookmark' : 'bookmark-outline'} size={iconSize.sm} color={colors.accentFg} />
           <Text style={styles.saveText} numberOfLines={1}>
@@ -220,14 +224,9 @@ export function Pot({
           accessibilityRole="button"
           accessibilityLabel={[shuffle.title, shuffle.count].filter(Boolean).join(', ')}
           accessibilityState={{ disabled: shuffle.none }}
-          android_ripple={{ color: colors.rippleOnAccent }}
-          style={({ pressed }) => [styles.finish, styles.shuffle, (pressed || shuffle.none) && styles.dimmed]}
+          style={({ pressed }) => [styles.shuffle, pressed && styles.shufflePressed, shuffle.none && styles.dimmed]}
         >
-          <Icon name="shuffle" size={iconSize.md} color={colors.onAccent} />
-          <View>
-            <Text style={styles.shuffleTitle}>{shuffle.title}</Text>
-            {shuffle.count !== '' && <Text style={styles.shuffleCount}>{shuffle.count}</Text>}
-          </View>
+          <Icon name="shuffle" size={iconSize.lg} color={colors.onAccent} />
         </Pressable>
         <KeepOut shown={canKeepOut} />
       </View>
@@ -741,19 +740,15 @@ const styles = StyleSheet.create({
   actions: {
     height: ACTIONS,
     flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  finish: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    borderRadius: radius.pill,
-    overflow: 'hidden',
+    justifyContent: 'space-between',
   },
   save: {
-    flex: 1,
-    backgroundColor: colors.accentTint,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingRight: spacing.sm,
   },
   saveText: {
     ...font.label,
@@ -762,18 +757,19 @@ const styles = StyleSheet.create({
   dimmed: {
     opacity: 0.4,
   },
+  // Lifted a little off the page, and pressed in under the finger: it should feel like the button.
   shuffle: {
-    flex: 1.4,
+    width: SHUFFLE,
+    height: SHUFFLE,
+    borderRadius: SHUFFLE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.accent,
+    elevation: 6,
   },
-  shuffleTitle: {
-    ...font.listTitle,
-    color: colors.onAccent,
-  },
-  shuffleCount: {
-    ...font.caption,
-    color: colors.onAccent,
-    opacity: 0.8,
+  shufflePressed: {
+    transform: [{ scale: 0.94 }],
+    elevation: 2,
   },
   keepOut: {
     position: 'absolute',
