@@ -52,7 +52,7 @@ export function Welcome({ state, disabled, onScan, onChooseFolders }: WelcomePro
 function bodyFor(state: ScanState): string {
   switch (state.kind) {
     case 'idle':
-      return 'Tag your songs, then shuffle by tag. ProTag reads the songs already on this phone.';
+      return 'Shuffle your music by mood, moment or anything you like. Start by finding the songs on this phone.';
     case 'scanning':
       return 'Reading your library…';
     case 'denied':
