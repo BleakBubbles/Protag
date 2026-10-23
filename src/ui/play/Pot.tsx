@@ -84,10 +84,6 @@ export interface PotProps {
   onClear: () => void;
   onTapIngredient: (index: number) => void;
   onTapExcluded: (ref: Ref) => void;
-  /** Opens the browser of tags, artists and albums; absent while it's open. */
-  onAdd?: () => void;
-  /** Resting alone in the middle of the screen (browser folded): no line under it. */
-  resting?: boolean;
 }
 
 /**
@@ -115,15 +111,12 @@ export function Pot({
   onClear,
   onTapIngredient,
   onTapExcluded,
-  onAdd,
-  resting,
 }: PotProps) {
   const { active, hover } = usePotDragState();
   const screen = useWindowDimensions();
   const rowWidth = screen.width - spacing.lg * 2 - RING * 2;
   const pot = useDropTarget({ kind: 'pot' });
   const empty = draft.ingredients.length === 0 && draft.exclude.length === 0;
-  const shuffle = shuffleText(counted);
   const keys = [...draft.ingredients.map(ingredientKey), ...draft.exclude.map(excludedKey)];
   const shown = useShowNewTiles(keys);
 
@@ -135,10 +128,7 @@ export function Pot({
     active !== null && !(active.kind === 'ingredient' && (draft.ingredients[active.index]?.length ?? 0) > 1);
 
   return (
-    <View
-      ref={pot.ref}
-      style={[styles.pot, resting && styles.potResting, pot.hovered && active?.kind !== 'ingredient' && styles.potHovered]}
-    >
+    <View ref={pot.ref} style={[styles.pot, pot.hovered && active?.kind !== 'ingredient' && styles.potHovered]}>
       <View style={styles.top}>
         {/* While something's lifted, or the pot is empty, this line explains; otherwise it previews. */}
         {active || empty ? (
@@ -149,10 +139,6 @@ export function Pot({
           <PreviewLine covers={covers} counted={counted} editing={editing} onPress={onPreview} />
         )}
         <View style={styles.clearSlot}>
-          {/* With a mix and the browser folded, this is the way back to it (empty, the well is). */}
-          {!empty && onAdd && (
-            <IconButton icon="add" label="Add tags, artists or albums" size={iconSize.sm} color={colors.textDim} onPress={onAdd} />
-          )}
           {!empty && (
             <IconButton icon="close" label="Empty the mix" size={iconSize.sm} color={colors.textDim} onPress={onClear} />
           )}
@@ -195,50 +181,63 @@ export function Pot({
             </ScrollView>
           </FadeIn>
         ) : (
-          <Pressable
-            onPress={onAdd}
-            disabled={!onAdd}
-            accessibilityRole={onAdd ? 'button' : undefined}
-            style={({ pressed }) => [styles.well, pressed && styles.dimmed]}
-          >
-            {onAdd && <Icon name="add" size={iconSize.md} color={colors.textDim} />}
-            <Text style={[styles.wellText, onAdd && styles.wellAction]}>
-              {onAdd ? 'Add tags, artists or albums' : 'Tap or drag tags here'}
-            </Text>
-          </Pressable>
+          <View style={styles.well}>
+            <Text style={styles.wellText}>Tap or drag tags here</Text>
+          </View>
         )}
       </View>
 
-      {/* The two ways to finish: keep it, or hear it. Equal halves, lined up
-          with the tile columns above; Shuffle, the usual one, stands out by
-          being filled. The song count is in the line at the top. */}
-      <View style={styles.actions}>
-        <Pressable
-          onPress={onSave}
-          disabled={empty}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: empty }}
-          style={({ pressed }) => [styles.finish, styles.save, (pressed || empty) && styles.dimmed]}
-        >
-          <Icon name={editing ? 'bookmark' : 'bookmark-outline'} size={iconSize.sm} color={colors.accentFg} />
-          <Text style={styles.saveText} numberOfLines={1}>
-            {editing ? 'Save mix' : 'Save as mix'}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={onShuffle}
-          disabled={shuffle.none}
-          accessibilityRole="button"
-          accessibilityLabel={[shuffle.title, shuffle.count].filter(Boolean).join(', ')}
-          accessibilityState={{ disabled: shuffle.none }}
-          android_ripple={{ color: colors.rippleOnAccent }}
-          style={[styles.finish, styles.shuffle, shuffle.none && styles.dimmed]}
-        >
-          <Icon name="shuffle" size={iconSize.md} color={colors.onAccent} />
-          <Text style={styles.shuffleText}>{shuffle.title}</Text>
-        </Pressable>
+      <FinishButtons empty={empty} editing={editing} counted={counted} onSave={onSave} onShuffle={onShuffle}>
         <KeepOut shown={canKeepOut} />
-      </View>
+      </FinishButtons>
+    </View>
+  );
+}
+
+export interface FinishButtonsProps {
+  empty: boolean;
+  editing: string | null;
+  counted: ShuffleCount | null;
+  onSave: () => void;
+  onShuffle: () => void;
+  /** Laid over the row, e.g. the Keep out zone while dragging. */
+  children?: ReactNode;
+}
+
+/**
+ * The two ways to finish: keep it, or hear it. Equal halves, lined up with the
+ * pot's tile columns; Shuffle, the usual one, stands out by being filled. The
+ * song count is in the line above, not on the button.
+ */
+export function FinishButtons({ empty, editing, counted, onSave, onShuffle, children }: FinishButtonsProps) {
+  const shuffle = shuffleText(counted);
+  return (
+    <View style={styles.actions}>
+      <Pressable
+        onPress={onSave}
+        disabled={empty}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: empty }}
+        style={({ pressed }) => [styles.finish, styles.save, (pressed || empty) && styles.dimmed]}
+      >
+        <Icon name={editing ? 'bookmark' : 'bookmark-outline'} size={iconSize.sm} color={colors.accentFg} />
+        <Text style={styles.saveText} numberOfLines={1}>
+          {editing ? 'Save mix' : 'Save as mix'}
+        </Text>
+      </Pressable>
+      <Pressable
+        onPress={onShuffle}
+        disabled={shuffle.none}
+        accessibilityRole="button"
+        accessibilityLabel={[shuffle.title, shuffle.count].filter(Boolean).join(', ')}
+        accessibilityState={{ disabled: shuffle.none }}
+        android_ripple={{ color: colors.rippleOnAccent }}
+        style={[styles.finish, styles.shuffle, shuffle.none && styles.dimmed]}
+      >
+        <Icon name="shuffle" size={iconSize.md} color={colors.onAccent} />
+        <Text style={styles.shuffleText}>{shuffle.title}</Text>
+      </Pressable>
+      {children}
     </View>
   );
 }
@@ -580,9 +579,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   // Something lifted over it: a teal wash says it'll land here.
-  potResting: {
-    borderBottomColor: 'transparent',
-  },
   potHovered: {
     backgroundColor: colors.accentTint,
   },
@@ -655,9 +651,6 @@ const styles = StyleSheet.create({
   wellText: {
     ...font.label,
     color: colors.textFaint,
-  },
-  wellAction: {
-    color: colors.textDim,
   },
   lifting: {
     opacity: 0.3,

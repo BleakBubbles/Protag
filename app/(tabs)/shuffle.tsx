@@ -57,6 +57,7 @@ import { MusicPicker } from '@/ui/play/MusicPicker';
 import { PictureTile, SeeAllTile } from '@/ui/play/PictureTile';
 import { ingredientKey, Pot, type Look, type ShuffleCount } from '@/ui/play/Pot';
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
+import { PotCover } from '@/ui/play/PotCover';
 import { PreviewSheet } from '@/ui/play/PreviewSheet';
 import { SearchButton, SearchRow, SectionHead } from '@/ui/play/SectionHead';
 import { TagGrid } from '@/ui/play/TagGrid';
@@ -171,10 +172,6 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
 
   // The browser stays built while folded away, so it reopens where it was.
   const [browsing, setBrowsing] = useState(false);
-  /** The screen's height and the pot's, to rest the pot in the middle while folded. */
-  const [room, setRoom] = useState(0);
-  const [potHeight, setPotHeight] = useState(0);
-  const middle = Math.max(0, (room - potHeight) / 2);
   const reveal = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(reveal, {
@@ -369,23 +366,26 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
   const tap = useCallback((ref: Ref) => setDraft(tapTag(current, ref)), [current]);
   const drag = usePotDragRoot((item: PotItem, spot: PotSpot) => setDraft(dropInPot(current, item, spot)));
   const still = drag.active === null;
+  // The cover's dots: each tag in the mix once, in its colour (artists and albums have none).
+  const coverHues = useMemo(
+    () => [...new Set(current.ingredients.flat().flatMap((ref) => hues.get(ref) ?? []))],
+    [current, hues]
+  );
   // An unchanged mix plays under its own name.
   const playLabel = editingMix && sameDraft(current, editingMix.draft) ? editingMix.name : undefined;
 
   return (
     <PotDragContext.Provider value={drag}>
-      <View ref={drag.rootRef} style={styles.screen} onLayout={(e) => setRoom(e.nativeEvent.layout.height)}>
-        {/* Folded, the pot rests in the middle of the screen; opening the
-            browser slides it up to the top as the browser rises beneath it. */}
+      <View ref={drag.rootRef} style={styles.screen}>
+        {/* Open: the pot to build in, at the top, settling into place as the
+            cover above lifts away into it. */}
         <Animated.View
-          onLayout={(e) => setPotHeight(e.nativeEvent.layout.height)}
-          style={[
-            styles.potSlot,
-            {
-              opacity: room > 0 && potHeight > 0 ? 1 : 0,
-              transform: [{ translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [middle, 0] }) }],
-            },
-          ]}
+          pointerEvents={browsing ? 'auto' : 'none'}
+          importantForAccessibility={browsing ? 'auto' : 'no-hide-descendants'}
+          style={{
+            opacity: reveal,
+            transform: [{ translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [RISE, 0] }) }],
+          }}
         >
           <Pot
             draft={current}
@@ -403,8 +403,6 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
             onClear={() => setDraft(EMPTY_DRAFT)}
             onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
             onTapExcluded={(ref) => setDraft(tapExcluded(current, ref))}
-            onAdd={browsing ? undefined : () => setBrowsing(true)}
-            resting={!browsing}
           />
         </Animated.View>
 
@@ -522,6 +520,35 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
           </Animated.View>
         </View>
 
+        {/* Folded: the mix as a cover in the middle of the screen. Opening, it
+            rises and fades into the pot; folding plays that back. */}
+        <Animated.View
+          pointerEvents={browsing ? 'none' : 'box-none'}
+          importantForAccessibility={browsing ? 'no-hide-descendants' : 'auto'}
+          style={[
+            styles.coverSlot,
+            {
+              opacity: reveal.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+              transform: [
+                { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [0, -RISE * 2] }) },
+                { scale: reveal.interpolate({ inputRange: [0, 1], outputRange: [1, 0.9] }) },
+              ],
+            },
+          ]}
+        >
+          <PotCover
+            empty={potEmpty}
+            title={describeQuery(query, names)}
+            hues={coverHues}
+            covers={covers}
+            counted={counted}
+            editing={editingMix?.name ?? null}
+            onOpen={() => setBrowsing(true)}
+            onSave={() => setSaving(true)}
+            onShuffle={() => playQuery(query, { draft: current, label: playLabel })}
+          />
+        </Animated.View>
+
         <MusicPicker
           visible={picking !== null}
           title={picking === 'albums' ? 'Albums' : 'Artists'}
@@ -579,8 +606,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     gap: spacing.xl,
   },
-  // Above the browser below it, which it slides down over while folded.
-  potSlot: {
+  // Over everything, in the middle of the screen; empty space passes taps through.
+  coverSlot: {
+    ...StyleSheet.absoluteFill,
+    justifyContent: 'center',
     zIndex: 1,
   },
   browser: {
