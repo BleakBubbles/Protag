@@ -39,7 +39,6 @@ const RING_WIDTH = 2;
 const RING = RING_GAP + RING_WIDTH;
 /** Two rows of tiles; more scroll. Fixed, so the pot never changes height. */
 const CONTENT = TILE * 2 + GAP + RING * 2;
-/** The row of Save and Shuffle; Save is a circle this wide. */
 const ACTIONS = 56;
 /** The gap holding the × between a combination's tags. */
 const SYMBOL = 18;
@@ -200,19 +199,21 @@ export function Pot({
         )}
       </View>
 
-      {/* The two ways to finish: keep it, or hear it. Shuffle, the usual one,
-          takes the row; saving is a small round bookmark before it. The song
-          count is in the line at the top. */}
+      {/* The two ways to finish: keep it, or hear it. Equal halves, lined up
+          with the tile columns above; Shuffle, the usual one, stands out by
+          being filled. The song count is in the line at the top. */}
       <View style={styles.actions}>
         <Pressable
           onPress={onSave}
           disabled={empty}
           accessibilityRole="button"
-          accessibilityLabel={editing ? 'Save mix' : 'Save as mix'}
           accessibilityState={{ disabled: empty }}
-          style={({ pressed }) => [styles.save, (pressed || empty) && styles.dimmed]}
+          style={({ pressed }) => [styles.finish, styles.save, (pressed || empty) && styles.dimmed]}
         >
-          <Icon name={editing ? 'bookmark' : 'bookmark-outline'} size={iconSize.md} color={colors.accentFg} />
+          <Icon name={editing ? 'bookmark' : 'bookmark-outline'} size={iconSize.sm} color={colors.accentFg} />
+          <Text style={styles.saveText} numberOfLines={1}>
+            {editing ? 'Save mix' : 'Save as mix'}
+          </Text>
         </Pressable>
         <Pressable
           onPress={onShuffle}
@@ -221,7 +222,7 @@ export function Pot({
           accessibilityLabel={[shuffle.title, shuffle.count].filter(Boolean).join(', ')}
           accessibilityState={{ disabled: shuffle.none }}
           android_ripple={{ color: colors.rippleOnAccent }}
-          style={[styles.shuffle, shuffle.none && styles.dimmed]}
+          style={[styles.finish, styles.shuffle, shuffle.none && styles.dimmed]}
         >
           <Icon name="shuffle" size={iconSize.md} color={colors.onAccent} />
           <Text style={styles.shuffleText}>{shuffle.title}</Text>
@@ -735,22 +736,14 @@ const styles = StyleSheet.create({
     color: colors.bg,
     opacity: 0.75,
   },
+  // The tiles' gap and inset, so each button sits exactly under a column.
   actions: {
     height: ACTIONS,
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: GAP,
+    paddingHorizontal: RING,
   },
-  save: {
-    width: ACTIONS,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: ACTIONS / 2,
-    backgroundColor: colors.accentTint,
-  },
-  dimmed: {
-    opacity: 0.4,
-  },
-  shuffle: {
+  finish: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -758,6 +751,18 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderRadius: radius.pill,
     overflow: 'hidden',
+  },
+  save: {
+    backgroundColor: colors.accentTint,
+  },
+  saveText: {
+    ...font.label,
+    color: colors.accentFg,
+  },
+  dimmed: {
+    opacity: 0.4,
+  },
+  shuffle: {
     backgroundColor: colors.accent,
   },
   shuffleText: {
