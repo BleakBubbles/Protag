@@ -39,9 +39,8 @@ const RING_WIDTH = 2;
 const RING = RING_GAP + RING_WIDTH;
 /** Two rows of tiles; more scroll. Fixed, so the pot never changes height. */
 const CONTENT = TILE * 2 + GAP + RING * 2;
-/** The Shuffle button, a circle; the row is its height. */
-const SHUFFLE = 64;
-const ACTIONS = SHUFFLE;
+/** The row of Save and Shuffle; Save is a circle this wide. */
+const ACTIONS = 56;
 /** The gap holding the × between a combination's tags. */
 const SYMBOL = 18;
 const BADGE = 18;
@@ -201,22 +200,19 @@ export function Pot({
         )}
       </View>
 
-      {/* The two ways to finish: keep it, or hear it. Shuffle is the round
-          button every music app puts on a playlist, on the thumb side; saving
-          is a quiet word beside it. The song count is in the line at the top. */}
+      {/* The two ways to finish: keep it, or hear it. Shuffle, the usual one,
+          takes the row; saving is a small round bookmark before it. The song
+          count is in the line at the top. */}
       <View style={styles.actions}>
         <Pressable
           onPress={onSave}
           disabled={empty}
           accessibilityRole="button"
+          accessibilityLabel={editing ? 'Save mix' : 'Save as mix'}
           accessibilityState={{ disabled: empty }}
-          hitSlop={spacing.sm}
           style={({ pressed }) => [styles.save, (pressed || empty) && styles.dimmed]}
         >
-          <Icon name={editing ? 'bookmark' : 'bookmark-outline'} size={iconSize.sm} color={colors.accentFg} />
-          <Text style={styles.saveText} numberOfLines={1}>
-            {editing ? 'Save mix' : 'Save as mix'}
-          </Text>
+          <Icon name={editing ? 'bookmark' : 'bookmark-outline'} size={iconSize.md} color={colors.accentFg} />
         </Pressable>
         <Pressable
           onPress={onShuffle}
@@ -224,9 +220,11 @@ export function Pot({
           accessibilityRole="button"
           accessibilityLabel={[shuffle.title, shuffle.count].filter(Boolean).join(', ')}
           accessibilityState={{ disabled: shuffle.none }}
-          style={({ pressed }) => [styles.shuffle, pressed && styles.shufflePressed, shuffle.none && styles.dimmed]}
+          android_ripple={{ color: colors.rippleOnAccent }}
+          style={[styles.shuffle, shuffle.none && styles.dimmed]}
         >
-          <Icon name="shuffle" size={iconSize.lg} color={colors.onAccent} />
+          <Icon name="shuffle" size={iconSize.md} color={colors.onAccent} />
+          <Text style={styles.shuffleText}>{shuffle.title}</Text>
         </Pressable>
         <KeepOut shown={canKeepOut} />
       </View>
@@ -740,36 +738,31 @@ const styles = StyleSheet.create({
   actions: {
     height: ACTIONS,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: spacing.sm,
   },
   save: {
-    flexDirection: 'row',
+    width: ACTIONS,
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingRight: spacing.sm,
-  },
-  saveText: {
-    ...font.label,
-    color: colors.accentFg,
+    justifyContent: 'center',
+    borderRadius: ACTIONS / 2,
+    backgroundColor: colors.accentTint,
   },
   dimmed: {
     opacity: 0.4,
   },
-  // Lifted a little off the page, and pressed in under the finger: it should feel like the button.
   shuffle: {
-    width: SHUFFLE,
-    height: SHUFFLE,
-    borderRadius: SHUFFLE / 2,
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.sm,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
     backgroundColor: colors.accent,
-    elevation: 6,
   },
-  shufflePressed: {
-    transform: [{ scale: 0.94 }],
-    elevation: 2,
+  shuffleText: {
+    ...font.listTitle,
+    color: colors.onAccent,
   },
   keepOut: {
     position: 'absolute',
