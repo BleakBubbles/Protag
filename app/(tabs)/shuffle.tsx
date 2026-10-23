@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -50,6 +49,7 @@ import {
   type QueryDraft,
 } from '@/query/types';
 import { Button } from '@/ui/Button';
+import { EmptyState } from '@/ui/EmptyState';
 import { plural } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { MusicPicker } from '@/ui/play/MusicPicker';
@@ -120,10 +120,9 @@ export default function ShuffleScreen() {
   if (data.songs === 0) {
     return (
       <View style={[styles.screen, styles.centered]}>
-        <Ionicons name="musical-notes-outline" size={64} color={colors.textFaint} />
-        <Text style={styles.title}>No music yet</Text>
-        <Text style={styles.body}>Scan your music from the Library tab to get started.</Text>
-        <Button label="Go to Library" onPress={openLibrary} />
+        <EmptyState icon="musical-notes-outline" title="No music yet" body="Scan your music from the Library tab to get started.">
+          <Button label="Go to Library" onPress={openLibrary} />
+        </EmptyState>
       </View>
     );
   }
@@ -536,10 +535,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   centered: {
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.xl,
-    gap: spacing.md,
   },
   content: {
     paddingHorizontal: spacing.lg,
@@ -589,15 +585,6 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: spacing.md,
-  },
-  title: {
-    ...font.title,
-    color: colors.text,
-  },
-  body: {
-    ...font.body,
-    color: colors.textDim,
-    textAlign: 'center',
   },
   hint: {
     ...font.caption,

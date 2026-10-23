@@ -64,7 +64,7 @@ export default function MixesScreen() {
 
   if (data.songs === 0) {
     return (
-      <View style={styles.screen}>
+      <View style={[styles.screen, styles.centered]}>
         <EmptyState icon="musical-notes-outline" title="No music yet" body="Scan your music from the Library tab to get started.">
           <Button label="Go to Library" onPress={openLibrary} />
         </EmptyState>
@@ -74,7 +74,7 @@ export default function MixesScreen() {
 
   if (data.mixes.length === 0) {
     return (
-      <View style={styles.screen}>
+      <View style={[styles.screen, styles.centered]}>
         <EmptyState
           icon="albums-outline"
           title="Your mixes live here"
@@ -182,6 +182,10 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  // Empty states sit in the middle of the screen, as on Shuffle.
+  centered: {
+    justifyContent: 'center',
   },
   grid: {
     padding: spacing.lg,
