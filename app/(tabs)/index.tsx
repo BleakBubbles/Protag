@@ -66,7 +66,7 @@ export default function MixesScreen() {
     return (
       <View style={[styles.screen, styles.centered]}>
         <EmptyState large icon="albums-outline" title="No mixes yet" body="Scan your music from the Library tab first. Mixes you save in Shuffle will live here.">
-          <Button label="Go to Library" onPress={openLibrary} />
+          <Button label="Go to Library" variant="tonal" onPress={openLibrary} />
         </EmptyState>
       </View>
     );

@@ -130,7 +130,7 @@ export default function AddSongsScreen() {
       <View style={styles.screen}>
         <Stack.Screen options={{ title: '' }} />
         <EmptyState icon="tag" title="This tag no longer exists">
-          <Button label="Close" onPress={() => router.back()} />
+          <Button label="Close" variant="tonal" onPress={() => router.back()} />
         </EmptyState>
       </View>
     );

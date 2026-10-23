@@ -33,13 +33,13 @@ export function Welcome({ state, disabled, onScan, onChooseFolders }: WelcomePro
         </View>
       ) : state.kind === 'denied' ? (
         state.canAskAgain ? (
-          <Button label="Allow access" onPress={onScan} />
+          <Button label="Allow access" variant="tonal" onPress={onScan} />
         ) : (
-          <Button label="Open settings" icon="settings-outline" onPress={() => Linking.openSettings()} />
+          <Button label="Open settings" icon="settings-outline" variant="tonal" onPress={() => Linking.openSettings()} />
         )
       ) : (
         <>
-          <Button label={state.kind === 'idle' ? 'Scan my music' : 'Scan again'} icon="search" onPress={onScan} disabled={disabled} />
+          <Button label={state.kind === 'idle' ? 'Scan my music' : 'Scan again'} icon="search" variant="tonal" onPress={onScan} disabled={disabled} />
           {state.kind === 'done' && state.summary.leftOut > 0 && (
             <Button label="Folders" icon="folder-outline" variant="secondary" onPress={onChooseFolders} disabled={disabled} />
           )}

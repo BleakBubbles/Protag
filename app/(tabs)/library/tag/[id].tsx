@@ -101,7 +101,7 @@ export default function TagScreen() {
       <View style={styles.screen}>
         <Stack.Screen options={{ title: '' }} />
         <EmptyState icon="tag" title="This tag no longer exists">
-          <Button label="Go back" onPress={() => router.back()} />
+          <Button label="Go back" variant="tonal" onPress={() => router.back()} />
         </EmptyState>
       </View>
     );

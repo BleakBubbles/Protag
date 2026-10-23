@@ -121,7 +121,7 @@ export default function ShuffleScreen() {
     return (
       <View style={[styles.screen, styles.centered]}>
         <EmptyState large icon="shuffle" title="Nothing to shuffle yet" body="Scan your music from the Library tab, then pick tags here to shuffle.">
-          <Button label="Go to Library" onPress={openLibrary} />
+          <Button label="Go to Library" variant="tonal" onPress={openLibrary} />
         </EmptyState>
       </View>
     );
