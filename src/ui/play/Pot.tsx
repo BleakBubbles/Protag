@@ -250,7 +250,7 @@ function shuffleText(counted: ShuffleCount | null): { title: string; count: stri
   return { title: empty ? 'Shuffle all' : 'Shuffle', count: plural(count, 'song'), none: false };
 }
 
-/** The pot's top line while it's empty or something's lifted: how to start, or what letting go will do. */
+/** The pot's top line while something's lifted (what letting go will do), and blank while it's empty. */
 function hintFor(active: PotItem | null, hover: string): string {
   if (active) {
     if (hover.startsWith('i')) return 'Let go to combine: songs need both';
@@ -259,7 +259,8 @@ function hintFor(active: PotItem | null, hover: string): string {
     if (hover === 'pot') return active.kind === 'excluded' ? 'Let go to add it' : 'Drop it on another to combine';
     return 'Let go to take it out';
   }
-  return 'Tap tags below, or hold one to drag it';
+  // Empty and still: the well below says it all.
+  return '';
 }
 
 /**
