@@ -5,7 +5,7 @@ const ASPECT = 416 / 280;
 
 export interface LogoMarkProps {
   width: number;
-  /** Draws the mark as a silhouette in this colour. Without one, it's the logo's own beige. */
+  /** Draws the mark as a silhouette in this colour. Without one, it's teal (`accentFg`), as on the splash screen. */
   color?: string;
 }
 

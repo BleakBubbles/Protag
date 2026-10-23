@@ -13,6 +13,9 @@ const ASSETS = new URL('../assets/', import.meta.url);
 // Keep BACKGROUND in sync with android.adaptiveIcon.backgroundColor in app.json.
 const BACKGROUND = '#F5E7CA';
 const MARK = '#446170';
+// The mark on the app's dark background: the app's teal (`accentFg` in theme.ts), which sits
+// with the rest of the UI where the beige clashed.
+const ON_DARK = '#2E9384';
 
 /** The logo's drawing and its canvas size, minus the outer <svg> element. */
 const source = readFileSync(new URL('logo.svg', BRAND), 'utf8');
@@ -53,12 +56,12 @@ write('android-icon-foreground.png', compose({ color: MARK, scale: ADAPTIVE_SCAL
 write('android-icon-monochrome.png', compose({ color: '#FFFFFF', scale: ADAPTIVE_SCALE }));
 
 // The mark alone, cropped to its own bounds (stem ending at the logo's bottom
-// edge), in the light colour for the app's dark background. Used by the splash
+// edge), in teal for the app's dark background. Used by the splash
 // screen and inside the app. The crop is the mark's bounding box in logo.svg's
 // coordinates, with a little room.
 const MARK_BOUNDS = '140 144 280 416';
 write(
   'logo-mark.png',
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARK_BOUNDS}"><g fill="${BACKGROUND}">${logo}</g></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARK_BOUNDS}"><g fill="${ON_DARK}">${logo}</g></svg>`,
   512
 );
