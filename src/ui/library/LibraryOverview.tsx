@@ -33,6 +33,8 @@ export interface LibraryOverviewProps {
  */
 export function LibraryOverview({ counts, state, disabled, onScan, onChooseFolders }: LibraryOverviewProps) {
   const denied = state.kind === 'denied' ? state : null;
+  // Before the first scan there's nothing to scan *again*.
+  const scanned = counts.songs > 0 || counts.lastScanAt !== null;
   return (
     <Card
       title="On this phone"
@@ -59,7 +61,7 @@ export function LibraryOverview({ counts, state, disabled, onScan, onChooseFolde
       <View style={styles.status}>
         {state.kind === 'scanning' && <ActivityIndicator size="small" color={colors.accentFg} />}
         <Text style={styles.statusText} numberOfLines={1}>
-          {statusLine(state, counts.lastScanAt)}
+          {statusLine(state, counts.lastScanAt, scanned)}
         </Text>
       </View>
 
@@ -72,8 +74,8 @@ export function LibraryOverview({ counts, state, disabled, onScan, onChooseFolde
           <Button label="Open settings" icon="settings-outline" variant="tonal" onPress={() => Linking.openSettings()} />
         ) : (
           <Button
-            label={denied ? 'Allow access' : 'Rescan'}
-            icon="refresh"
+            label={denied ? 'Allow access' : scanned ? 'Rescan' : 'Scan'}
+            icon={scanned ? 'refresh' : 'search'}
             variant="tonal"
             onPress={onScan}
             disabled={disabled}
@@ -85,7 +87,7 @@ export function LibraryOverview({ counts, state, disabled, onScan, onChooseFolde
   );
 }
 
-function statusLine(state: ScanState, lastScanAt: number | null): string {
+function statusLine(state: ScanState, lastScanAt: number | null, scanned: boolean): string {
   if (state.kind === 'scanning') {
     const { progress } = state;
     return progress
@@ -93,7 +95,7 @@ function statusLine(state: ScanState, lastScanAt: number | null): string {
       : 'Reading your library…';
   }
   if (lastScanAt !== null) return `Last scanned ${formatDaysAgo(lastScanAt)}`;
-  return 'Rescan to pick up songs added since';
+  return scanned ? 'Rescan to pick up songs added since' : 'Not scanned yet';
 }
 
 function Stat({ value, of, unit }: { value: string; of?: string; unit: string }) {
