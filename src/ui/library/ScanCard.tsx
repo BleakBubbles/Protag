@@ -9,15 +9,14 @@ import { colors, spacing } from '../theme';
 
 export interface ScanCardProps {
   state: ScanState;
-  hasSongs: boolean;
   disabled?: boolean;
   onScan: () => void;
   /** Shown after a scan that left files out, to see why or change it. */
   onChooseFolders?: () => void;
 }
 
-/** Scan status and the scan/rescan button. Used for onboarding and in Manage library. */
-export function ScanCard({ state, hasSongs, disabled, onScan, onChooseFolders }: ScanCardProps) {
+/** Scan status and the rescan button, once there's a library (the first scan is `Welcome`'s). */
+export function ScanCard({ state, disabled, onScan, onChooseFolders }: ScanCardProps) {
   if (state.kind === 'scanning') {
     const { progress } = state;
     return (
@@ -49,24 +48,14 @@ export function ScanCard({ state, hasSongs, disabled, onScan, onChooseFolders }:
     );
   }
 
-  const title =
-    state.kind === 'done'
-      ? `${plural(state.summary.found, 'song')} found`
-      : hasSongs
-        ? undefined
-        : 'Find your music';
-
   return (
-    <Card title={title}>
-      {!hasSongs && state.kind === 'idle' && (
-        <CardText>ProTag reads the songs already on this phone.</CardText>
-      )}
+    <Card title={state.kind === 'done' ? `${plural(state.summary.found, 'song')} found` : undefined}>
       {state.kind === 'done' && <ScanSummaryText summary={state.summary} />}
       {state.kind === 'error' && <CardText tone="error">Scan failed: {state.message}</CardText>}
       <CardActions>
         <Button
-          label={hasSongs ? 'Rescan' : 'Scan my music'}
-          icon={hasSongs ? 'refresh' : 'search'}
+          label="Rescan"
+          icon="refresh"
           variant="tonal"
           onPress={onScan}
           disabled={disabled}

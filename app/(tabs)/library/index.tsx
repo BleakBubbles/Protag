@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { countSongs } from '@/db/songs';
 import { useLibraryScan } from '@/library/useLibraryScan';
@@ -12,10 +12,9 @@ import { TagsView } from '@/screens/library/TagsView';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { useSongSelection } from '@/ui/hooks/useSongSelection';
 import { IconButton } from '@/ui/IconButton';
-import { ScanCard } from '@/ui/library/ScanCard';
-import { LogoMark } from '@/ui/LogoMark';
+import { Welcome } from '@/ui/library/Welcome';
 import { PagerTabs } from '@/ui/PagerTabs';
-import { colors, font, spacing } from '@/ui/theme';
+import { colors } from '@/ui/theme';
 
 type LibraryView = 'tags' | 'songs' | 'artists' | 'albums';
 
@@ -63,21 +62,7 @@ export default function LibraryScreen() {
     return (
       <ScrollView style={styles.screen} contentContainerStyle={styles.onboarding}>
         <Stack.Screen options={header} />
-        {/* The one place the app introduces itself; everywhere else the music is the focus. */}
-        <View style={styles.welcome}>
-          <View style={styles.logo}>
-            <LogoMark width={48} />
-          </View>
-          <Text style={styles.welcomeTitle}>Welcome to ProTag</Text>
-          <Text style={styles.welcomeText}>Tag your songs, then shuffle by tag.</Text>
-        </View>
-        <ScanCard
-          state={scan.state}
-          hasSongs={false}
-          disabled={scan.busy}
-          onScan={scan.run}
-          onChooseFolders={openLibraryFolders}
-        />
+        <Welcome state={scan.state} disabled={scan.busy} onScan={scan.run} onChooseFolders={openLibraryFolders} />
       </ScrollView>
     );
   }
@@ -113,22 +98,5 @@ const styles = StyleSheet.create({
   onboarding: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: spacing.lg,
-    gap: spacing.xl,
-  },
-  welcome: {
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  logo: {
-    marginBottom: spacing.md,
-  },
-  welcomeTitle: {
-    ...font.title,
-    color: colors.text,
-  },
-  welcomeText: {
-    ...font.body,
-    color: colors.textDim,
   },
 });

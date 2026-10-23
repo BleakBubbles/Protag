@@ -81,7 +81,7 @@ export default function FoldersScreen() {
         renderItem={({ item }) => <FolderRow folder={item} onToggle={toggle} />}
       />
       <View style={styles.footer}>
-        <ScanCard state={scan.state} hasSongs disabled={scan.busy} onScan={scan.run} />
+        <ScanCard state={scan.state} disabled={scan.busy} onScan={scan.run} />
       </View>
     </View>
   );
