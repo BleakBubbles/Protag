@@ -86,6 +86,8 @@ export interface PotProps {
   onTapExcluded: (ref: Ref) => void;
   /** Opens the browser of tags, artists and albums; absent while it's open. */
   onAdd?: () => void;
+  /** Resting alone in the middle of the screen (browser folded): no line under it. */
+  resting?: boolean;
 }
 
 /**
@@ -114,6 +116,7 @@ export function Pot({
   onTapIngredient,
   onTapExcluded,
   onAdd,
+  resting,
 }: PotProps) {
   const { active, hover } = usePotDragState();
   const screen = useWindowDimensions();
@@ -132,7 +135,10 @@ export function Pot({
     active !== null && !(active.kind === 'ingredient' && (draft.ingredients[active.index]?.length ?? 0) > 1);
 
   return (
-    <View ref={pot.ref} style={[styles.pot, pot.hovered && active?.kind !== 'ingredient' && styles.potHovered]}>
+    <View
+      ref={pot.ref}
+      style={[styles.pot, resting && styles.potResting, pot.hovered && active?.kind !== 'ingredient' && styles.potHovered]}
+    >
       <View style={styles.top}>
         {/* While something's lifted, or the pot is empty, this line explains; otherwise it previews. */}
         {active || empty ? (
@@ -143,6 +149,10 @@ export function Pot({
           <PreviewLine covers={covers} counted={counted} editing={editing} onPress={onPreview} />
         )}
         <View style={styles.clearSlot}>
+          {/* With a mix and the browser folded, this is the way back to it (empty, the well is). */}
+          {!empty && onAdd && (
+            <IconButton icon="add" label="Add tags, artists or albums" size={iconSize.sm} color={colors.textDim} onPress={onAdd} />
+          )}
           {!empty && (
             <IconButton icon="close" label="Empty the mix" size={iconSize.sm} color={colors.textDim} onPress={onClear} />
           )}
@@ -570,6 +580,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   // Something lifted over it: a teal wash says it'll land here.
+  potResting: {
+    borderBottomColor: 'transparent',
+  },
   potHovered: {
     backgroundColor: colors.accentTint,
   },
@@ -616,10 +629,11 @@ const styles = StyleSheet.create({
   },
   // The close button keeps its full touch area, overhanging this short row.
   clearSlot: {
-    width: touchTarget,
+    minWidth: touchTarget,
     height: TOP,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   content: {
     height: CONTENT,

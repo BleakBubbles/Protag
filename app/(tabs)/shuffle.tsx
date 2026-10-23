@@ -168,6 +168,10 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
 
   // The browser stays built while folded away, so it reopens where it was.
   const [browsing, setBrowsing] = useState(false);
+  /** The screen's height and the pot's, to rest the pot in the middle while folded. */
+  const [room, setRoom] = useState(0);
+  const [potHeight, setPotHeight] = useState(0);
+  const middle = Math.max(0, (room - potHeight) / 2);
   const reveal = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(reveal, {
@@ -343,34 +347,41 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
 
   return (
     <PotDragContext.Provider value={drag}>
-      <View ref={drag.rootRef} style={styles.screen}>
-        <Pot
-          draft={current}
-          look={look}
-          ingredientCounts={ingredientCounts}
-          counted={counted}
-          covers={covers}
-          onPreview={() => setPreviewing(true)}
-          editing={editingMix?.name ?? null}
-          onSave={() => setSaving(true)}
-          onShuffle={() => {
-            playQuery(query, { draft: current, label: playLabel });
-            fold();
-          }}
-          onClear={() => setDraft(EMPTY_DRAFT)}
-          onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
-          onTapExcluded={(ref) => setDraft(tapExcluded(current, ref))}
-          onAdd={browsing ? undefined : () => setBrowsing(true)}
-        />
+      <View ref={drag.rootRef} style={styles.screen} onLayout={(e) => setRoom(e.nativeEvent.layout.height)}>
+        {/* Folded, the pot rests in the middle of the screen; opening the
+            browser slides it up to the top as the browser rises beneath it. */}
+        <Animated.View
+          onLayout={(e) => setPotHeight(e.nativeEvent.layout.height)}
+          style={[
+            styles.potSlot,
+            {
+              opacity: room > 0 && potHeight > 0 ? 1 : 0,
+              transform: [{ translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [middle, 0] }) }],
+            },
+          ]}
+        >
+          <Pot
+            draft={current}
+            look={look}
+            ingredientCounts={ingredientCounts}
+            counted={counted}
+            covers={covers}
+            onPreview={() => setPreviewing(true)}
+            editing={editingMix?.name ?? null}
+            onSave={() => setSaving(true)}
+            onShuffle={() => {
+              playQuery(query, { draft: current, label: playLabel });
+              fold();
+            }}
+            onClear={() => setDraft(EMPTY_DRAFT)}
+            onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
+            onTapExcluded={(ref) => setDraft(tapExcluded(current, ref))}
+            onAdd={browsing ? undefined : () => setBrowsing(true)}
+            resting={!browsing}
+          />
+        </Animated.View>
 
         <View style={styles.screen}>
-          {/* Folded away: just the way to open it. */}
-          <Animated.View
-            pointerEvents={browsing ? 'none' : 'auto'}
-            style={[styles.folded, { opacity: reveal.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}
-          >
-            {!potEmpty && <Button label="Add more" icon="add" variant="tonal" onPress={() => setBrowsing(true)} />}
-          </Animated.View>
 
           <Animated.View
             pointerEvents={browsing ? 'auto' : 'none'}
@@ -543,10 +554,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     gap: spacing.xl,
   },
-  folded: {
-    ...StyleSheet.absoluteFill,
-    alignItems: 'center',
-    paddingTop: spacing.xl,
+  // Above the browser below it, which it slides down over while folded.
+  potSlot: {
+    zIndex: 1,
   },
   browser: {
     ...StyleSheet.absoluteFill,
