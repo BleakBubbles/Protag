@@ -63,7 +63,7 @@ import { SearchButton, SearchRow, SectionHead } from '@/ui/play/SectionHead';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
 import { PromptDialog } from '@/ui/PromptDialog';
-import { colors, font, iconSize, spacing, tagColor, touchTarget } from '@/ui/theme';
+import { colors, font, iconSize, radius, spacing, tagColor, touchTarget } from '@/ui/theme';
 
 /** Covers in the pot's preview line, and how many of the most-played songs to find them among. */
 const COVERS = 5;
@@ -79,6 +79,8 @@ const COVER_MARGIN = spacing.lg;
 
 /** How far the browser rises as it opens. */
 const RISE = 48;
+/** The floating Done button's height. */
+const DONE = touchTarget + 4;
 /** How far the tag list has to be pulled down, from its top, to fold the browser. */
 const PULL = 72;
 
@@ -443,15 +445,6 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
               },
             ]}
           >
-            {/* The whole bar folds it: nothing small to aim for. */}
-            <Pressable
-              onPress={fold}
-              accessibilityRole="button"
-              style={({ pressed }) => [styles.doneBar, pressed && styles.doneBarPressed]}
-            >
-              <Icon name="chevron-down" size={iconSize.sm} color={colors.textDim} />
-              <Text style={styles.doneText}>Done adding</Text>
-            </Pressable>
             <ScrollView
               style={styles.screen}
               contentContainerStyle={styles.content}
@@ -541,6 +534,18 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
                 </View>
               )}
             </ScrollView>
+            {/* Floats over the list, under the thumb, taking no room from the tags. */}
+            <View style={styles.doneDock} pointerEvents="box-none">
+              <Pressable
+                onPress={fold}
+                accessibilityRole="button"
+                accessibilityLabel="Done adding"
+                style={({ pressed }) => [styles.done, pressed && styles.donePressed]}
+              >
+                <Icon name="chevron-down" size={iconSize.sm} color={colors.text} />
+                <Text style={styles.doneText}>Done</Text>
+              </Pressable>
+            </View>
           </Animated.View>
         </View>
 
@@ -633,7 +638,8 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
+    // Room to scroll the last row clear of the floating Done.
+    paddingBottom: DONE + spacing.lg * 2,
     gap: spacing.xl,
   },
   // Over everything; the cover inside is placed by `coverTop`. Empty space passes taps through.
@@ -644,19 +650,30 @@ const styles = StyleSheet.create({
   browser: {
     ...StyleSheet.absoluteFill,
   },
-  doneBar: {
-    height: touchTarget + 4,
+  doneDock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: spacing.lg,
+    alignItems: 'center',
+  },
+  done: {
+    height: DONE,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: spacing.xs,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.lg,
+    borderRadius: radius.pill,
+    backgroundColor: colors.raised,
+    elevation: 8,
   },
-  doneBarPressed: {
-    backgroundColor: colors.surface,
+  donePressed: {
+    backgroundColor: colors.border,
   },
   doneText: {
     ...font.label,
-    color: colors.textDim,
+    color: colors.text,
   },
   // A picture row runs to the screen's edges, starting in line with the grid.
   bleed: {
