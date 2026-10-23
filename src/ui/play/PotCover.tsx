@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { plural } from '../format';
@@ -11,6 +12,9 @@ export const COVER_ART = 168;
 const DOT = 10;
 const MAX_DOTS = 6;
 const WELL = 140;
+const HANDLE = 36;
+/** How far up a swipe on the cover has to go to open it. */
+const SWIPE = 48;
 
 export interface PotCoverProps {
   empty: boolean;
@@ -33,18 +37,34 @@ export interface PotCoverProps {
 /**
  * The pot folded away: not the form you build in, but the mix as it stands,
  * like a mix card. Its artwork, what it is in words and colours, how many
- * songs, and the two ways to finish. The whole cover is one big target that
- * opens the pot; empty, it's one big dashed place to start.
+ * songs, and the two ways to finish. It looks like something that opens (a
+ * card with a grab handle, giving under the finger) and the whole of it is
+ * the target: tap it, or swipe it up. Empty, it holds one big dashed place
+ * to start.
  */
 export function PotCover({ empty, title, hues, covers, counted, editing, onOpen, onSave, onShuffle, artSize = COVER_ART }: PotCoverProps) {
   const none = counted?.count === 0;
+  const swipeFrom = useRef<{ x: number; y: number } | null>(null);
   return (
     <Pressable
       onPress={onOpen}
+      onTouchStart={(e) => {
+        swipeFrom.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+      }}
+      onTouchMove={(e) => {
+        const from = swipeFrom.current;
+        if (!from) return;
+        const up = from.y - e.nativeEvent.pageY;
+        if (up > SWIPE && up > Math.abs(e.nativeEvent.pageX - from.x)) {
+          swipeFrom.current = null;
+          onOpen();
+        }
+      }}
       accessibilityRole="button"
       accessibilityLabel={empty ? 'Add tags, artists or albums' : `${title}. Change the mix`}
-      style={styles.cover}
+      style={({ pressed }) => [styles.cover, pressed && styles.pressed]}
     >
+      <View style={styles.handle} />
       {empty ? (
         <View style={styles.well}>
           <Icon name="add" size={iconSize.lg} color={colors.textDim} />
@@ -73,16 +93,32 @@ export function PotCover({ empty, title, hues, covers, counted, editing, onOpen,
       <View style={styles.finish}>
         <FinishButtons empty={empty} editing={editing} counted={counted} onSave={onSave} onShuffle={onShuffle} />
       </View>
-      {!empty && <Text style={styles.hint}>Tap to change</Text>}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  // A card, a step up from the page, like the mix cards: something to pick up.
   cover: {
     alignItems: 'center',
     gap: spacing.lg,
+    marginHorizontal: spacing.lg,
     paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+  },
+  pressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  // The usual sign of something that opens or expands.
+  handle: {
+    width: HANDLE,
+    height: 4,
+    borderRadius: 2,
+    marginBottom: -spacing.xs,
+    backgroundColor: colors.raised,
   },
   words: {
     alignSelf: 'stretch',
@@ -126,9 +162,5 @@ const styles = StyleSheet.create({
   },
   finish: {
     alignSelf: 'stretch',
-  },
-  hint: {
-    ...font.caption,
-    color: colors.textFaint,
   },
 });
