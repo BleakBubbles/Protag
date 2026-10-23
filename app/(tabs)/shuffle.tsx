@@ -50,6 +50,7 @@ import {
 } from '@/query/types';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
+import { Icon } from '@/ui/Icon';
 import { plural } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { MusicPicker } from '@/ui/play/MusicPicker';
@@ -61,7 +62,7 @@ import { SearchButton, SearchRow, SectionHead } from '@/ui/play/SectionHead';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
 import { PromptDialog } from '@/ui/PromptDialog';
-import { colors, font, spacing, tagColor } from '@/ui/theme';
+import { colors, font, iconSize, spacing, tagColor, touchTarget } from '@/ui/theme';
 
 /** Covers in the pot's preview line, and how many of the most-played songs to find them among. */
 const COVERS = 5;
@@ -73,6 +74,8 @@ const NO_CHILDREN = new Map<number | null, TagWithCounts[]>();
 
 /** How far the browser rises as it opens. */
 const RISE = 48;
+/** How far the tag list has to be pulled down, from its top, to fold the browser. */
+const PULL = 72;
 
 /**
  * Shuffle tab: build something to shuffle. The pot sits on top like a text field
@@ -187,6 +190,30 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
     setSearching(false);
     setBrowsing(false);
   }, []);
+  // Pulling the list down from its top folds the browser too, like pushing a
+  // drawer shut. Only a clearly downward pull, and never mid-drag of a tile.
+  const listTop = useRef(0);
+  const pullFrom = useRef<{ x: number; y: number } | null>(null);
+  const pullToFold = {
+    onScroll: (e: { nativeEvent: { contentOffset: { y: number } } }) => {
+      listTop.current = e.nativeEvent.contentOffset.y;
+    },
+    scrollEventThrottle: 32,
+    onTouchStart: (e: { nativeEvent: { pageX: number; pageY: number } }) => {
+      pullFrom.current = listTop.current <= 0 ? { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY } : null;
+    },
+    onTouchMove: (e: { nativeEvent: { pageX: number; pageY: number } }) => {
+      const from = pullFrom.current;
+      if (!from || drag.active !== null) return;
+      const dy = e.nativeEvent.pageY - from.y;
+      const dx = Math.abs(e.nativeEvent.pageX - from.x);
+      if (dy < 0 || dx > dy) pullFrom.current = null; // Scrolling, or sideways: not a pull.
+      else if (dy > PULL) {
+        pullFrom.current = null;
+        fold();
+      }
+    },
+  };
   // Back folds the browser before it leaves the tab.
   useFocusEffect(
     useCallback(() => {
@@ -394,24 +421,22 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
               },
             ]}
           >
-            <View style={styles.browserHead}>
-              <Text style={styles.browserTitle}>Add to the mix</Text>
-              <Pressable
-                onPress={fold}
-                hitSlop={spacing.sm}
-                accessibilityRole="button"
-                accessibilityLabel="Done adding"
-                style={({ pressed }) => [styles.done, pressed && styles.pressed]}
-              >
-                <Text style={styles.doneText}>Done</Text>
-              </Pressable>
-            </View>
+            {/* The whole bar folds it: nothing small to aim for. */}
+            <Pressable
+              onPress={fold}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.doneBar, pressed && styles.doneBarPressed]}
+            >
+              <Icon name="chevron-down" size={iconSize.sm} color={colors.textDim} />
+              <Text style={styles.doneText}>Done adding</Text>
+            </Pressable>
             <ScrollView
               style={styles.screen}
               contentContainerStyle={styles.content}
               scrollEnabled={still}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
+              {...pullToFold}
             >
               <View style={styles.section}>
                 {searching ? (
@@ -561,27 +586,19 @@ const styles = StyleSheet.create({
   browser: {
     ...StyleSheet.absoluteFill,
   },
-  browserHead: {
+  doneBar: {
+    height: touchTarget + 4,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    justifyContent: 'center',
+    gap: spacing.xs,
   },
-  browserTitle: {
-    ...font.heading,
-    color: colors.text,
-  },
-  done: {
-    paddingVertical: spacing.xs,
-    paddingLeft: spacing.md,
+  doneBarPressed: {
+    backgroundColor: colors.surface,
   },
   doneText: {
     ...font.label,
-    color: colors.accentFg,
-  },
-  pressed: {
-    opacity: 0.5,
+    color: colors.textDim,
   },
   // A picture row runs to the screen's edges, starting in line with the grid.
   bleed: {
