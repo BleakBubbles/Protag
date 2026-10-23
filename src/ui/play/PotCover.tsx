@@ -6,7 +6,8 @@ import { colors, font, iconSize, radius, spacing } from '../theme';
 import { ArtMosaic } from './ArtMosaic';
 import { FinishButtons, type ShuffleCount } from './Pot';
 
-const ART = 168;
+/** The artwork's size when there's room for it; smaller only on a screen too short for it. */
+export const COVER_ART = 168;
 const DOT = 10;
 const MAX_DOTS = 6;
 const WELL = 140;
@@ -25,6 +26,8 @@ export interface PotCoverProps {
   onOpen: () => void;
   onSave: () => void;
   onShuffle: () => void;
+  /** The artwork's size, if not `COVER_ART`. */
+  artSize?: number;
 }
 
 /**
@@ -33,7 +36,7 @@ export interface PotCoverProps {
  * songs, and the two ways to finish. The whole cover is one big target that
  * opens the pot; empty, it's one big dashed place to start.
  */
-export function PotCover({ empty, title, hues, covers, counted, editing, onOpen, onSave, onShuffle }: PotCoverProps) {
+export function PotCover({ empty, title, hues, covers, counted, editing, onOpen, onSave, onShuffle, artSize = COVER_ART }: PotCoverProps) {
   const none = counted?.count === 0;
   return (
     <Pressable
@@ -49,7 +52,7 @@ export function PotCover({ empty, title, hues, covers, counted, editing, onOpen,
         </View>
       ) : (
         <>
-          <ArtMosaic albumIds={covers} size={ART} fallbackColor={hues[0] ?? colors.raised} />
+          <ArtMosaic albumIds={covers} size={artSize} fallbackColor={hues[0] ?? colors.raised} />
           <View style={styles.words}>
             <Text style={styles.title} numberOfLines={2}>
               {editing ?? title}

@@ -57,7 +57,7 @@ import { MusicPicker } from '@/ui/play/MusicPicker';
 import { PictureTile, SeeAllTile } from '@/ui/play/PictureTile';
 import { ingredientKey, Pot, type Look, type ShuffleCount } from '@/ui/play/Pot';
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
-import { PotCover } from '@/ui/play/PotCover';
+import { COVER_ART, PotCover } from '@/ui/play/PotCover';
 import { PreviewSheet } from '@/ui/play/PreviewSheet';
 import { SearchButton, SearchRow, SectionHead } from '@/ui/play/SectionHead';
 import { TagGrid } from '@/ui/play/TagGrid';
@@ -72,6 +72,10 @@ const COVER_SAMPLE = 60;
 const ROW = 12;
 /** Search results are one flat grid: no tag opens to show subtags. */
 const NO_CHILDREN = new Map<number | null, TagWithCounts[]>();
+
+/** The smallest the cover's artwork gets on a short screen, and the room kept around the cover. */
+const MIN_ART = 96;
+const COVER_MARGIN = spacing.lg;
 
 /** How far the browser rises as it opens. */
 const RISE = 48;
@@ -172,6 +176,15 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
 
   // The browser stays built while folded away, so it reopens where it was.
   const [browsing, setBrowsing] = useState(false);
+
+  // Where the cover sits: centred in the screen's full height (the tallest
+  // it's been, without the mini-player), so the mini-player coming and going
+  // never moves it. Only when that would run it under the mini-player does it
+  // give way: up first, then its artwork shrinks.
+  const [room, setRoom] = useState(0);
+  const [fullRoom, setFullRoom] = useState(0);
+  /** The cover's height apart from its artwork, which doesn't change with it. */
+  const [coverRest, setCoverRest] = useState(0);
   const reveal = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(reveal, {
@@ -347,6 +360,9 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
 
   // An emptied pot is no longer the mix that was opened.
   const potEmpty = isEmptyDraft(current);
+  const coverArt = Math.max(MIN_ART, Math.min(COVER_ART, room - COVER_MARGIN * 2 - coverRest));
+  const coverHeight = coverRest + (potEmpty ? 0 : coverArt);
+  const coverTop = Math.max(0, Math.min((fullRoom - coverHeight) / 2, room - COVER_MARGIN - coverHeight));
   useEffect(() => {
     if (potEmpty) setEditingId(null);
   }, [potEmpty]);
@@ -376,7 +392,15 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
 
   return (
     <PotDragContext.Provider value={drag}>
-      <View ref={drag.rootRef} style={styles.screen}>
+      <View
+        ref={drag.rootRef}
+        style={styles.screen}
+        onLayout={(e) => {
+          const { height } = e.nativeEvent.layout;
+          setRoom(height);
+          setFullRoom((full) => Math.max(full, height));
+        }}
+      >
         {/* Open: the pot to build in, at the top, settling into place as the
             cover above lifts away into it. */}
         <Animated.View
@@ -536,7 +560,12 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
             },
           ]}
         >
+          <View
+            style={{ top: coverTop, opacity: coverRest > 0 && room > 0 ? 1 : 0 }}
+            onLayout={(e) => setCoverRest(e.nativeEvent.layout.height - (potEmpty ? 0 : coverArt))}
+          >
           <PotCover
+            artSize={coverArt}
             empty={potEmpty}
             title={describeQuery(query, names)}
             hues={coverHues}
@@ -547,6 +576,7 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
             onSave={() => setSaving(true)}
             onShuffle={() => playQuery(query, { draft: current, label: playLabel })}
           />
+          </View>
         </Animated.View>
 
         <MusicPicker
@@ -606,10 +636,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     gap: spacing.xl,
   },
-  // Over everything, in the middle of the screen; empty space passes taps through.
+  // Over everything; the cover inside is placed by `coverTop`. Empty space passes taps through.
   coverSlot: {
     ...StyleSheet.absoluteFill,
-    justifyContent: 'center',
     zIndex: 1,
   },
   browser: {
