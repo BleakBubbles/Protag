@@ -743,13 +743,14 @@ const styles = StyleSheet.create({
     gap: GAP,
     paddingHorizontal: RING,
   },
+  // Squared off like the tiles and the empty well above, rather than pills.
   finish: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     overflow: 'hidden',
   },
   save: {
@@ -775,7 +776,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     backgroundColor: colors.bg,
   },
   keepOutInner: {
@@ -784,7 +785,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: colors.exclude,
