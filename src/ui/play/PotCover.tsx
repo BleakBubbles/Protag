@@ -1,10 +1,11 @@
 import { useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { plural } from '../format';
 import { Icon } from '../Icon';
 import { colors, font, iconSize, radius, spacing } from '../theme';
 import { ArtMosaic } from './ArtMosaic';
+import { useDragToAct } from './FoldHandle';
 import { FinishButtons, type ShuffleCount } from './Pot';
 
 /** The artwork's size when there's room for it; smaller only on a screen too short for it. */
@@ -13,8 +14,6 @@ const DOT = 10;
 const MAX_DOTS = 6;
 const WELL = 140;
 const HANDLE = 36;
-/** How far up a swipe on the cover has to go to open it. */
-const SWIPE = 48;
 
 export interface PotCoverProps {
   empty: boolean;
@@ -44,56 +43,48 @@ export interface PotCoverProps {
  */
 export function PotCover({ empty, title, hues, covers, counted, editing, onOpen, onSave, onShuffle, artSize = COVER_ART }: PotCoverProps) {
   const none = counted?.count === 0;
-  const swipeFrom = useRef<{ x: number; y: number } | null>(null);
+  // Dragged up, the card rises with the finger, and opens if it goes far enough.
+  const lift = useRef(new Animated.Value(0)).current;
+  const drag = useDragToAct({ offset: lift, direction: -1, act: onOpen });
   return (
-    <Pressable
-      onPress={onOpen}
-      onTouchStart={(e) => {
-        swipeFrom.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
-      }}
-      onTouchMove={(e) => {
-        const from = swipeFrom.current;
-        if (!from) return;
-        const up = from.y - e.nativeEvent.pageY;
-        if (up > SWIPE && up > Math.abs(e.nativeEvent.pageX - from.x)) {
-          swipeFrom.current = null;
-          onOpen();
-        }
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={empty ? 'Add tags, artists or albums' : `${title}. Change the mix`}
-      style={({ pressed }) => [styles.cover, pressed && styles.pressed]}
-    >
-      <View style={styles.handle} />
-      {empty ? (
-        <View style={styles.well}>
-          <Icon name="add" size={iconSize.lg} color={colors.textDim} />
-          <Text style={styles.wellText}>Add tags, artists or albums</Text>
-        </View>
-      ) : (
-        <>
-          <ArtMosaic albumIds={covers} size={artSize} fallbackColor={hues[0] ?? colors.raised} />
-          <View style={styles.words}>
-            <Text style={styles.title} numberOfLines={2}>
-              {editing ?? title}
-            </Text>
-            {hues.length > 0 && (
-              <View style={styles.dots}>
-                {hues.slice(0, MAX_DOTS).map((hue, i) => (
-                  <View key={i} style={[styles.dot, { backgroundColor: hue }]} />
-                ))}
-              </View>
-            )}
-            <Text style={styles.count}>
-              {counted === null ? ' ' : none ? 'No songs match' : plural(counted.count, 'song')}
-            </Text>
+    <Animated.View {...drag} style={{ transform: [{ translateY: lift }] }}>
+      <Pressable
+        onPress={onOpen}
+        accessibilityRole="button"
+        accessibilityLabel={empty ? 'Add tags, artists or albums' : `${title}. Change the mix`}
+        style={({ pressed }) => [styles.cover, pressed && styles.pressed]}
+      >
+        <View style={styles.handle} />
+        {empty ? (
+          <View style={styles.well}>
+            <Icon name="add" size={iconSize.lg} color={colors.textDim} />
+            <Text style={styles.wellText}>Add tags, artists or albums</Text>
           </View>
-        </>
-      )}
-      <View style={styles.finish}>
-        <FinishButtons empty={empty} editing={editing} counted={counted} onSave={onSave} onShuffle={onShuffle} />
-      </View>
-    </Pressable>
+        ) : (
+          <>
+            <ArtMosaic albumIds={covers} size={artSize} fallbackColor={hues[0] ?? colors.raised} />
+            <View style={styles.words}>
+              <Text style={styles.title} numberOfLines={2}>
+                {editing ?? title}
+              </Text>
+              {hues.length > 0 && (
+                <View style={styles.dots}>
+                  {hues.slice(0, MAX_DOTS).map((hue, i) => (
+                    <View key={i} style={[styles.dot, { backgroundColor: hue }]} />
+                  ))}
+                </View>
+              )}
+              <Text style={styles.count}>
+                {counted === null ? ' ' : none ? 'No songs match' : plural(counted.count, 'song')}
+              </Text>
+            </View>
+          </>
+        )}
+        <View style={styles.finish}>
+          <FinishButtons empty={empty} editing={editing} counted={counted} onSave={onSave} onShuffle={onShuffle} />
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 

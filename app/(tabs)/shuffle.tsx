@@ -196,6 +196,8 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
       Animated.timing(grow, { ...timing, useNativeDriver: false }),
     ]).start();
   }, [browsing, reveal, grow]);
+  /** How far the fold handle has dragged the browser down. */
+  const pull = useRef(new Animated.Value(0)).current;
   /** The open pot's height, for the frame to grow to. */
   const [potHeight, setPotHeight] = useState(0);
   const fold = useCallback(() => {
@@ -417,11 +419,15 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
               styles.browser,
               {
                 opacity: reveal.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0, 0, 1] }),
-                transform: [{ translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [RISE, 0] }) }],
+                transform: [
+                  { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [RISE, 0] }) },
+                  // Follows the fold handle while it's dragged.
+                  { translateY: pull },
+                ],
               },
             ]}
           >
-            <FoldHandle onFold={fold} />
+            <FoldHandle onFold={fold} offset={pull} />
             <ScrollView
               style={styles.screen}
               contentContainerStyle={styles.content}
