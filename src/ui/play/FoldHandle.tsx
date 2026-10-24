@@ -95,7 +95,11 @@ export function FoldHandle({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
+        // From where the tray actually is: it may still be settling from the last drag.
         drag.current = { from: trayHeight(latest.current.rows), tick: latest.current.rows };
+        tray.stopAnimation((height) => {
+          drag.current = { from: height, tick: nearest(height) };
+        });
       },
       onPanResponderMove: (_, { dy }) => {
         const { minRows: low, maxRows: high } = latest.current;
