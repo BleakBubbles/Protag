@@ -54,12 +54,13 @@ export function PagerTabs<T extends string>({ pages, value, onChange, swipeEnabl
     const timer = setTimeout(() => show(unbuilt), PREBUILD_MS);
     return () => clearTimeout(timer);
   }, [unbuilt]);
-  // A tab tap changes `value`; the pages slide to it (a swipe is already there).
+  // A tab tap changes `value`; the pages jump straight to it, Android's slide
+  // being slower than a tap wants (a swipe is already there).
   // Leaving a page puts its keyboard away: a search field still focused on a
   // page off screen would keep taking the typing, and pull the pages back to it.
   useEffect(() => {
     Keyboard.dismiss();
-    if (width > 0) pager.current?.scrollTo({ x: index * width, animated: true });
+    if (width > 0) pager.current?.scrollTo({ x: index * width, animated: false });
   }, [index, width]);
 
   const tabWidth = width / pages.length;
