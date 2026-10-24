@@ -18,6 +18,9 @@ const STATUS_INTERVAL_MS = 500;
 
 const LOOP: Record<EngineRepeat, AudioPlaylistLoopMode> = { off: 'none', all: 'all', one: 'single' };
 
+/** The longest a new order waits to load before taking over from the old one regardless. */
+const HANDOFF_MS = 1000;
+
 /** Lock-screen metadata *without* artwork — see the note in `setNowPlaying`. */
 function baseMetadata(np: NowPlaying): AudioMetadata {
   return {
@@ -119,16 +122,29 @@ export const useExpoAudioEngine = ({ onEnded, onMoved }: EngineCallbacks): Audio
 
   /** The playlist the lock screen is showing, once registered. */
   const registered = useRef<AudioPlaylist | null>(null);
+  /** A new order loading while the old one plays on; see `setOrder`. */
+  const handoff = useRef<{ from: AudioPlaylist; finish: () => void; cancel: () => void } | null>(null);
   const artworkToken = useRef(0);
 
   const actions = useMemo(() => {
+    // Anything asked of playback mid-handoff applies to what's heard: finish it first.
+    const settle = () => handoff.current?.finish();
+
     const moveTo = (target: number) => {
       if (target !== index.current) ownMoves.current.push(target);
       index.current = target;
       current.current.skipTo(target);
     };
 
+    /** Lock-screen details that arrived mid-handoff, shown once the new order has taken over. */
+    let heldMetadata: AudioMetadata | null = null;
+
     const showOnLockScreen = (metadata: AudioMetadata) => {
+      // Mid-handoff, the media session stays with the playlist that's actually playing.
+      if (handoff.current) {
+        heldMetadata = metadata;
+        return;
+      }
       const target = current.current;
       if (registered.current === target) {
         guarded('updateLockScreenMetadata', () => target.updateLockScreenMetadata(metadata));
@@ -153,21 +169,64 @@ export const useExpoAudioEngine = ({ onEnded, onMoved }: EngineCallbacks): Audio
         start: number,
         options: { autoplay: boolean; positionSec?: number; repeat: EngineRepeat }
       ) {
-        const previous = current.current;
+        // A handoff still loading is overtaken: its new order is dropped, and
+        // the one actually playing is what this order takes over from.
+        const pending = handoff.current;
+        if (pending) pending.cancel();
+        const previous = pending ? pending.from : current.current;
         const next = newPlaylist(uris, options.repeat);
         current.current = next;
         index.current = 0;
         ownMoves.current = [];
         moveTo(start);
-        const { positionSec } = options;
-        if (positionSec) guarded('seekTo', () => next.seekTo(positionSec));
-        if (options.autoplay) next.play();
-        previous.pause();
-        previous.release();
-        setPlaylist(next);
         setError(null);
+
+        const takeOver = (positionSec: number | undefined) => {
+          handoff.current = null;
+          if (positionSec) guarded('seekTo', () => next.seekTo(positionSec));
+          if (options.autoplay) next.play();
+          previous.pause();
+          previous.release();
+          setPlaylist(next);
+          if (heldMetadata) {
+            const metadata = heldMetadata;
+            heldMetadata = null;
+            showOnLockScreen(metadata);
+          }
+        };
+
+        // A new order of the same song while it plays (shuffle changed): the
+        // old order plays on until the new one has loaded, which then picks up
+        // where it's got to, so there's no gap. Otherwise, straight over.
+        if (!(options.autoplay && previous.playing)) return takeOver(options.positionSec);
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          sub.remove();
+          clearTimeout(timer);
+          // The move to `start` was reported before anything listened to this playlist.
+          if (ownMoves.current[0] === start) ownMoves.current.shift();
+          takeOver(previous.currentTime);
+        };
+        const sub = next.addListener('playlistStatusUpdate', (status) => {
+          if (status.isLoaded) finish();
+        });
+        const timer = setTimeout(finish, HANDOFF_MS);
+        handoff.current = {
+          from: previous,
+          finish,
+          cancel: () => {
+            done = true;
+            sub.remove();
+            clearTimeout(timer);
+            next.release();
+            handoff.current = null;
+          },
+        };
       },
       skipTo(target: number, autoplay: boolean) {
+        settle();
         moveTo(target);
         if (autoplay) current.current.play();
         setError(null);
@@ -188,9 +247,18 @@ export const useExpoAudioEngine = ({ onEnded, onMoved }: EngineCallbacks): Audio
           showOnLockScreen({ ...base, artworkUrl });
         });
       },
-      play: () => current.current.play(),
-      pause: () => current.current.pause(),
-      seekTo: (seconds: number) => current.current.seekTo(Math.max(0, seconds)),
+      play: () => {
+        settle();
+        current.current.play();
+      },
+      pause: () => {
+        settle();
+        current.current.pause();
+      },
+      seekTo: (seconds: number) => {
+        settle();
+        return current.current.seekTo(Math.max(0, seconds));
+      },
     };
   }, []);
 
