@@ -1,11 +1,11 @@
+import { AndroidHaptics, performAndroidHapticsAsync } from 'expo-haptics';
+import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, BackHandler, FlatList, Pressable, StyleSheet, Text, useWindowDimensions } from 'react-native';
 
 import { notifyLibraryChanged } from '../../db/changes';
 import { deleteMix, renameMix, type Mix } from '../../db/mixes';
-import type { Rect } from '../Popover';
-import { PopupMenu } from '../PopupMenu';
 import { PromptDialog } from '../PromptDialog';
 import { colors, font, spacing } from '../theme';
 import { MixCard } from './MixCard';
@@ -26,20 +26,37 @@ export interface MixShelfProps {
   onEdit: (mix: Mix) => void;
   /** Disables scrolling while something is being dragged. */
   scrollEnabled?: boolean;
+  /** Covered by the tags: a held card lets go. */
+  hidden?: boolean;
 }
 
 /**
  * Saved mixes, under the pot on the Play tab: what you've made before, below
  * what you're making now (a mix is a saved pot). Tap one to shuffle it; hold
- * it for Edit (into the pot), Rename and Delete.
+ * it and its artwork offers Edit (into the pot), Rename and Delete. A tap
+ * anywhere else, a scroll or Back lets it go.
  */
-export function MixShelf({ mixes, art, describe, colorOf, onPlay, onEdit, scrollEnabled }: MixShelfProps) {
+export function MixShelf({ mixes, art, describe, colorOf, onPlay, onEdit, scrollEnabled, hidden }: MixShelfProps) {
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const cardWidth = (screenWidth - spacing.lg * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
-  /** The mix whose menu is open (and where its card is), and the one being renamed. */
-  const [menu, setMenu] = useState<{ mix: Mix; at: Rect } | null>(null);
+  /** The mix being held (offering its actions), and the one being renamed. */
+  const [heldId, setHeldId] = useState<number | null>(null);
   const [renaming, setRenaming] = useState<Mix | null>(null);
+  const letGo = useCallback(() => setHeldId(null), []);
+  useEffect(() => {
+    if (hidden) letGo();
+  }, [hidden, letGo]);
+  useFocusEffect(
+    useCallback(() => {
+      if (heldId === null) return;
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        letGo();
+        return true;
+      });
+      return () => sub.remove();
+    }, [heldId, letGo])
+  );
 
   const confirmDelete = (mix: Mix) =>
     Alert.alert(`Delete "${mix.name}"?`, 'The mix goes; its tags and songs stay.', [
@@ -55,12 +72,15 @@ export function MixShelf({ mixes, art, describe, colorOf, onPlay, onEdit, scroll
     ]);
 
   return (
-    <>
+    // A tap on the space between cards lets a held one go.
+    <Pressable style={styles.fill} onPress={letGo} disabled={heldId === null} accessible={false}>
       <FlatList
         data={mixes}
         keyExtractor={(mix) => String(mix.id)}
         numColumns={COLUMNS}
         scrollEnabled={scrollEnabled}
+        onScrollBeginDrag={letGo}
+        extraData={heldId}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.grid}
         ListEmptyComponent={
@@ -73,23 +93,33 @@ export function MixShelf({ mixes, art, describe, colorOf, onPlay, onEdit, scroll
             albumIds={art.get(item.id) ?? []}
             color={colorOf(item)}
             width={cardWidth}
-            onPress={() => onPlay(item)}
-            onLongPress={(at) => setMenu({ mix: item, at })}
+            // While one is held, a tap anywhere (another card too) only lets it go.
+            onPress={() => (heldId === null ? onPlay(item) : letGo())}
+            onLongPress={() => {
+              setHeldId(item.id);
+              performAndroidHapticsAsync(AndroidHaptics.Long_Press).catch(() => {});
+            }}
+            held={
+              heldId === item.id
+                ? {
+                    onEdit: () => {
+                      letGo();
+                      onEdit(item);
+                    },
+                    onRename: () => {
+                      letGo();
+                      setRenaming(item);
+                    },
+                    onDelete: () => {
+                      letGo();
+                      confirmDelete(item);
+                    },
+                  }
+                : undefined
+            }
+            faded={heldId !== null && heldId !== item.id}
           />
         )}
-      />
-      <PopupMenu
-        anchor={menu?.at ?? null}
-        actions={
-          menu
-            ? [
-                { label: 'Edit', onPress: () => onEdit(menu.mix) },
-                { label: 'Rename', onPress: () => setRenaming(menu.mix) },
-                { label: 'Delete', destructive: true, onPress: () => confirmDelete(menu.mix) },
-              ]
-            : []
-        }
-        onClose={() => setMenu(null)}
       />
       <PromptDialog
         visible={renaming !== null}
@@ -102,11 +132,14 @@ export function MixShelf({ mixes, art, describe, colorOf, onPlay, onEdit, scroll
         }}
         onClose={() => setRenaming(null)}
       />
-    </>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+  },
   grid: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,

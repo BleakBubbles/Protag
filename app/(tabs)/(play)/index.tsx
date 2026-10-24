@@ -491,6 +491,7 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
               onPlay={playMix}
               onEdit={editMix}
               scrollEnabled={still}
+              hidden={browsing}
             />
           </View>
 
