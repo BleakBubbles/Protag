@@ -200,7 +200,7 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
   useEffect(() => {
     const fast = !browsing && flung.current;
     flung.current = false;
-    // Rising from out of sight: any pull left from folding them is cleared before it can show.
+    // Rising from out of sight: any swipe offset left from folding them is cleared before it can show.
     if (browsing) pull.setValue(0);
     Animated.timing(reveal, {
       toValue: browsing ? 1 : 0,
@@ -235,7 +235,7 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
   // The tray's height, which the divider drags directly (no re-render per
   // frame), and settles to `rows`' height; tracked for measuring the pot.
   const tray = useRef(new Animated.Value(trayHeight(rows))).current;
-  /** How far the divider has pulled the tag list down past the pot's largest size. */
+  /** How far a swipe on the divider has taken the tags down. */
   const pull = useRef(new Animated.Value(0)).current;
   const trayNow = useRef(trayHeight(rows));
   useEffect(() => {
@@ -465,7 +465,7 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
             setSetting(db, SettingKey.potRows, String(settled));
           }}
           pull={browsing ? pull : undefined}
-          onPullFold={
+          onSwipeFold={
             browsing
               ? (fast) => {
                   flung.current = fast;
@@ -508,7 +508,7 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
                   {
                     translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [Math.max(below, room, 1), 0] }),
                   },
-                  // Pulled down past the pot's largest size, to fold.
+                  // Swiped down by the divider, to fold.
                   { translateY: pull },
                 ],
               },
