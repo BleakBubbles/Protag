@@ -86,7 +86,7 @@ export function FoldHandle({
   };
   const settle = (target: number) => {
     // Kept once it's landed, so the new row count can't cut the settling short.
-    Animated.spring(tray, { toValue: trayHeight(target), useNativeDriver: false, bounciness: 0, speed: 20 }).start(() => {
+    Animated.spring(tray, { toValue: trayHeight(target), useNativeDriver: false, bounciness: 0, speed: 8 }).start(() => {
       if (target !== latest.current.rows) latest.current.onSettle(target);
     });
   };
