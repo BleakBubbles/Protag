@@ -4,6 +4,8 @@ import { Animated, Keyboard, Pressable, StyleSheet, View, type ScrollViewInstanc
 import { colors, font, spacing } from './theme';
 
 const TAB_HEIGHT = 44;
+/** The wait before building the next unopened page in the background. */
+const PREBUILD_MS = 400;
 const BAR_HEIGHT = 3;
 /** How much of its tab the bar spans. */
 const BAR_SHARE = 0.56;
@@ -28,8 +30,8 @@ export interface PagerTabsProps<T extends string> {
  * Tabs that sit on the content they switch: a line across the screen with a
  * bar on the current tab, over pages you can also swipe between. The bar and
  * labels follow the pages as they move, so the tabs plainly drive them. A page
- * is only built when it's first needed (shown, or next to one being swiped),
- * then kept, so switching back is instant.
+ * is built when it's first needed (shown, or next to one being swiped), or
+ * soon after in the background, then kept, so switching is quick every time.
  */
 export function PagerTabs<T extends string>({ pages, value, onChange, swipeEnabled = true }: PagerTabsProps<T>) {
   const [width, setWidth] = useState(0);
@@ -43,6 +45,15 @@ export function PagerTabs<T extends string>({ pages, value, onChange, swipeEnabl
   const show = (...values: T[]) =>
     setShown((prev) => (values.every((v) => prev.has(v)) ? prev : new Set([...prev, ...values])));
   useEffect(() => show(value), [value]);
+  // The rest are built quietly in the background, one at a time once things
+  // have settled, so the first switch to each is as quick as any other rather
+  // than waiting on a long list to be made mid-slide.
+  const unbuilt = pages.find((p) => !shown.has(p.value))?.value;
+  useEffect(() => {
+    if (unbuilt === undefined) return;
+    const timer = setTimeout(() => show(unbuilt), PREBUILD_MS);
+    return () => clearTimeout(timer);
+  }, [unbuilt]);
   // A tab tap changes `value`; the pages slide to it (a swipe is already there).
   // Leaving a page puts its keyboard away: a search field still focused on a
   // page off screen would keep taking the typing, and pull the pages back to it.
