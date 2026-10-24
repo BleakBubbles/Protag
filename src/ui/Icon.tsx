@@ -14,7 +14,7 @@ const OWN = {
   tags: 'tag-multiple-outline',
   'tags-filled': 'tag-multiple',
   edit: 'pencil-outline',
-  rename: 'rename-outline',
+  rename: 'format-letter-case',
   delete: 'trash-can-outline',
   'move-to': 'folder-move-outline',
   'save-mix': 'bookmark-outline',
