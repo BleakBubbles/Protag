@@ -139,6 +139,8 @@ export function Pot({
   useEffect(() => {
     Animated.timing(hintShown, { toValue: hinting ? 1 : 0, duration: FADE_MS, useNativeDriver: true }).start();
   }, [hinting, hintShown]);
+  // The mix's tag colours, each once, for the tray's glow.
+  const hues = [...new Set(draft.ingredients.flat().flatMap((ref) => look(ref).hue ?? []))];
   /** Something held over the pot that would land in it: the tray lights up where it will. */
   const landing = pot.hovered && active?.kind !== 'ingredient';
   const keys = [...draft.ingredients.map(ingredientKey), ...draft.exclude.map(excludedKey)];
@@ -180,7 +182,14 @@ export function Pot({
       </View>
 
       {/* The tray the tiles sit in: dashed while empty, a soft dish once filled. */}
-      <View style={[styles.content, !empty && styles.tray, !empty && landing && styles.trayLanding]}>
+      <View
+        style={[
+          styles.content,
+          !empty && styles.tray,
+          !empty && { backgroundImage: glowOf(hues) },
+          !empty && landing && styles.trayLanding,
+        ]}
+      >
         {!empty ? (
           <FadeIn>
             <ScrollView
@@ -411,6 +420,24 @@ function Glide({ onLayout, children }: { onLayout: (e: LayoutChangeEvent) => voi
       {children}
     </Animated.View>
   );
+}
+
+/** Where each tag's glow comes in from, round the tray: corners and edges, never the middle. */
+const GLOW_FROM = ['10% 0%', '100% 30%', '35% 100%', '0% 70%', '80% 100%', '60% 0%'];
+/** How strong a glow is at its source (hex alpha): faint, so the tiles stay the colour. */
+const GLOW_ALPHA = '2E';
+
+/**
+ * The tray's glow: a soft wash of each of the mix's tag colours, fading in
+ * from its own spot round the edge, so the mix's colours tint where its tiles
+ * sit. Nothing for a mix without tags (artists and albums have no colour).
+ */
+function glowOf(hues: readonly string[]): string | undefined {
+  if (hues.length === 0) return undefined;
+  return hues
+    .slice(0, GLOW_FROM.length)
+    .map((hue, i) => `radial-gradient(ellipse at ${GLOW_FROM[i]}, ${hue}${GLOW_ALPHA} 0%, transparent 70%)`)
+    .join(', ');
 }
 
 /** True while `on` is, and for `ms` after it turns off: a switch that waits before letting go. */
