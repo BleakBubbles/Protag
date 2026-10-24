@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   AccessibilityInfo,
   Animated,
@@ -56,6 +56,13 @@ const BADGE = 18;
  */
 const HALF_FITS = 12;
 const PICTURE_CHARS = 3;
+/**
+ * How long a hint stays in the top line after letting go, before the preview
+ * fades back: long enough that quick drag after drag doesn't flicker between
+ * them, and for the new song count to arrive first.
+ */
+const LINGER_MS = 350;
+const FADE_MS = 150;
 /** How long a tile takes to slide to its new place when the pot changes around it. */
 const GLIDE_MS = 180;
 
@@ -123,6 +130,15 @@ export function Pot({
   const rowWidth = screen.width - spacing.lg * 2 - INSET * 2;
   const pot = useDropTarget({ kind: 'pot' });
   const empty = draft.ingredients.length === 0 && draft.exclude.length === 0;
+  // The hint, kept as it was while it lingers after letting go.
+  const hinting = useLinger(active !== null || empty, LINGER_MS);
+  const lastHint = useRef('');
+  if (active !== null || empty) lastHint.current = hintFor(active, hover);
+  const hint = lastHint.current;
+  const hintShown = useRef(new Animated.Value(hinting ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.timing(hintShown, { toValue: hinting ? 1 : 0, duration: FADE_MS, useNativeDriver: true }).start();
+  }, [hinting, hintShown]);
   /** Something held over the pot that would land in it: the tray lights up where it will. */
   const landing = pot.hovered && active?.kind !== 'ingredient';
   const keys = [...draft.ingredients.map(ingredientKey), ...draft.exclude.map(excludedKey)];
@@ -138,14 +154,24 @@ export function Pot({
   return (
     <View ref={pot.ref} style={styles.pot}>
       <View style={styles.top}>
-        {/* While something's lifted, or the pot is empty, this line explains; otherwise it previews. */}
-        {active || empty ? (
-          <Text style={styles.hint} numberOfLines={1}>
-            {hintFor(active, hover)}
-          </Text>
-        ) : (
-          <PreviewLine covers={covers} counted={counted} editing={editing} onPress={onPreview} />
-        )}
+        {/* While something's lifted, or the pot is empty, this line explains;
+            otherwise it previews. The two fade into each other, the hint
+            lingering a moment after letting go. */}
+        <View style={styles.topLine}>
+          {!empty && (
+            <Animated.View
+              style={[styles.layer, { opacity: hintShown.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}
+              pointerEvents={hinting ? 'none' : 'auto'}
+            >
+              <PreviewLine covers={covers} counted={counted} editing={editing} onPress={onPreview} />
+            </Animated.View>
+          )}
+          <Animated.View style={[styles.layer, { opacity: hintShown }]} pointerEvents="none">
+            <Text style={styles.hint} numberOfLines={1}>
+              {hint}
+            </Text>
+          </Animated.View>
+        </View>
         <View style={styles.clearSlot}>
           {!empty && (
             <IconButton icon="close" label="Empty the mix" size={iconSize.sm} color={colors.textDim} onPress={onClear} />
@@ -387,6 +413,17 @@ function Glide({ onLayout, children }: { onLayout: (e: LayoutChangeEvent) => voi
   );
 }
 
+/** True while `on` is, and for `ms` after it turns off: a switch that waits before letting go. */
+function useLinger(on: boolean, ms: number): boolean {
+  const [held, setHeld] = useState(on);
+  useEffect(() => {
+    if (on) return setHeld(true);
+    const timer = setTimeout(() => setHeld(false), ms);
+    return () => clearTimeout(timer);
+  }, [on, ms]);
+  return on || held;
+}
+
 /** Fades its children in when it mounts: how the first tiles replace the empty well. */
 function FadeIn({ children }: { children: ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -593,9 +630,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  // The hint and the preview, stacked in the same place.
+  topLine: {
+    flex: 1,
+    alignSelf: 'stretch',
+  },
+  layer: {
+    ...StyleSheet.absoluteFill,
+    justifyContent: 'center',
+  },
   hint: {
     ...font.caption,
-    flex: 1,
     color: colors.textDim,
   },
   preview: {
