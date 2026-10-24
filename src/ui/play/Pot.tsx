@@ -123,6 +123,8 @@ export function Pot({
   const rowWidth = screen.width - spacing.lg * 2 - INSET * 2;
   const pot = useDropTarget({ kind: 'pot' });
   const empty = draft.ingredients.length === 0 && draft.exclude.length === 0;
+  /** Something held over the pot that would land in it: the tray lights up where it will. */
+  const landing = pot.hovered && active?.kind !== 'ingredient';
   const keys = [...draft.ingredients.map(ingredientKey), ...draft.exclude.map(excludedKey)];
   const shown = useShowNewTiles(keys);
 
@@ -134,7 +136,7 @@ export function Pot({
     active !== null && !(active.kind === 'ingredient' && (draft.ingredients[active.index]?.length ?? 0) > 1);
 
   return (
-    <View ref={pot.ref} style={[styles.pot, pot.hovered && active?.kind !== 'ingredient' && styles.potHovered]}>
+    <View ref={pot.ref} style={styles.pot}>
       <View style={styles.top}>
         {/* While something's lifted, or the pot is empty, this line explains; otherwise it previews. */}
         {active || empty ? (
@@ -152,7 +154,7 @@ export function Pot({
       </View>
 
       {/* The tray the tiles sit in: dashed while empty, a soft dish once filled. */}
-      <View style={[styles.content, !empty && styles.tray]}>
+      <View style={[styles.content, !empty && styles.tray, !empty && landing && styles.trayLanding]}>
         {!empty ? (
           <FadeIn>
             <ScrollView
@@ -188,7 +190,7 @@ export function Pot({
             </ScrollView>
           </FadeIn>
         ) : (
-          <View style={styles.well}>
+          <View style={[styles.well, landing && styles.wellLanding]}>
             <Text style={styles.wellText}>Tap your tags or drag them here</Text>
           </View>
         )}
@@ -586,10 +588,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     backgroundColor: colors.bg,
   },
-  // Something lifted over it: a teal wash says it'll land here.
-  potHovered: {
-    backgroundColor: colors.accentTint,
-  },
   top: {
     height: TOP,
     flexDirection: 'row',
@@ -661,6 +659,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
     overflow: 'hidden',
+  },
+  // Something held over the pot: a teal wash where it will land.
+  trayLanding: {
+    backgroundColor: colors.accentTint,
+  },
+  wellLanding: {
+    borderColor: colors.accentFg,
+    backgroundColor: colors.accentTint,
   },
   wellText: {
     ...font.label,
