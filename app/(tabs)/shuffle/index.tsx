@@ -205,7 +205,6 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, init
     ]).start();
   }, [browsing, reveal, grow]);
   /** The open pot's height, for the frame to grow to. */
-  const [potHeight, setPotHeight] = useState(0);
 
   // The divider between the pot and the tags: how many rows of tiles the pot
   // shows, kept between visits. The most it can give the pot leaves the tags
@@ -218,8 +217,19 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, init
     Math.floor((room - potChrome - MIN_BROWSER - trayHeight(1) + POT_ROW) / POT_ROW)
   );
   const rows = room > 0 && potChrome > 0 ? Math.min(potRows, maxPotRows) : potRows;
-  const drawnRows = useRef(rows);
-  drawnRows.current = rows;
+  /** The open pot's height, for the cover's frame to grow to. */
+  const potHeight = potChrome + trayHeight(rows);
+  // The tray's height, which the divider drags directly (no re-render per
+  // frame), and settles to `rows`' height; tracked for measuring the pot.
+  const tray = useRef(new Animated.Value(trayHeight(rows))).current;
+  const trayNow = useRef(trayHeight(rows));
+  useEffect(() => {
+    const id = tray.addListener(({ value }) => {
+      trayNow.current = value;
+    });
+    return () => tray.removeListener(id);
+  }, [tray]);
+  useEffect(() => tray.setValue(trayHeight(rows)), [rows, tray]);
   const fold = useCallback(() => {
     Keyboard.dismiss();
     setSearch('');
@@ -409,9 +419,9 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, init
           pointerEvents={browsing ? 'auto' : 'none'}
           importantForAccessibility={browsing ? 'auto' : 'no-hide-descendants'}
           onLayout={(e) => {
-            const { height } = e.nativeEvent.layout;
-            setPotHeight(height);
-            setPotChrome(height - trayHeight(drawnRows.current));
+            // Only the part that never changes is kept, so dragging the tray doesn't re-render.
+            const chrome = Math.round(e.nativeEvent.layout.height - trayNow.current);
+            setPotChrome((was) => (was === chrome ? was : chrome));
           }}
           style={[styles.potSlot, { opacity: reveal.interpolate({ inputRange: [0, 0.55, 1], outputRange: [0, 0, 1] }) }]}
         >
@@ -432,6 +442,7 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, init
             onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
             onTapExcluded={(ref) => setDraft(tapExcluded(current, ref))}
             rows={rows}
+            tray={tray}
           />
         </Animated.View>
 
@@ -455,8 +466,11 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, init
               rows={rows}
               minRows={MIN_POT_ROWS}
               maxRows={maxPotRows}
-              onRows={setPotRows}
-              onSettle={(settled) => setSetting(db, SettingKey.potRows, String(settled))}
+              tray={tray}
+              onSettle={(settled) => {
+                setPotRows(settled);
+                setSetting(db, SettingKey.potRows, String(settled));
+              }}
             />
             <ScrollView
               style={styles.screen}

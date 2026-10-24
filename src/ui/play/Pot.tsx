@@ -101,6 +101,8 @@ export interface PotProps {
   onTapExcluded: (ref: Ref) => void;
   /** How many rows of tiles the tray shows (the divider below sets it). */
   rows?: number;
+  /** The tray's height while the divider is dragged, following the finger; `rows`' height otherwise. */
+  tray?: Animated.Value;
 }
 
 /**
@@ -129,6 +131,7 @@ export function Pot({
   onTapIngredient,
   onTapExcluded,
   rows = 2,
+  tray,
 }: PotProps) {
   const { active, hover } = usePotDragState();
   const screen = useWindowDimensions();
@@ -185,7 +188,7 @@ export function Pot({
       </View>
 
       {/* The tray the tiles sit in: dashed while empty, a soft dish once filled. */}
-      <View style={[{ height: trayHeight(rows) }, !empty && styles.tray, !empty && landing && styles.trayLanding]}>
+      <Animated.View style={[{ height: tray ?? trayHeight(rows) }, !empty && styles.tray, !empty && landing && styles.trayLanding]}>
         {!empty ? (
           <FadeIn>
             <ScrollView
@@ -225,7 +228,7 @@ export function Pot({
             <Text style={styles.wellText}>Tap your tags or drag them here</Text>
           </View>
         )}
-      </View>
+      </Animated.View>
 
       <FinishButtons empty={empty} editing={editing} counted={counted} onSave={onSave} onShuffle={onShuffle}>
         <KeepOut shown={canKeepOut} />

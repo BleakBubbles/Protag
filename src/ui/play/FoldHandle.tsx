@@ -3,7 +3,7 @@ import { AndroidHaptics, performAndroidHapticsAsync } from 'expo-haptics';
 import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 
 import { colors, spacing } from '../theme';
-import { POT_ROW } from './Pot';
+import { POT_ROW, trayHeight } from './Pot';
 
 /** The strip it sits in: thin, so the tags below barely move for it. */
 const STRIP = 20;
@@ -51,51 +51,66 @@ export function useDragToAct({
 }
 
 /**
- * The handle between the pot and the tag list: a divider. Drag it to give the
- * pot more rows of tiles or the tags more room, a row at a time with a tick
- * for each; tap it to fold the tags away. (Dragging only ever resizes, so a
- * resize can never fold by accident.) In its own strip, outside the scrolling
- * list, so the drag is never mistaken for a scroll; its touch area reaches
- * well past the bar.
+ * The handle between the pot and the tag list: a divider. Drag it and the
+ * pot's tray follows the finger, giving the pot more rows of tiles or the
+ * tags more room; let go and it settles on the nearest whole row, with a tick
+ * at each row on the way. Tap it to fold the tags away. (Dragging only ever
+ * resizes, so a resize can never fold by accident.) In its own strip, outside
+ * the scrolling list, so the drag is never mistaken for a scroll; its touch
+ * area reaches well past the bar.
  */
 export function FoldHandle({
   onFold,
+  tray,
   rows,
   minRows,
   maxRows,
-  onRows,
   onSettle,
 }: {
   onFold: () => void;
+  /** The tray's height, which the drag moves directly. */
+  tray: Animated.Value;
   rows: number;
   minRows: number;
   maxRows: number;
-  /** While dragging, each time the row count changes. */
-  onRows: (rows: number) => void;
-  /** When let go after a resize, to keep it. */
+  /** The row count it settled on after a resize, to keep. */
   onSettle: (rows: number) => void;
 }) {
-  const latest = useRef({ onFold, rows, minRows, maxRows, onRows, onSettle });
-  latest.current = { onFold, rows, minRows, maxRows, onRows, onSettle };
-  const drag = useRef({ from: rows, at: rows });
+  const latest = useRef({ onFold, rows, minRows, maxRows, onSettle });
+  latest.current = { onFold, rows, minRows, maxRows, onSettle };
+  const drag = useRef({ from: 0, tick: rows });
+
+  const nearest = (height: number) => {
+    const { minRows: low, maxRows: high } = latest.current;
+    return Math.min(high, Math.max(low, Math.round((height - trayHeight(1)) / POT_ROW) + 1));
+  };
+  const settle = (target: number) => {
+    // Kept once it's landed, so the new row count can't cut the settling short.
+    Animated.spring(tray, { toValue: trayHeight(target), useNativeDriver: false, bounciness: 0, speed: 20 }).start(() => {
+      if (target !== latest.current.rows) latest.current.onSettle(target);
+    });
+  };
+
   const handlers = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        drag.current = { from: latest.current.rows, at: latest.current.rows };
+        drag.current = { from: trayHeight(latest.current.rows), tick: latest.current.rows };
       },
       onPanResponderMove: (_, { dy }) => {
         const { minRows: low, maxRows: high } = latest.current;
-        const next = Math.min(high, Math.max(low, drag.current.from + Math.round(dy / POT_ROW)));
-        if (next === drag.current.at) return;
-        drag.current.at = next;
-        latest.current.onRows(next);
+        const height = Math.min(trayHeight(high), Math.max(trayHeight(low), drag.current.from + dy));
+        tray.setValue(height);
+        const row = nearest(height);
+        if (row === drag.current.tick) return;
+        drag.current.tick = row;
         performAndroidHapticsAsync(AndroidHaptics.Segment_Tick).catch(() => {});
       },
       onPanResponderRelease: (_, { dx, dy }) => {
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return latest.current.onFold();
-        if (drag.current.at !== drag.current.from) latest.current.onSettle(drag.current.at);
+        settle(nearest(drag.current.from + dy));
       },
+      onPanResponderTerminate: () => settle(latest.current.rows),
     })
   ).current.panHandlers;
 
@@ -115,11 +130,7 @@ export function FoldHandle({
       onAccessibilityAction={(e) => {
         const { actionName } = e.nativeEvent;
         if (actionName === 'activate') return onFold();
-        const next = Math.min(maxRows, Math.max(minRows, rows + (actionName === 'increment' ? 1 : -1)));
-        if (next !== rows) {
-          onRows(next);
-          onSettle(next);
-        }
+        settle(Math.min(maxRows, Math.max(minRows, rows + (actionName === 'increment' ? 1 : -1))));
       }}
       style={styles.strip}
     >
