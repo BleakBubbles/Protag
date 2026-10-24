@@ -1,3 +1,4 @@
+import { usePathname } from 'expo-router';
 import { StyleSheet, Text, View, type GestureResponderHandlers } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -49,6 +50,8 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
 
   // Each name under the title opens its page; the player closes first, so the page opens in view.
   const { artist, album_id: albumId } = song;
+  // Where the player is open over: pages opened from it go back there.
+  const here = usePathname();
   const goTo = (open: () => void) => () => {
     onClose();
     open();
@@ -78,10 +81,10 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
         title={song.title}
         artist={song.artist}
         album={song.album}
-        onPressArtist={artist ? goTo(() => openArtist(artist)) : undefined}
-        onPressAlbum={albumId ? goTo(() => openAlbum(albumId)) : undefined}
+        onPressArtist={artist ? goTo(() => openArtist(artist, here)) : undefined}
+        onPressAlbum={albumId ? goTo(() => openAlbum(albumId, here)) : undefined}
       />
-      <SongTagsRow songId={song.id} onOpenTag={(tagId) => goTo(() => openTag(tagId))()} />
+      <SongTagsRow songId={song.id} onOpenTag={(tagId) => goTo(() => openTag(tagId, here))()} />
       <SeekBar positionSec={status.positionSec} durationSec={durationSec} onSeek={actions.seekTo} />
       <TransportControls
         playing={status.playing}

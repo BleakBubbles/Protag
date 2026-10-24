@@ -7,16 +7,23 @@ import type { QueryDraft } from './query/types';
  * building paths themselves, so restructuring routes later means editing
  * this file, not hunting for string paths across the app.
  */
-export const openTag = (id: number) =>
-  router.push({ pathname: '/library/tag/[id]', params: { id: String(id) } });
+/**
+ * `fromPlayer` is the path of the screen the full player was open over, when
+ * a page is opened from the player: its Back returns there, player open
+ * (see useBackToPlayer).
+ */
+const via = (fromPlayer?: string) => (fromPlayer ? { player: fromPlayer } : {});
+
+export const openTag = (id: number, fromPlayer?: string) =>
+  router.push({ pathname: '/library/tag/[id]', params: { id: String(id), ...via(fromPlayer) } });
 
 /** An album's page: its tracklist, in order. `albumId` is Android's. */
-export const openAlbum = (albumId: string) =>
-  router.push({ pathname: '/library/album/[id]', params: { id: albumId } });
+export const openAlbum = (albumId: string, fromPlayer?: string) =>
+  router.push({ pathname: '/library/album/[id]', params: { id: albumId, ...via(fromPlayer) } });
 
 /** An artist's page: their albums and songs. */
-export const openArtist = (name: string) =>
-  router.push({ pathname: '/library/artist/[name]', params: { name } });
+export const openArtist = (name: string, fromPlayer?: string) =>
+  router.push({ pathname: '/library/artist/[name]', params: { name, ...via(fromPlayer) } });
 
 /** One song's tags: the same editor as for several songs. */
 export const openSongTags = (id: number) => openEditTags([id]);

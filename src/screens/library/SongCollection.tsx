@@ -12,6 +12,7 @@ import { CardActions } from '../../ui/Card';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { Artwork } from '../../ui/player/Artwork';
+import { useBackToPlayer } from '../../ui/player/BackToPlayer';
 import { NoTags, TagButton } from '../../ui/TagButton';
 import { TagChip } from '../../ui/TagChip';
 import { colors, font, spacing } from '../../ui/theme';
@@ -68,6 +69,7 @@ export function SongCollection({
 }: SongCollectionProps) {
   const screen = useWindowDimensions();
   const { playQueue } = usePlayerActions();
+  const backToPlayer = useBackToPlayer();
   const { song: current } = useNowPlaying();
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
   const ids = useMemo(() => songs.map((s) => s.id), [songs]);
@@ -94,7 +96,7 @@ export function SongCollection({
 
   return (
     <>
-      <Stack.Screen options={{ title: '' }} />
+      <Stack.Screen options={{ title: '', ...backToPlayer }} />
       <FlatList
         style={styles.screen}
         data={songs}

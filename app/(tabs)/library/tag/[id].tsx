@@ -37,6 +37,7 @@ import { useSongSelection } from '@/ui/hooks/useSongSelection';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { IconButton } from '@/ui/IconButton';
 import { useAnchor } from '@/ui/Popover';
+import { useBackToPlayer } from '@/ui/player/BackToPlayer';
 import { PopupMenu, type MenuAction } from '@/ui/PopupMenu';
 import { SelectionBar } from '@/ui/library/SelectionBar';
 import { SONG_ROW_HEIGHT, SongRow } from '@/ui/library/SongRow';
@@ -61,6 +62,7 @@ export default function TagScreen() {
   const [dialog, setDialog] = useState<Dialog>(null);
   /** The ⋯ menu and the colour picker, each floating from what opened it. */
   const menuAnchor = useAnchor();
+  const backToPlayer = useBackToPlayer();
   const colorAnchor = useAnchor();
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
 
@@ -191,6 +193,7 @@ export default function TagScreen() {
 
   const tagHeader = {
     headerLeft: undefined,
+    ...backToPlayer,
     title: tag?.name ?? '',
     // The colour follows the name, so the two read as one, and tapping it
     // is the way to change it. After the name rather than before it, which
