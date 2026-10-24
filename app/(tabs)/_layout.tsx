@@ -30,6 +30,8 @@ export default function TabsLayout() {
             tabBarInactiveTintColor: colors.textFaint,
             // Each tab's own stack draws its headers, so they all match.
             headerShown: false,
+            // A short fade between tabs, so switching feels smooth; the bar and mini-player stay put.
+            animation: 'fade',
           }}
         >
           <Tabs.Screen
