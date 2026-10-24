@@ -37,8 +37,14 @@ const GAP = spacing.md;
 const RING_GAP = 2;
 const RING_WIDTH = 2;
 const RING = RING_GAP + RING_WIDTH;
+/**
+ * How far the tiles sit in from the tray's edge (room for a kept-out tile's
+ * ring, and a margin). The buttons below are inset the same, so they line up
+ * with the tile columns.
+ */
+const INSET = RING + spacing.sm - 2;
 /** Two rows of tiles; more scroll. Fixed, so the pot never changes height. */
-const CONTENT = TILE * 2 + GAP + RING * 2;
+const CONTENT = TILE * 2 + GAP + INSET * 2;
 const ACTIONS = 56;
 /** The gap holding the × between a combination's tags. */
 const SYMBOL = 18;
@@ -114,7 +120,7 @@ export function Pot({
 }: PotProps) {
   const { active, hover } = usePotDragState();
   const screen = useWindowDimensions();
-  const rowWidth = screen.width - spacing.lg * 2 - RING * 2;
+  const rowWidth = screen.width - spacing.lg * 2 - INSET * 2;
   const pot = useDropTarget({ kind: 'pot' });
   const empty = draft.ingredients.length === 0 && draft.exclude.length === 0;
   const keys = [...draft.ingredients.map(ingredientKey), ...draft.exclude.map(excludedKey)];
@@ -146,7 +152,8 @@ export function Pot({
         </View>
       )}
 
-      <View style={[styles.content, empty && styles.contentTall]}>
+      {/* The tray the tiles sit in: dashed while empty, a soft dish once filled. */}
+      <View style={[styles.content, empty ? styles.contentTall : styles.tray]}>
         {!empty ? (
           <FadeIn>
             <ScrollView
@@ -338,8 +345,8 @@ function useShowNewTiles(keys: readonly string[]) {
       if (!added.current.has(key)) return;
       added.current = new Set();
       const { y, height } = e.nativeEvent.layout;
-      const top = y - RING;
-      const bottom = y + height + RING;
+      const top = y - INSET;
+      const bottom = y + height + INSET;
       if (bottom > scrollY.current + CONTENT) ref.current?.scrollTo({ y: bottom - CONTENT, animated: true });
       else if (top < scrollY.current) ref.current?.scrollTo({ y: top, animated: true });
     },
@@ -648,10 +655,16 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: colors.border,
+  },
+  // A step up from the page, like the folded cover's card: somewhere for the tiles to sit.
+  tray: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
   },
   wellText: {
     ...font.label,
@@ -687,7 +700,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: GAP,
-    padding: RING,
+    padding: INSET,
   },
   // A constant border that only changes colour: never added or removed (see TagTile's outline).
   tile: {
@@ -753,7 +766,7 @@ const styles = StyleSheet.create({
     height: ACTIONS,
     flexDirection: 'row',
     gap: GAP,
-    paddingHorizontal: RING,
+    paddingHorizontal: INSET,
   },
   // Squared off like the tiles and the empty well above, rather than pills.
   finish: {
