@@ -1,4 +1,5 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { AndroidHaptics, performAndroidHapticsAsync } from 'expo-haptics';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -11,6 +12,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  type ScrollViewInstance,
 } from 'react-native';
 
 import { listAlbums, listArtists, type AlbumSummary, type ArtistSummary } from '@/db/albums';
@@ -77,8 +79,10 @@ const POT_ROWS = 2;
 const MIN_POT_ROWS = 1;
 const MIN_BELOW = 200;
 
-/** How long the area below the pot takes to swap between mixes and tags. */
-const SWAP_MS = 180;
+/** How long the tags take to rise over the mixes, like a keyboard, and to go back down. */
+const RISE_MS = 260;
+/** How far the tags lift when the empty well is tapped while they're up: "they're right here". */
+const NUDGE = 12;
 
 /**
  * Play tab, where the app opens: the pot at the top, never moving, and below
@@ -186,15 +190,28 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
   // Both stay built, so each comes back where it was.
   const [browsing, setBrowsing] = useState(false);
   const [room, setRoom] = useState(0);
+  /** The area under the divider: how far the tags travel to rise over the mixes. */
+  const [below, setBelow] = useState(0);
   const reveal = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(reveal, {
       toValue: browsing ? 1 : 0,
-      duration: SWAP_MS,
-      easing: Easing.inOut(Easing.quad),
+      duration: RISE_MS,
+      easing: browsing ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start();
   }, [browsing, reveal]);
+  // Tapping the empty well with the tags already up: they lift and settle, back at the top.
+  const nudge = useRef(new Animated.Value(0)).current;
+  const tagList = useRef<ScrollViewInstance>(null);
+  const pointAtTags = () => {
+    tagList.current?.scrollTo({ y: 0, animated: true });
+    performAndroidHapticsAsync(AndroidHaptics.Context_Click).catch(() => {});
+    Animated.sequence([
+      Animated.timing(nudge, { toValue: -NUDGE, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.spring(nudge, { toValue: 0, bounciness: 8, useNativeDriver: true }),
+    ]).start();
+  };
 
   // The divider under the pot: how many rows of tiles the pot shows, kept
   // between visits and the same in both states. The most it can give the pot
@@ -423,7 +440,8 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
             onTapExcluded={(ref) => setDraft(tapExcluded(current, ref))}
             rows={rows}
             tray={tray}
-            onAdd={browsing ? undefined : () => setBrowsing(true)}
+            onOpen={browsing ? undefined : () => setBrowsing(true)}
+            onWellPress={pointAtTags}
           />
         </View>
 
@@ -442,12 +460,13 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
           onPullFold={browsing ? fold : undefined}
         />
 
-        {/* Below the divider: your mixes, or your tags while building, swapping in place. */}
-        <View style={styles.screen}>
-          <Animated.View
+        {/* Below the divider: your mixes, and over them, while building, your
+            tags, risen from the bottom like a keyboard under its text field. */}
+        <View style={[styles.screen, styles.clip]} onLayout={(e) => setBelow(e.nativeEvent.layout.height)}>
+          <View
             pointerEvents={browsing ? 'none' : 'auto'}
             importantForAccessibility={browsing ? 'no-hide-descendants' : 'auto'}
-            style={[styles.below, { opacity: reveal.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}
+            style={styles.below}
           >
             <MixShelf
               mixes={mixes}
@@ -458,21 +477,28 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
               onEdit={editMix}
               scrollEnabled={still}
             />
-          </Animated.View>
+          </View>
 
           <Animated.View
             pointerEvents={browsing ? 'auto' : 'none'}
             importantForAccessibility={browsing ? 'auto' : 'no-hide-descendants'}
             style={[
               styles.below,
+              styles.keyboard,
               {
-                opacity: reveal,
-                // Pulled down past the pot's largest size, to fold.
-                transform: [{ translateY: pull }],
+                // Hidden until it knows how far it has to rise.
+                opacity: below > 0 ? 1 : 0,
+                transform: [
+                  { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [Math.max(below, 1), 0] }) },
+                  // Pulled down past the pot's largest size, to fold; lifted by a nudge.
+                  { translateY: pull },
+                  { translateY: nudge },
+                ],
               },
             ]}
           >
             <ScrollView
+              ref={tagList}
               style={styles.screen}
               contentContainerStyle={styles.content}
               scrollEnabled={still}
@@ -620,9 +646,17 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     gap: spacing.xl,
   },
-  // The mixes and the tags, one over the other, swapping by fading.
+  // The tags wait out of sight below it, so it mustn't let them show past its edge.
+  clip: {
+    overflow: 'hidden',
+  },
+  // The mixes and the tags, one over the other.
   below: {
     ...StyleSheet.absoluteFill,
+  },
+  // The tags cover the mixes as they rise, on the page's own colour.
+  keyboard: {
+    backgroundColor: colors.bg,
   },
   // A picture row runs to the screen's edges, starting in line with the grid.
   bleed: {

@@ -102,8 +102,14 @@ export interface PotProps {
   rows?: number;
   /** The tray's height while the divider is dragged, following the finger; `rows`' height otherwise. */
   tray?: Animated.Value;
-  /** At rest (your mixes below), the empty well opens the tags instead; absent while they're open. */
-  onAdd?: () => void;
+  /**
+   * At rest, with your mixes below rather than your tags: like a text field
+   * without its keyboard, a tap anywhere in the pot (a tile, the empty well)
+   * brings the tags up instead of editing. Dragging works either way.
+   */
+  onOpen?: () => void;
+  /** While the tags are up: a tap on the empty well, which points back at them. */
+  onWellPress?: () => void;
 }
 
 /**
@@ -133,7 +139,8 @@ export function Pot({
   onTapExcluded,
   rows = 2,
   tray,
-  onAdd,
+  onOpen,
+  onWellPress,
 }: PotProps) {
   const { active, hover } = usePotDragState();
   const screen = useWindowDimensions();
@@ -209,7 +216,8 @@ export function Pot({
                     look={look}
                     count={ingredientCounts.get(ingredientKey(tags)) ?? null}
                     width={fitsHalf(tags.map(look)) ? (rowWidth - GAP) / 2 : rowWidth}
-                    onTap={() => onTapIngredient(index)}
+                    resting={!!onOpen}
+                    onTap={onOpen ?? (() => onTapIngredient(index))}
                   />
                 </Glide>
               ))}
@@ -219,7 +227,8 @@ export function Pot({
                     refId={ref}
                     look={look(ref)}
                     width={(rowWidth - GAP) / 2}
-                    onTap={() => onTapExcluded(ref)}
+                    resting={!!onOpen}
+                    onTap={onOpen ?? (() => onTapExcluded(ref))}
                   />
                 </Glide>
               ))}
@@ -227,13 +236,12 @@ export function Pot({
           </FadeIn>
         ) : (
           <Pressable
-            onPress={onAdd}
-            disabled={!onAdd}
-            accessibilityRole={onAdd ? 'button' : undefined}
+            onPress={onOpen ?? onWellPress}
+            accessibilityRole="button"
             style={({ pressed }) => [styles.well, landing && styles.wellLanding, pressed && styles.dimmed]}
           >
-            {onAdd && <Icon name="add" size={iconSize.md} color={colors.textDim} />}
-            <Text style={styles.wellText}>{onAdd ? 'Add tags, artists or albums' : 'Tap your tags or drag them here'}</Text>
+            {onOpen && <Icon name="add" size={iconSize.md} color={colors.textDim} />}
+            <Text style={styles.wellText}>{onOpen ? 'Add tags, artists or albums' : 'Tap your tags or drag them here'}</Text>
           </Pressable>
         )}
       </Animated.View>
@@ -464,6 +472,8 @@ interface IngredientTileProps {
   look: (ref: Ref) => Look;
   count: number | null;
   width: number;
+  /** At rest, a tap opens the tags rather than editing (see the pot's `onOpen`). */
+  resting: boolean;
   onTap: () => void;
 }
 
@@ -474,7 +484,7 @@ interface IngredientTileProps {
  * gap between, so it reads as one thing that's picked up, dropped and split
  * together. Its song count sits at the end, in the colour's ink.
  */
-function IngredientTile({ index, others, tags, look, count, width, onTap }: IngredientTileProps) {
+function IngredientTile({ index, others, tags, look, count, width, resting, onTap }: IngredientTileProps) {
   const looks = tags.map(look);
   const label = looks.map((l) => l.name);
   const { handlers, lifting } = useDraggable({ kind: 'ingredient', index }, ghostOf(looks), onTap);
@@ -487,7 +497,7 @@ function IngredientTile({ index, others, tags, look, count, width, onTap }: Ingr
   // Every drop a tile can take part in, as a named action: combining with each
   // other ingredient, and (a lone tag only, as with dragging) keeping it out.
   const actions = [
-    { name: 'activate', label: combined ? 'Split it' : 'Take it out' },
+    { name: 'activate', label: resting ? 'Change the mix' : combined ? 'Split it' : 'Take it out' },
     ...others.map((other) => ({ name: `combine-${other.index}`, label: `Combine with ${other.label}` })),
     ...(combined ? [] : [{ name: 'keepOut', label: 'Keep its songs out' }]),
   ];
@@ -538,6 +548,8 @@ interface ExcludedTileProps {
   refId: Ref;
   look: Look;
   width: number;
+  /** At rest, a tap opens the tags rather than editing (see the pot's `onOpen`). */
+  resting: boolean;
   onTap: () => void;
 }
 
@@ -546,7 +558,7 @@ interface ExcludedTileProps {
  * shapes the mix as much as they do), in a red ring with a − badge: exactly
  * how it's marked on its tile below.
  */
-function ExcludedTile({ refId, look, width, onTap }: ExcludedTileProps) {
+function ExcludedTile({ refId, look, width, resting, onTap }: ExcludedTileProps) {
   const { name } = look;
   const { handlers, lifting } = useDraggable({ kind: 'excluded', ref: refId }, ghostOf([look]), onTap);
   const drop = usePotDrop();
@@ -557,7 +569,7 @@ function ExcludedTile({ refId, look, width, onTap }: ExcludedTileProps) {
       accessibilityRole="button"
       accessibilityLabel={`${name}, kept out`}
       accessibilityActions={[
-        { name: 'activate', label: 'Let its songs back in' },
+        { name: 'activate', label: resting ? 'Change the mix' : 'Let its songs back in' },
         { name: 'add', label: 'Add to the mix' },
       ]}
       onAccessibilityAction={(e) => {
