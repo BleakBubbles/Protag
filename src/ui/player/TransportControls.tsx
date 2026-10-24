@@ -9,11 +9,13 @@ import { colors, font, iconSize, radius, spacing } from '../theme';
 export interface TransportControlsProps {
   playing: boolean;
   shuffle: ShuffleMode;
+  /** Whether "off" is in the shuffle cycle: not for a mix, which has no order of its own. */
+  ownOrder: boolean;
   repeat: RepeatMode;
   onTogglePlay: () => void;
   onNext: () => void;
   onPrevious: () => void;
-  /** Cycles off → songs → albums → off. */
+  /** Cycles off → songs → albums → off (songs ⇄ albums without `ownOrder`). */
   onToggleShuffle: () => void;
   onCycleRepeat: () => void;
 }
@@ -36,6 +38,7 @@ const SAY_MS = 1400;
 export function TransportControls({
   playing,
   shuffle,
+  ownOrder,
   repeat,
   onTogglePlay,
   onNext,
@@ -57,7 +60,7 @@ export function TransportControls({
           color={shuffled ? undefined : colors.textFaint}
           onPress={() => {
             onToggleShuffle();
-            say(SHUFFLE_LABEL[nextShuffleMode(shuffle)]);
+            say(SHUFFLE_LABEL[nextShuffleMode(shuffle, ownOrder)]);
           }}
           badge={shuffle === 'albums' ? <Ionicons name="disc" size={10} color={colors.accentFg} /> : null}
         />

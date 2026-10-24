@@ -23,6 +23,7 @@ import {
   cycleRepeat as cycleRepeatMode,
   EMPTY_QUEUE,
   jumpTo as jumpToIndex,
+  hasOwnOrder,
   nextShuffleMode,
   retreat,
   setShuffleMode,
@@ -235,7 +236,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       // it was given whole.
       toggleShuffle: async () => {
         const queue = queueRef.current;
-        const mode = nextShuffleMode(shuffleModeOf(queue));
+        const mode = nextShuffleMode(shuffleModeOf(queue), hasOwnOrder(queue));
         if (mode !== 'off') prefersAlbums.current = mode === 'albums';
         const groups = mode === 'albums' ? await albumGroups(db, queue.original) : undefined;
         if (queueRef.current !== queue) return; // Something else changed the queue meanwhile.

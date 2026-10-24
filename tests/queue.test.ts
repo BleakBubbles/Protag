@@ -9,6 +9,7 @@ import {
   EMPTY_QUEUE,
   fisherYates,
   jumpTo,
+  hasOwnOrder,
   nextShuffleMode,
   retreat,
   setShuffleMode,
@@ -17,6 +18,7 @@ import {
   setShuffle,
   upNext,
 } from '../src/player/queue.ts';
+import { EMPTY_DRAFT } from '../src/query/types.ts';
 
 /** Deterministic "random" so shuffles are reproducible. */
 function seeded(seed = 42): () => number {
@@ -163,6 +165,20 @@ test('the shuffle button cycles off, songs, albums, keeping the current song pla
   const off = setShuffleMode(albums, 'off');
   assert.deepEqual(off.order, GROUPED);
   assert.equal(currentId(off), 11);
+});
+
+test('a mix has no order of its own: it always shuffles, and the button skips off', () => {
+  const source = { label: 'kpop', draft: { ...EMPTY_DRAFT, ingredients: [[1]] } };
+  const mix = createQueue([1, 2, 3], { source });
+  assert.equal(mix.shuffled, true);
+  assert.equal(hasOwnOrder(mix), false);
+  assert.equal(nextShuffleMode('songs', false), 'albums');
+  assert.equal(nextShuffleMode('albums', false), 'songs');
+
+  const album = createQueue([1, 2, 3], { source: { label: 'OMG' } });
+  assert.equal(album.shuffled, false);
+  assert.equal(hasOwnOrder(album), true);
+  assert.equal(nextShuffleMode('albums', true), 'off');
 });
 
 test('a new queue can start shuffled by album', () => {

@@ -49,6 +49,13 @@ export type ShuffleMode = 'off' | 'songs' | 'albums';
 export const shuffleModeOf = (queue: QueueState): ShuffleMode =>
   !queue.shuffled ? 'off' : queue.byAlbum ? 'albums' : 'songs';
 
+/**
+ * Whether a queue has an order worth playing straight through: an album, an
+ * artist, a list as shown. A tag combination (a mix, the pot) has none (A–Z
+ * by title is no way to listen), so it's always shuffled, by song or album.
+ */
+export const hasOwnOrder = (queue: Pick<QueueState, 'source'>): boolean => !queue.source?.draft;
+
 export const EMPTY_QUEUE: QueueState = {
   order: [],
   original: [],
@@ -122,7 +129,8 @@ export function createQueue(
   const start = options.startId !== undefined && original.includes(options.startId)
     ? options.startId
     : null;
-  const shuffled = options.shuffle ?? false;
+  // A tag combination has no order of its own to play in, so it always shuffles.
+  const shuffled = (options.shuffle ?? false) || !hasOwnOrder({ source: options.source ?? null });
   const byAlbum = shuffled && !!options.byAlbum && !!options.groups;
   const order = !shuffled
     ? original
@@ -233,8 +241,14 @@ export function setShuffle(queue: QueueState, on: boolean, options: ShuffleOptio
 
 const NEXT_SHUFFLE: Record<ShuffleMode, ShuffleMode> = { off: 'songs', songs: 'albums', albums: 'off' };
 
-/** What the shuffle button does: off → songs → albums → off, like repeat's cycle. */
-export const nextShuffleMode = (mode: ShuffleMode) => NEXT_SHUFFLE[mode];
+/**
+ * What the shuffle button does: off → songs → albums → off, like repeat's
+ * cycle; songs ⇄ albums for a queue with no order of its own (see `hasOwnOrder`).
+ */
+export const nextShuffleMode = (mode: ShuffleMode, ownOrder = true): ShuffleMode => {
+  const next = NEXT_SHUFFLE[mode];
+  return next === 'off' && !ownOrder ? 'songs' : next;
+};
 
 const NEXT_REPEAT: Record<RepeatMode, RepeatMode> = { off: 'all', all: 'one', one: 'off' };
 

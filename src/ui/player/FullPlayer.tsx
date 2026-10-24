@@ -5,7 +5,7 @@ import type { SongRow } from '@/db/types';
 import { albumArtUri } from '@/library/assets';
 import { openAlbum, openArtist, openTag } from '@/navigation';
 import { useNowPlaying, usePlaybackStatus, usePlayerActions } from '@/player/PlayerProvider';
-import { shuffleModeOf, type QueueState } from '@/player/queue';
+import { hasOwnOrder, shuffleModeOf, type QueueState } from '@/player/queue';
 import { EmptyState } from '@/ui/EmptyState';
 import { IconButton } from '@/ui/IconButton';
 import { colors, font, spacing, touchTarget } from '@/ui/theme';
@@ -86,6 +86,7 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
       <TransportControls
         playing={status.playing}
         shuffle={shuffleModeOf(queue)}
+        ownOrder={hasOwnOrder(queue)}
         repeat={queue.repeat}
         onTogglePlay={actions.togglePlay}
         onNext={actions.next}
