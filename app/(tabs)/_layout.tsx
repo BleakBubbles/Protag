@@ -5,7 +5,7 @@ import { Icon } from '@/ui/Icon';
 import { MiniPlayer } from '@/ui/player/MiniPlayer';
 import { MiniPlayerVisibilityProvider } from '@/ui/player/MiniPlayerVisibility';
 import { PlayerSheet, usePlayerSheet } from '@/ui/player/PlayerSheet';
-import { colors, headerTitleStyle } from '@/ui/theme';
+import { colors } from '@/ui/theme';
 
 /**
  * Three tabs: Mixes (play what you've saved; the app opens here), Shuffle (build
@@ -21,9 +21,6 @@ export default function TabsLayout() {
         <Tabs
           tabBar={(props) => <BottomBar {...props} />}
           screenOptions={{
-            headerStyle: { backgroundColor: colors.bg },
-            headerTintColor: colors.text,
-            headerTitleStyle,
             sceneStyle: { backgroundColor: colors.bg },
             tabBarStyle: {
               backgroundColor: colors.surface,
@@ -31,10 +28,12 @@ export default function TabsLayout() {
             },
             tabBarActiveTintColor: colors.accentFg,
             tabBarInactiveTintColor: colors.textFaint,
+            // Each tab's own stack draws its headers, so they all match.
+            headerShown: false,
           }}
         >
           <Tabs.Screen
-            name="index"
+            name="(mixes)"
             options={{
               title: 'Mixes',
               // Filled when selected, outlined otherwise: the usual Android tab pattern.
@@ -56,8 +55,6 @@ export default function TabsLayout() {
             name="library"
             options={{
               title: 'Library',
-              // The Library tab's own stack draws its headers.
-              headerShown: false,
               tabBarIcon: ({ color, size, focused }) => <Icon name={focused ? 'tags-filled' : 'tags'} color={color} size={size} />,
             }}
           />
