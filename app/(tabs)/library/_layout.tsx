@@ -7,7 +7,7 @@ import { stackScreenOptions } from '@/ui/stackOptions';
  * elsewhere (a tag chip in the player, say), so there's always a way back to it.
  */
 export const unstable_settings = {
-  initialRouteName: 'index',
+  anchor: 'index',
 };
 
 /**
