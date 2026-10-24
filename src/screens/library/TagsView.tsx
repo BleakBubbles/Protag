@@ -138,7 +138,7 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
         // No Remove here: these songs aren't in any tag to remove them from.
         <SelectionBar
           disabled={selected.length === 0}
-          actions={[{ label: 'Tags…', icon: 'tags', onPress: selection.editTags }]}
+          actions={[{ label: 'Tag…', icon: 'tags', onPress: selection.editTags }]}
         />
       ) : (
         <Fab label="New tag" icon="add" extended={fab.extended} onPress={() => setCreating(true)} />
