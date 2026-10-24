@@ -9,13 +9,13 @@ import { colors, font, iconSize, radius, spacing } from '../theme';
 export interface TransportControlsProps {
   playing: boolean;
   shuffle: ShuffleMode;
-  /** Whether "off" is in the shuffle cycle: not for a mix, which has no order of its own. */
+  /** False for a mix, which only shuffles by song: the button stays on and says so. */
   ownOrder: boolean;
   repeat: RepeatMode;
   onTogglePlay: () => void;
   onNext: () => void;
   onPrevious: () => void;
-  /** Cycles off → songs → albums → off (songs ⇄ albums without `ownOrder`). */
+  /** Cycles off → songs → albums → off (not without `ownOrder`). */
   onToggleShuffle: () => void;
   onCycleRepeat: () => void;
 }
@@ -31,6 +31,9 @@ const SHUFFLE_LABEL: Record<ShuffleMode, string> = {
   songs: 'Shuffle: songs',
   albums: 'Shuffle: albums',
 };
+
+/** What the shuffle button says on a mix, where it can't change. */
+const MIX_SHUFFLE = 'Only song shuffle is available for mixes';
 
 /** How long a mode's name stays up after a tap, in ms. */
 const SAY_MS = 1400;
@@ -59,8 +62,9 @@ export function TransportControls({
           active={shuffled}
           color={shuffled ? undefined : colors.textFaint}
           onPress={() => {
+            if (!ownOrder) return say(MIX_SHUFFLE);
             onToggleShuffle();
-            say(SHUFFLE_LABEL[nextShuffleMode(shuffle, ownOrder)]);
+            say(SHUFFLE_LABEL[nextShuffleMode(shuffle)]);
           }}
           badge={shuffle === 'albums' ? <Ionicons name="disc" size={10} color={colors.accentFg} /> : null}
         />

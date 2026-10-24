@@ -209,8 +209,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             repeat: queueRef.current.repeat, // repeat is a preference, not per-queue
           });
         if (ids.length === 0) return false;
-        // Shuffling by album needs to know the albums first.
-        if (shuffle && prefersAlbums.current) {
+        // Shuffling by album needs to know the albums first (and a mix only shuffles by song).
+        if (shuffle && prefersAlbums.current && !draft) {
           albumGroups(db, ids).then((groups) => applyRef.current({ queue: build(groups), action: 'play' }));
           return true;
         }
@@ -236,6 +236,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       // it was given whole.
       toggleShuffle: async () => {
         const queue = queueRef.current;
+        if (!hasOwnOrder(queue)) return; // A mix only shuffles by song.
         const mode = nextShuffleMode(shuffleModeOf(queue), hasOwnOrder(queue));
         if (mode !== 'off') prefersAlbums.current = mode === 'albums';
         const groups = mode === 'albums' ? await albumGroups(db, queue.original) : undefined;

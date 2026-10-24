@@ -167,13 +167,13 @@ test('the shuffle button cycles off, songs, albums, keeping the current song pla
   assert.equal(currentId(off), 11);
 });
 
-test('a mix has no order of its own: it always shuffles, and the button skips off', () => {
+test('a mix has no order of its own: it always shuffles, and only by song', () => {
   const source = { label: 'kpop', draft: { ...EMPTY_DRAFT, ingredients: [[1]] } };
-  const mix = createQueue([1, 2, 3], { source });
+  const mix = createQueue([1, 2, 3], { source, byAlbum: true, groups: [[1, 2], [3]] });
   assert.equal(mix.shuffled, true);
+  assert.equal(mix.byAlbum, false);
   assert.equal(hasOwnOrder(mix), false);
-  assert.equal(nextShuffleMode('songs', false), 'albums');
-  assert.equal(nextShuffleMode('albums', false), 'songs');
+  assert.equal(nextShuffleMode('songs', false), 'songs');
 
   const album = createQueue([1, 2, 3], { source: { label: 'OMG' } });
   assert.equal(album.shuffled, false);
