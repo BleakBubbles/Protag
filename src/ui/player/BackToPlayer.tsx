@@ -1,5 +1,5 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { BackHandler } from 'react-native';
 
 import { IconButton } from '../IconButton';
@@ -10,10 +10,16 @@ import { usePlayerSheet } from './PlayerSheet';
  * link): Back returns to the player, over the screen it was opened on,
  * rather than into the Library. The `player` param, set by the opening link,
  * is that screen's path. Returns header options to spread, empty otherwise.
+ *
+ * It's a return trip: once you leave the page (another tab, somewhere deeper),
+ * it's over, and coming back to it is just browsing the Library, with Back
+ * going through the Library as usual.
  */
 export function useBackToPlayer(): { headerLeft?: () => ReactNode } {
-  const { player } = useLocalSearchParams<{ player?: string }>();
+  const { player: from } = useLocalSearchParams<{ player?: string }>();
   const sheet = usePlayerSheet();
+  const [tripOver, setTripOver] = useState(false);
+  const player = tripOver ? undefined : from;
 
   const back = useCallback(() => {
     if (!player) return;
@@ -30,7 +36,11 @@ export function useBackToPlayer(): { headerLeft?: () => ReactNode } {
         back();
         return true;
       });
-      return () => sub.remove();
+      return () => {
+        sub.remove();
+        // Leaving the page ends the trip, however it's left.
+        setTripOver(true);
+      };
     }, [player, back])
   );
 
