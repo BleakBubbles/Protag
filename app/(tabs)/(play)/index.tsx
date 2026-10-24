@@ -209,7 +209,8 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
     performAndroidHapticsAsync(AndroidHaptics.Context_Click).catch(() => {});
     Animated.sequence([
       Animated.timing(nudge, { toValue: -NUDGE, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.spring(nudge, { toValue: 0, bounciness: 8, useNativeDriver: true }),
+      // Eased back, not sprung: a spring would dip below its place and open a gap above.
+      Animated.timing(nudge, { toValue: 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
   };
 
@@ -658,9 +659,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
   },
   // The tags cover the mixes as they rise, on the page's own colour; reaching
-  // past the bottom, so a nudge lifting them never shows the mixes beneath.
+  // past both edges (clipped), so moving a little never shows the mixes beneath.
   keyboard: {
+    top: -NUDGE,
     bottom: -NUDGE * 2,
+    paddingTop: NUDGE,
     paddingBottom: NUDGE * 2,
     backgroundColor: colors.bg,
   },
