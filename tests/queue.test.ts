@@ -9,8 +9,9 @@ import {
   EMPTY_QUEUE,
   fisherYates,
   jumpTo,
-  hasOwnOrder,
+  ARTIST_MODES,
   nextShuffleMode,
+  shuffleModesOf,
   retreat,
   setShuffleMode,
   shuffleAlbums,
@@ -172,13 +173,21 @@ test('a mix has no order of its own: it always shuffles, and only by song', () =
   const mix = createQueue([1, 2, 3], { source, byAlbum: true, groups: [[1, 2], [3]] });
   assert.equal(mix.shuffled, true);
   assert.equal(mix.byAlbum, false);
-  assert.equal(hasOwnOrder(mix), false);
-  assert.equal(nextShuffleMode('songs', false), 'songs');
+  assert.deepEqual(shuffleModesOf(mix.source), ['songs']);
+  assert.equal(nextShuffleMode('songs', ['songs']), 'songs');
 
   const album = createQueue([1, 2, 3], { source: { label: 'OMG' } });
   assert.equal(album.shuffled, false);
-  assert.equal(hasOwnOrder(album), true);
-  assert.equal(nextShuffleMode('albums', true), 'off');
+  assert.equal(nextShuffleMode('albums', shuffleModesOf(album.source)), 'off');
+});
+
+test('an artist shuffles by song or by album, never off', () => {
+  const artist = createQueue([1, 2, 3], { source: { label: 'IU', modes: ARTIST_MODES } });
+  assert.equal(artist.shuffled, true);
+  assert.equal(nextShuffleMode('songs', ARTIST_MODES), 'albums');
+  assert.equal(nextShuffleMode('albums', ARTIST_MODES), 'songs');
+  const byAlbum = createQueue([1, 2, 3], { source: { label: 'IU', modes: ARTIST_MODES }, byAlbum: true, groups: [[1, 2], [3]] });
+  assert.equal(byAlbum.byAlbum, true);
 });
 
 test('a new queue can start shuffled by album', () => {

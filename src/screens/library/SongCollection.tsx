@@ -6,6 +6,7 @@ import type { SongRow as Song, TagRow } from '../../db/types';
 import { albumArtUri } from '../../library/assets';
 import { openEditTags, openSongTags, openTag } from '../../navigation';
 import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
+import { ARTIST_MODES } from '../../player/queue';
 import { Button } from '../../ui/Button';
 import { CardActions } from '../../ui/Card';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
@@ -33,11 +34,18 @@ export interface SongCollectionProps {
   tagPrompt: string;
   /** Sections between the tags and the songs, like an artist's albums (use `CollectionSection`). */
   children?: ReactNode;
+  /**
+   * Whether it has an order to play straight through: an album's tracks do; an
+   * artist's songs don't (ProTag doesn't know release years), so an artist
+   * only shuffles, by song or album, and its buttons say so.
+   */
+  inOrder?: boolean;
 }
 
 /**
  * An album's or an artist's page: their picture and name, Play (in order) and
- * Shuffle, then labelled sections, ending with the songs.
+ * Shuffle (for an artist, which has no order: Shuffle and Shuffle albums),
+ * then labelled sections, ending with the songs.
  *
  * "Song tags", first after the buttons, shows each tag used here and how many
  * songs have it: a summary of the album or artist seen through ProTag's eyes
@@ -56,6 +64,7 @@ export function SongCollection({
   label,
   tagPrompt,
   children,
+  inOrder = true,
 }: SongCollectionProps) {
   const screen = useWindowDimensions();
   const { playQueue } = usePlayerActions();
@@ -78,8 +87,9 @@ export function SongCollection({
   }, [songs, tags]);
 
   const play = useCallback(
-    (startId?: number, shuffle = false) => playQueue(ids, { startId, shuffle, label }),
-    [ids, label, playQueue]
+    (startId?: number, shuffle = !inOrder, byAlbum?: boolean) =>
+      playQueue(ids, { startId, shuffle, byAlbum, label, modes: inOrder ? undefined : ARTIST_MODES }),
+    [ids, label, playQueue, inOrder]
   );
 
   return (
@@ -98,7 +108,8 @@ export function SongCollection({
             artworkUri={albumArtUri(item.album_id)}
             tags={tags.get(item.id) ?? NO_TAGS}
             active={current?.id === item.id}
-            onPress={play}
+            // In order from it (an album), or shuffled by song starting with it (an artist).
+            onPress={(id) => play(id, !inOrder, false)}
             onEditTags={openSongTags}
           />
         )}
@@ -129,8 +140,16 @@ export function SongCollection({
             </View>
             <View style={styles.actions}>
               <CardActions>
-                <Button label="Play" icon="play" onPress={() => play()} disabled={ids.length === 0} />
-                <Button label="Shuffle" icon="shuffle" variant="secondary" onPress={() => play(undefined, true)} disabled={ids.length === 0} />
+                {inOrder ? (
+                  <Button label="Play" icon="play" onPress={() => play()} disabled={ids.length === 0} />
+                ) : (
+                  <Button label="Shuffle" icon="shuffle" onPress={() => play(undefined, true, false)} disabled={ids.length === 0} />
+                )}
+                {inOrder ? (
+                  <Button label="Shuffle" icon="shuffle" variant="secondary" onPress={() => play(undefined, true)} disabled={ids.length === 0} />
+                ) : (
+                  <Button label="Shuffle albums" icon="disc" variant="secondary" onPress={() => play(undefined, true, true)} disabled={ids.length === 0} />
+                )}
               </CardActions>
             </View>
             {ids.length > 0 && (

@@ -23,13 +23,14 @@ import {
   cycleRepeat as cycleRepeatMode,
   EMPTY_QUEUE,
   jumpTo as jumpToIndex,
-  hasOwnOrder,
   nextShuffleMode,
   retreat,
   setShuffleMode,
+  shuffleModesOf,
   shuffleModeOf,
   type QueueAction,
   type QueueState,
+  type ShuffleMode,
 } from './queue';
 import { albumGroups, queueForQuery } from './sources';
 
@@ -43,7 +44,16 @@ export interface PlayerActions {
   /** Start a new queue. Returns false if there was nothing to play. */
   playQueue(
     ids: number[],
-    options?: { startId?: number; shuffle?: boolean; label?: string; draft?: QueryDraft }
+    options?: {
+      startId?: number;
+      shuffle?: boolean;
+      /** Shuffle by album, if it may (else the last way picked carries over). */
+      byAlbum?: boolean;
+      label?: string;
+      draft?: QueryDraft;
+      /** The ways it may shuffle, if not all (see `shuffleModesOf`). */
+      modes?: readonly ShuffleMode[];
+    }
   ): boolean;
   togglePlay(): void;
   next(): void;
@@ -197,20 +207,24 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const actions = useMemo<PlayerActions>(
     () => ({
-      playQueue(ids, { startId, shuffle = false, label, draft } = {}) {
+      playQueue(ids, { startId, shuffle = false, byAlbum, label, draft, modes } = {}) {
+        const source = label ? { label, draft, modes } : null;
+        // Like repeat, how to shuffle is a preference that carries over to new queues, where allowed.
+        const modesHere = shuffleModesOf(source);
+        const shuffled = shuffle || !modesHere.includes('off');
+        const albums = (byAlbum ?? prefersAlbums.current) && modesHere.includes('albums');
         const build = (groups?: number[][]) =>
           createQueue(ids, {
             startId,
-            shuffle,
-            // Like repeat, how to shuffle is a preference that carries over to new queues.
-            byAlbum: prefersAlbums.current,
+            shuffle: shuffled,
+            byAlbum: albums,
             groups,
-            source: label ? { label, draft } : null,
+            source,
             repeat: queueRef.current.repeat, // repeat is a preference, not per-queue
           });
         if (ids.length === 0) return false;
-        // Shuffling by album needs to know the albums first (and a mix only shuffles by song).
-        if (shuffle && prefersAlbums.current && !draft) {
+        // Shuffling by album needs to know the albums first.
+        if (shuffled && albums) {
           albumGroups(db, ids).then((groups) => applyRef.current({ queue: build(groups), action: 'play' }));
           return true;
         }
@@ -236,8 +250,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       // it was given whole.
       toggleShuffle: async () => {
         const queue = queueRef.current;
-        if (!hasOwnOrder(queue)) return; // A mix only shuffles by song.
-        const mode = nextShuffleMode(shuffleModeOf(queue), hasOwnOrder(queue));
+        const mode = nextShuffleMode(shuffleModeOf(queue), shuffleModesOf(queue.source));
+        if (mode === shuffleModeOf(queue)) return; // Only one way to shuffle it (a mix).
         if (mode !== 'off') prefersAlbums.current = mode === 'albums';
         const groups = mode === 'albums' ? await albumGroups(db, queue.original) : undefined;
         if (queueRef.current !== queue) return; // Something else changed the queue meanwhile.
