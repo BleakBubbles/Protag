@@ -107,21 +107,6 @@ export async function getSong(db: SQLiteDatabase, id: number): Promise<SongRow |
   return db.getFirstAsync<SongRow>('SELECT * FROM songs WHERE id = ?', id);
 }
 
-/** Returns rows in the order the ids were given, which is what a queue needs. */
-export async function getSongsByIds(
-  db: SQLiteDatabase,
-  ids: number[]
-): Promise<SongRow[]> {
-  if (ids.length === 0) return [];
-  const placeholders = ids.map(() => '?').join(',');
-  const rows = await db.getAllAsync<SongRow>(
-    `SELECT * FROM songs WHERE id IN (${placeholders})`,
-    ...ids
-  );
-  const byId = new Map(rows.map((r) => [r.id, r]));
-  return ids.map((id) => byId.get(id)).filter((r): r is SongRow => r !== undefined);
-}
-
 /**
  * Each song's URI, in the order given: what the player hands the audio
  * engine for a whole queue. One query however long the queue (no bound
@@ -135,36 +120,6 @@ export async function getSongUris(db: SQLiteDatabase, ids: readonly number[]): P
   const byId = new Map(rows.map((r) => [r.id, r.uri]));
   // An unplayable placeholder keeps later songs at their indexes; playing it shows an error.
   return ids.map((id) => byId.get(id) ?? `content://protag/missing/${id}`);
-}
-
-export async function listSongs(
-  db: SQLiteDatabase,
-  options: { search?: string; limit?: number; offset?: number } = {}
-): Promise<SongRow[]> {
-  const { search, limit = 500, offset = 0 } = options;
-
-  if (search && search.trim()) {
-    const term = `%${search.trim()}%`;
-    return db.getAllAsync<SongRow>(
-      `SELECT * FROM songs
-       WHERE is_missing = 0 AND (title LIKE ? OR artist LIKE ? OR album LIKE ?)
-       ORDER BY title COLLATE NOCASE
-       LIMIT ? OFFSET ?`,
-      term,
-      term,
-      term,
-      limit,
-      offset
-    );
-  }
-
-  return db.getAllAsync<SongRow>(
-    `SELECT * FROM songs WHERE is_missing = 0
-     ORDER BY title COLLATE NOCASE
-     LIMIT ? OFFSET ?`,
-    limit,
-    offset
-  );
 }
 
 /** Every present song, by title. The Songs view loads them all and filters in memory. */

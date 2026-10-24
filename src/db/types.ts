@@ -30,22 +30,10 @@ export interface TagRow {
   color: string | null;
 }
 
-export interface SavedQueryRow {
-  id: number;
-  name: string;
-  query_json: string;
-  created_at: number;
-}
-
 /** A tag plus the counts the directory view needs. */
 export interface TagWithCounts extends TagRow {
   /** Songs tagged with this tag or any descendant of it. */
   song_count: number;
   /** Immediate children only. */
   child_count: number;
-}
-
-/** A song with its directly-applied tags attached. */
-export interface SongWithTags extends SongRow {
-  tags: TagRow[];
 }

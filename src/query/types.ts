@@ -69,11 +69,6 @@ export function buildQuery(draft: QueryDraft): TagQuery {
   return { type: 'and', children: [base, ...exclusions] };
 }
 
-/** True when the query would match the entire library, i.e. nothing was specified. */
-export function isEmptyQuery(query: TagQuery): boolean {
-  return query.type === 'all';
-}
-
 export type TagChoice = 'include' | 'exclude' | 'off';
 
 export function tagChoice(draft: QueryDraft, ref: Ref): TagChoice {
