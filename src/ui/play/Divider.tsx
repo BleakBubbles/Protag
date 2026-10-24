@@ -2,6 +2,7 @@ import { AndroidHaptics, performAndroidHapticsAsync } from 'expo-haptics';
 import { useRef, useState } from 'react';
 import { Animated, PanResponder, StyleSheet, Text, View } from 'react-native';
 
+import { feelHold, HOLD_MS } from '../haptics';
 import { colors, font, spacing } from '../theme';
 import { POT_ROW, trayHeight } from './Pot';
 
@@ -10,8 +11,6 @@ const STRIP = 32;
 /** The divider's height, for working out how much room is left around it. */
 export const DIVIDER_HEIGHT = STRIP;
 const BAR = 36;
-/** Held this long without moving, the divider is picked up to resize the pot. */
-const HOLD_MS = 300;
 /** Moving this far before then makes it a swipe instead. */
 const SLOP = 8;
 /** A swipe this far (or this fast, px/ms) switches what's below; less springs back. */
@@ -110,7 +109,7 @@ export function Divider({ label, onTap, tray, rows, minRows, maxRows, onSettle, 
             g.tick = nearest(height);
           });
           setHolding(true);
-          performAndroidHapticsAsync(AndroidHaptics.Long_Press).catch(() => {});
+          feelHold();
         }, HOLD_MS);
       },
       onPanResponderMove: (_, { dy }) => {

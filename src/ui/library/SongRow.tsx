@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { TagRow as Tag } from '../../db/types';
+import { feelHold, HOLD_MS } from '../haptics';
 import { Artwork, artworkRadius } from '../player/Artwork';
 import { TagChip } from '../TagChip';
 import { colors, font, iconSize, spacing } from '../theme';
@@ -58,7 +59,14 @@ export const SongRow = memo(function SongRow({
     // quick tap "pressed" for 130 ms) and briefly disagree with it.
     <Pressable
       onPress={() => onPress(id)}
-      onLongPress={onLongPress && (() => onLongPress(id))}
+      delayLongPress={HOLD_MS}
+      onLongPress={
+        onLongPress &&
+        (() => {
+          feelHold();
+          onLongPress(id);
+        })
+      }
       accessibilityRole="button"
       accessibilityLabel={
         selecting ? `${selected ? 'Deselect' : 'Select'} ${title}` : `Play ${title}${artist ? ` by ${artist}` : ''}`

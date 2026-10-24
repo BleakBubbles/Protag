@@ -150,7 +150,9 @@ function MixMenuHead({ name, albumIds, color, chips }: { name: string; albumIds:
 }
 
 const styles = StyleSheet.create({
+  // Room above the first row for a held card's ring, which the list would clip.
   grid: {
+    paddingTop: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
     gap: spacing.lg,

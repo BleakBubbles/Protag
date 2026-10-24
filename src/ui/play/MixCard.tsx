@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewInstance } from 'react-native';
 
+import { feelHold, HOLD_MS } from '../haptics';
 import type { Rect } from '../Popover';
 import { colors, font, radius, spacing } from '../theme';
 import { ArtMosaic } from './ArtMosaic';
@@ -35,7 +36,11 @@ export function MixCard({ name, description, albumIds, color, width, onPress, on
   return (
     <Pressable
       onPress={onPress}
-      onLongPress={() => art.current?.measureInWindow((x, y, w, h) => onLongPress({ x, y, width: w, height: h }))}
+      delayLongPress={HOLD_MS}
+      onLongPress={() => {
+        feelHold();
+        art.current?.measureInWindow((x, y, w, h) => onLongPress({ x, y, width: w, height: h }));
+      }}
       accessibilityRole="button"
       accessibilityLabel={`Shuffle ${name}: ${description}`}
       accessibilityHint="Long press for more options"

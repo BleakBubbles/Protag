@@ -1,5 +1,5 @@
-import { useRef, useState, type ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, useWindowDimensions, View, type ViewInstance } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Animated, Modal, Pressable, StyleSheet, useWindowDimensions, View, type ViewInstance } from 'react-native';
 
 import { colors, radius, spacing } from './theme';
 
@@ -8,6 +8,8 @@ const EDGE = spacing.lg;
 const POINTER = 10;
 /** Between the anchor and a popover without a pointer. */
 const NUDGE = spacing.xs;
+/** Its own quick fade in: the system's own for a Modal is slow enough to feel sluggish. */
+const APPEAR_MS = 120;
 
 export type Rect = { x: number; y: number; width: number; height: number };
 
@@ -49,10 +51,10 @@ export interface PopoverProps {
  */
 export function Popover({ anchor, onClose, width: wanted, pointer = false, dim = false, dark = false, children }: PopoverProps) {
   return (
-    <Modal visible={anchor !== null} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-      <Pressable style={[styles.scrim, dim && styles.dimmed]} onPress={onClose} accessibilityLabel="Close">
+    <Modal visible={anchor !== null} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Close">
         {anchor && (
-          <Placed anchor={anchor} wanted={wanted} pointer={pointer} dark={dark}>
+          <Placed anchor={anchor} wanted={wanted} pointer={pointer} dark={dark} dim={dim}>
             {children}
           </Placed>
         )}
@@ -67,16 +69,23 @@ function Placed({
   wanted,
   pointer,
   dark,
+  dim,
   children,
 }: {
   anchor: Rect;
   wanted: number;
   pointer: boolean;
   dark: boolean;
+  dim: boolean;
   children: ReactNode;
 }) {
   const screen = useWindowDimensions();
   const [natural, setNatural] = useState<number | null>(null);
+  // Fades in (with the dimming behind) once it's measured where it goes.
+  const appear = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (natural !== null) Animated.timing(appear, { toValue: 1, duration: APPEAR_MS, useNativeDriver: true }).start();
+  }, [natural === null, appear]);
 
   const gap = pointer ? POINTER : NUDGE;
   const width = Math.min(wanted, screen.width - EDGE * 2);
@@ -91,15 +100,18 @@ function Placed({
   const top = placeBelow ? below : anchor.y - gap - (natural ?? 0);
 
   return (
-    <View
-      style={[styles.panel, dark && styles.dark, { width, left, top, opacity: natural === null ? 0 : 1 }]}
-      onLayout={(e) => setNatural(e.nativeEvent.layout.height)}
-    >
-      {pointer && (
-        <View style={[styles.pointer, { left: centre - left - POINTER }, placeBelow ? styles.pointerUp : styles.pointerDown]} />
-      )}
-      {children}
-    </View>
+    <>
+      {dim && <Animated.View pointerEvents="none" style={[styles.scrim, styles.dimmed, { opacity: appear }]} />}
+      <Animated.View
+        style={[styles.panel, dark && styles.dark, { width, left, top, opacity: appear }]}
+        onLayout={(e) => setNatural(e.nativeEvent.layout.height)}
+      >
+        {pointer && (
+          <View style={[styles.pointer, { left: centre - left - POINTER }, placeBelow ? styles.pointerUp : styles.pointerDown]} />
+        )}
+        {children}
+      </Animated.View>
+    </>
   );
 }
 
