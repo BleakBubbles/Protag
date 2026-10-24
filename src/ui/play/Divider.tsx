@@ -13,6 +13,14 @@ const BAR = 36;
 /** Pulled this far past the pot's largest size (or flicked down there), letting go folds the tags. */
 const FOLD_PULL = 80;
 const FOLD_FLICK = 0.5;
+/**
+ * A flick down folds the tags at any pot size: this fast (px/ms) and this far
+ * down. Both, so a careful resize or a wobbly tap never folds.
+ */
+const DISMISS_FLICK = 1.1;
+const DISMISS_DISTANCE = 24;
+/** Longer than the tags take to go down, so the pull resets out of sight. */
+const RESET_AFTER_MS = 400;
 
 export interface DividerProps {
   /** What a tap switches the area below to: "Tags" at rest, "Mixes" while building. */
@@ -26,11 +34,13 @@ export interface DividerProps {
   /** The row count it settled on after a resize, to keep. */
   onSettle: (rows: number) => void;
   /**
-   * While building: pulling past the pot's largest size slides the tags down
-   * (`pull`) and, let go far enough on, folds them away (`onPullFold`).
+   * While building: a quick flick down folds the tags away (`onPullFold`) at
+   * any pot size; so does pulling past the pot's largest size, which slides
+   * them down (`pull`) and folds them if let go far enough on. `fast` says
+   * the finger was moving, so the fold should carry on at speed.
    */
   pull?: Animated.Value;
-  onPullFold?: () => void;
+  onPullFold?: (fast: boolean) => void;
 }
 
 /**
@@ -39,10 +49,12 @@ export interface DividerProps {
  * pot's tray follows the finger, giving the pot more rows of tiles or the area
  * below more room; let go and it settles on the nearest whole row, with a tick
  * at each row on the way, and the size is kept in both states. While
- * building, keep pulling once the pot is as big as it gets and the tags slide
- * away with the finger: let go far enough on (a firmer tick says where) and
- * they fold, else they spring back. In its own strip, outside any scrolling
- * list, so a drag is never mistaken for a scroll.
+ * building, flick it down to fold the tags away; or keep pulling once the pot
+ * is as big as it gets and the tags slide away with the finger: let go far
+ * enough on (a firmer tick says where) and they fold, else they spring back.
+ * Folding either way leaves the pot the size it was before the drag. In its
+ * own strip, outside any scrolling list, so a drag is never mistaken for a
+ * scroll.
  */
 export function Divider({ label, onTap, tray, rows, minRows, maxRows, onSettle, pull, onPullFold }: DividerProps) {
   const latest = useRef({ onTap, rows, minRows, maxRows, onSettle, pull, onPullFold });
@@ -101,11 +113,16 @@ export function Divider({ label, onTap, tray, rows, minRows, maxRows, onSettle, 
         const { maxRows: high, pull: pulled, onPullFold: fold } = latest.current;
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return latest.current.onTap();
         const past = drag.current.from + dy - trayHeight(high);
-        if (pulled && fold && (past > FOLD_PULL || (past > 0 && vy > FOLD_FLICK))) {
-          fold();
-          // The tags fade as they fold; they and the pot are back as they were for next time
-          // (passing through the largest size on the way isn't choosing it).
-          Animated.timing(pulled, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+        const flicked = dy > DISMISS_DISTANCE && vy > DISMISS_FLICK;
+        if (pulled && fold && (flicked || past > FOLD_PULL || (past > 0 && vy > FOLD_FLICK))) {
+          fold(vy > FOLD_FLICK);
+          // The tags carry on down from wherever the finger left them; once they're out of
+          // sight, the pull resets (doing it on the way would push them back up mid-fall).
+          Animated.sequence([
+            Animated.delay(RESET_AFTER_MS),
+            Animated.timing(pulled, { toValue: 0, duration: 0, useNativeDriver: true }),
+          ]).start();
+          // The pot goes back to its size before the drag: passing through sizes isn't choosing one.
           return settle(nearest(drag.current.from));
         }
         springBack();

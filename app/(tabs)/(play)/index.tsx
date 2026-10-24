@@ -81,6 +81,8 @@ const MIN_BELOW = 200;
 
 /** How long the tags take to rise over the mixes, like a keyboard, and to go back down. */
 const RISE_MS = 260;
+/** Going down after a flick: quicker, and fastest at the start, carrying the finger's momentum on. */
+const FLICK_FALL_MS = 180;
 /** How far the tags bob up inside their panel when the empty well is tapped while they're up. */
 const NUDGE = 12;
 
@@ -193,11 +195,17 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
   /** The area under the divider: how far the tags travel to rise over the mixes. */
   const [below, setBelow] = useState(0);
   const reveal = useRef(new Animated.Value(0)).current;
+  /** Set by a flick to fold: the next close keeps the finger's speed rather than starting slow. */
+  const flung = useRef(false);
   useEffect(() => {
+    const fast = !browsing && flung.current;
+    flung.current = false;
+    // Rising from out of sight: any pull left from folding them is cleared before it can show.
+    if (browsing) pull.setValue(0);
     Animated.timing(reveal, {
       toValue: browsing ? 1 : 0,
-      duration: RISE_MS,
-      easing: browsing ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      duration: fast ? FLICK_FALL_MS : RISE_MS,
+      easing: browsing || fast ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start();
   }, [browsing, reveal]);
@@ -457,7 +465,14 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
             setSetting(db, SettingKey.potRows, String(settled));
           }}
           pull={browsing ? pull : undefined}
-          onPullFold={browsing ? fold : undefined}
+          onPullFold={
+            browsing
+              ? (fast) => {
+                  flung.current = fast;
+                  fold();
+                }
+              : undefined
+          }
         />
 
         {/* Below the divider: your mixes, and over them, while building, your
