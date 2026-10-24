@@ -16,7 +16,7 @@ export const SettingKey = {
   libraryFolders: 'library.folders',
   /** Epoch ms when the last complete library scan finished. */
   lastScanAt: 'library.lastScanAt',
-  /** JSON `ShuffleSorts`: how each Shuffle tab section is ordered (library/sorts.ts). */
+  /** JSON `ShuffleSorts`: how each Play tab section is ordered (library/sorts.ts). */
   shuffleSorts: 'shuffle.sorts',
   /** How many rows of tiles the open pot shows, as last set with its divider. */
   potRows: 'shuffle.potRows',

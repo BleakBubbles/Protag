@@ -79,7 +79,7 @@ const measure = (ref: RefObject<ViewInstance | null>) =>
 const inside = (r: Rect, x: number, y: number) => x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
 
 /**
- * Drag and drop for the Shuffle tab's pot, on React Native's own touch system.
+ * Drag and drop for the Play tab's pot, on React Native's own touch system.
  * Hold a tile or a chip for a moment and it lifts; while it's up, scrolling is
  * off (`active` tells the screen), so the page holds still under the finger
  * and the drop targets stay where they were measured.
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     width: GHOST_WIDTH,
     alignItems: 'center',
     elevation: 12,
-    // Above every layer of the screen it floats over (the Shuffle tab stacks its pot and cover).
+    // Above every layer of the screen it floats over (the Play tab layers its mixes and tags).
     zIndex: 100,
   },
   // On the page's colour, so the gap around a × shows it, as in the pot.

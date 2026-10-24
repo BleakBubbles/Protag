@@ -2,7 +2,7 @@ import type { Ref } from './refs';
 import type { QueryDraft } from './types';
 
 /**
- * What the Shuffle tab's pot does with each tap and drop, as pure functions of
+ * What the Play tab's pot does with each tap and drop, as pure functions of
  * the draft. Kept apart from the screen so the rules can be tested directly.
  */
 

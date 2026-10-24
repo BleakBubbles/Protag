@@ -103,10 +103,12 @@ export interface PotProps {
   rows?: number;
   /** The tray's height while the divider is dragged, following the finger; `rows`' height otherwise. */
   tray?: Animated.Value;
+  /** At rest (your mixes below), the empty well opens the tags instead; absent while they're open. */
+  onAdd?: () => void;
 }
 
 /**
- * The pot: what's going into the shuffle, at the top of the Shuffle tab like a
+ * The pot: what's going into the shuffle, at the top of the Play tab like a
  * text field over its keyboard, with the tags to put in it below.
  *
  * Tags dropped in are ingredients, and a song plays if it's in any of them;
@@ -132,6 +134,7 @@ export function Pot({
   onTapExcluded,
   rows = 2,
   tray,
+  onAdd,
 }: PotProps) {
   const { active, hover } = usePotDragState();
   const screen = useWindowDimensions();
@@ -224,9 +227,15 @@ export function Pot({
             </ScrollView>
           </FadeIn>
         ) : (
-          <View style={[styles.well, landing && styles.wellLanding]}>
-            <Text style={styles.wellText}>Tap your tags or drag them here</Text>
-          </View>
+          <Pressable
+            onPress={onAdd}
+            disabled={!onAdd}
+            accessibilityRole={onAdd ? 'button' : undefined}
+            style={({ pressed }) => [styles.well, landing && styles.wellLanding, pressed && styles.dimmed]}
+          >
+            {onAdd && <Icon name="add" size={iconSize.md} color={colors.textDim} />}
+            <Text style={styles.wellText}>{onAdd ? 'Add tags, artists or albums' : 'Tap your tags or drag them here'}</Text>
+          </Pressable>
         )}
       </Animated.View>
 

@@ -1,5 +1,5 @@
 /**
- * How the Shuffle tab orders each section. Tapping a section's sort label
+ * How the Play tab orders each section. Tapping a section's sort label
  * moves to the next order; the choice is remembered between sessions.
  */
 

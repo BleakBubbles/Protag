@@ -42,14 +42,14 @@ export const openLibraryFolders = () => router.push('/library/folders');
 
 export const openLibrary = () => router.navigate('/library');
 
-/** The Shuffle tab, optionally with a saved mix or a tag combination loaded into the pot. */
-export const openShuffle = (open?: { mixId: number } | { draft: QueryDraft }) =>
+/** The Play tab, optionally with a saved mix or a tag combination loaded into the pot to change. */
+export const openPlay = (open?: { mixId: number } | { draft: QueryDraft }) =>
   router.navigate(
     !open
-      ? '/shuffle'
+      ? '/'
       : 'mixId' in open
-        ? { pathname: '/shuffle', params: { edit: String(open.mixId) } }
-        : { pathname: '/shuffle', params: { draft: JSON.stringify(open.draft) } }
+        ? { pathname: '/', params: { edit: String(open.mixId) } }
+        : { pathname: '/', params: { draft: JSON.stringify(open.draft) } }
   );
 
 // The full player isn't a route: it's a sheet over the tabs (usePlayerSheet).

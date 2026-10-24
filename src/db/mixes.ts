@@ -78,7 +78,7 @@ export async function saveMix(db: SQLiteDatabase, name: string, draft: QueryDraf
 }
 
 /**
- * Save from the Shuffle tab or the player. A name another mix already has is
+ * Save from the Play tab or the player. A name another mix already has is
  * refused, so a mix is never overwritten by accident; the name of the mix
  * being edited (`editingId`) updates it.
  */

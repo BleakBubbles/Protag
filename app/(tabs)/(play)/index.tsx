@@ -21,7 +21,7 @@ import { getSetting, setSetting, SettingKey } from '@/db/settings';
 import { buildDescendantMap, listAllTagsWithCounts, listTagPlays } from '@/db/tags';
 import type { TagWithCounts } from '@/db/types';
 import { openLibrary } from '@/navigation';
-import { distinctAlbums } from '@/library/mixArt';
+import { distinctAlbums, loadMixArt } from '@/library/mixArt';
 import { matchesQuery, searchKey } from '@/library/search';
 import {
   nextMusicSort,
@@ -36,7 +36,7 @@ import { usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
 import { queueForQuery } from '@/player/sources';
 import { describeQuery } from '@/query/describe';
 import { dropInPot, tapExcluded, tapIngredient, tapTag, type PotItem, type PotSpot } from '@/query/pot';
-import { albumRef, artistRef, readRef, type Ref } from '@/query/refs';
+import { albumRef, artistRef, isTagRef, readRef, type Ref } from '@/query/refs';
 import { countMatching, findSongs } from '@/query/run';
 import {
   buildQuery,
@@ -55,14 +55,14 @@ import { MusicPicker } from '@/ui/play/MusicPicker';
 import { PictureTile, SeeAllTile } from '@/ui/play/PictureTile';
 import { ingredientKey, Pot, POT_ROW, trayHeight, type Look, type ShuffleCount } from '@/ui/play/Pot';
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
-import { FoldHandle } from '@/ui/play/FoldHandle';
-import { COVER_ART, PotCover } from '@/ui/play/PotCover';
+import { Divider, DIVIDER_HEIGHT } from '@/ui/play/Divider';
+import { MixShelf } from '@/ui/play/MixShelf';
 import { PreviewSheet } from '@/ui/play/PreviewSheet';
 import { SearchButton, SearchRow, SectionHead } from '@/ui/play/SectionHead';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
 import { PromptDialog } from '@/ui/PromptDialog';
-import { colors, font, radius, spacing, tagColor } from '@/ui/theme';
+import { colors, font, spacing, tagColor } from '@/ui/theme';
 
 /** Covers in the pot's preview line, and how many of the most-played songs to find them among. */
 const COVERS = 5;
@@ -72,31 +72,27 @@ const ROW = 12;
 /** Search results are one flat grid: no tag opens to show subtags. */
 const NO_CHILDREN = new Map<number | null, TagWithCounts[]>();
 
-/** The smallest the cover's artwork gets on a short screen, and the room kept around the cover. */
-const MIN_ART = 96;
-/** The open pot's rows of tiles: two to start, at least one, and the tags always keep this much room. */
+/** The pot's rows of tiles: two to start, at least one, and the area below always keeps this much room. */
 const POT_ROWS = 2;
 const MIN_POT_ROWS = 1;
-const MIN_BROWSER = 200;
-const COVER_MARGIN = spacing.lg;
+const MIN_BELOW = 200;
 
-/** How long the cover takes to become the pot, and back. */
-const OPEN_MS = 280;
-
-/** How far the browser rises as it opens. */
-const RISE = 48;
+/** How long the area below the pot takes to swap between mixes and tags. */
+const SWAP_MS = 180;
 
 /**
- * Shuffle tab: build something to shuffle. The pot sits on top like a text field
- * over its keyboard; below it, the browser of tags, artists and albums slides up
- * when asked for (tap the pot, or Add), and they go into the pot by tap or by
- * drag, with a live count. Saved mixes live in their own tab; "Edit" there opens one here
- * (the `edit` param, a mix id), and the player's "Edit in Shuffle" opens what's
- * playing (the `draft` param, as JSON).
+ * Play tab, where the app opens: the pot at the top, never moving, and below
+ * it your saved mixes (a mix is a saved pot: what you've made before, under
+ * what you're making now). Tap the pot's empty well, or the divider, and the
+ * area below swaps to your tags, artists and albums, which go into the pot by
+ * tap or by drag, with a live count; the divider, Back or Shuffle swap back.
+ * The divider also sets the pot's size, the same in both. "Edit" on a mix
+ * loads it into the pot (here, or via the `edit` param, a mix id), and the
+ * player's "Edit in Play" loads what's playing (the `draft` param, as JSON).
  */
-export default function ShuffleScreen() {
+export default function PlayScreen() {
   const { show } = useMiniPlayerVisibility();
-  // Opening Shuffle is one way a hidden mini-player comes back.
+  // Opening Play is one way a hidden mini-player comes back.
   useFocusEffect(useCallback(() => show(), [show]));
   const { edit, draft } = useLocalSearchParams<{ edit?: string; draft?: string }>();
   const openRequest = useMemo<OpenRequest>(
@@ -105,7 +101,7 @@ export default function ShuffleScreen() {
   );
 
   const { data } = useLibraryQuery(async (db) => {
-    const [songs, tags, descendants, mixes, artists, albums, tagPlays, sorts, potRows] = await Promise.all([
+    const [songs, allTags, descendants, mixes, artists, albums, tagPlays, sorts, potRows] = await Promise.all([
       countSongs(db),
       listAllTagsWithCounts(db),
       buildDescendantMap(db),
@@ -116,12 +112,14 @@ export default function ShuffleScreen() {
       getSetting(db, SettingKey.shuffleSorts),
       getSetting(db, SettingKey.potRows),
     ]);
+    const mixArt = await loadMixArt(db, mixes, new Set(allTags.map((t) => t.id)), descendants);
     // A tag with nothing under it can't be shuffled, so the builder leaves it out.
     return {
       songs,
-      tags: tags.filter((t) => t.song_count > 0),
+      tags: allTags.filter((t) => t.song_count > 0),
       descendants,
       mixes,
+      mixArt,
       music: { artists, albums },
       tagPlays,
       initialSorts: parseSorts(sorts),
@@ -134,7 +132,7 @@ export default function ShuffleScreen() {
   if (data.songs === 0) {
     return (
       <View style={[styles.screen, styles.centered]}>
-        <EmptyState large icon="shuffle" title="Nothing to shuffle yet" body="Scan your music from the Library tab, then pick tags here to shuffle.">
+        <EmptyState large icon="play-circle-outline" title="Nothing to play yet" body="Scan your music from the Library tab, then mix and play it here.">
           <Button label="Go to Library" variant="tonal" onPress={openLibrary} />
         </EmptyState>
       </View>
@@ -157,6 +155,8 @@ type BuilderProps = {
   tags: TagWithCounts[];
   descendants: Map<number, number[]>;
   mixes: Mix[];
+  /** Album ids for each mix's artwork. */
+  mixArt: ReadonlyMap<number, readonly string[]>;
   music: Music;
   /** Plays by tag id, for sorting by most played. */
   tagPlays: ReadonlyMap<number, number>;
@@ -167,7 +167,7 @@ type BuilderProps = {
   openRequest: OpenRequest;
 };
 
-function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, initialRows, openRequest }: BuilderProps) {
+function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSorts, initialRows, openRequest }: BuilderProps) {
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const playQuery = usePlayQuery();
@@ -182,43 +182,31 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, init
 
   const [picking, setPicking] = useState<'artists' | 'albums' | null>(null);
 
-  // The browser stays built while folded away, so it reopens where it was.
+  // Whether the area below the pot shows your tags (building) or your mixes.
+  // Both stay built, so each comes back where it was.
   const [browsing, setBrowsing] = useState(false);
-
-  // Where the cover sits: centred in the screen's full height (the tallest
-  // it's been, without the mini-player), so the mini-player coming and going
-  // never moves it. Only when that would run it under the mini-player does it
-  // give way: up first, then its artwork shrinks.
   const [room, setRoom] = useState(0);
-  const [fullRoom, setFullRoom] = useState(0);
-  /** The cover's height apart from its artwork, which doesn't change with it. */
-  const [coverRest, setCoverRest] = useState(0);
-  // Two clocks on one timing: `reveal` for fades and slides, on the native
-  // driver; `grow` for the frame's size and colour, which it can't drive.
   const reveal = useRef(new Animated.Value(0)).current;
-  const grow = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    const timing = { toValue: browsing ? 1 : 0, duration: OPEN_MS, easing: Easing.inOut(Easing.cubic) };
-    Animated.parallel([
-      Animated.timing(reveal, { ...timing, useNativeDriver: true }),
-      Animated.timing(grow, { ...timing, useNativeDriver: false }),
-    ]).start();
-  }, [browsing, reveal, grow]);
-  /** The open pot's height, for the frame to grow to. */
+    Animated.timing(reveal, {
+      toValue: browsing ? 1 : 0,
+      duration: SWAP_MS,
+      easing: Easing.inOut(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [browsing, reveal]);
 
-  // The divider between the pot and the tags: how many rows of tiles the pot
-  // shows, kept between visits. The most it can give the pot leaves the tags
-  // `MIN_BROWSER` of the screen.
+  // The divider under the pot: how many rows of tiles the pot shows, kept
+  // between visits and the same in both states. The most it can give the pot
+  // leaves the area below `MIN_BELOW` of the screen.
   const [potRows, setPotRows] = useState(initialRows);
   /** The pot's height apart from its tray, which doesn't change with the rows. */
   const [potChrome, setPotChrome] = useState(0);
   const maxPotRows = Math.max(
     MIN_POT_ROWS,
-    Math.floor((room - potChrome - MIN_BROWSER - trayHeight(1) + POT_ROW) / POT_ROW)
+    Math.floor((room - potChrome - DIVIDER_HEIGHT - MIN_BELOW - trayHeight(1) + POT_ROW) / POT_ROW)
   );
   const rows = room > 0 && potChrome > 0 ? Math.min(potRows, maxPotRows) : potRows;
-  /** The open pot's height, for the cover's frame to grow to. */
-  const potHeight = potChrome + trayHeight(rows);
   // The tray's height, which the divider drags directly (no re-render per
   // frame), and settles to `rows`' height; tracked for measuring the pot.
   const tray = useRef(new Animated.Value(trayHeight(rows))).current;
@@ -374,9 +362,6 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, init
 
   // An emptied pot is no longer the mix that was opened.
   const potEmpty = isEmptyDraft(current);
-  const coverArt = Math.max(MIN_ART, Math.min(COVER_ART, room - COVER_MARGIN * 2 - coverRest));
-  const coverHeight = coverRest + (potEmpty ? 0 : coverArt);
-  const coverTop = Math.max(0, Math.min((fullRoom - coverHeight) / 2, room - COVER_MARGIN - coverHeight));
   useEffect(() => {
     if (potEmpty) setEditingId(null);
   }, [potEmpty]);
@@ -396,36 +381,29 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, init
   const tap = useCallback((ref: Ref) => setDraft(tapTag(current, ref)), [current]);
   const drag = usePotDragRoot((item: PotItem, spot: PotSpot) => setDraft(dropInPot(current, item, spot)));
   const still = drag.active === null;
-  // The cover's dots: each tag in the mix once, in its colour (artists and albums have none).
-  const coverHues = useMemo(
-    () => [...new Set(current.ingredients.flat().flatMap((ref) => hues.get(ref) ?? []))],
-    [current, hues]
-  );
+  // The mixes below: each described and coloured as in the pot, played under its own name.
+  const mixDraft = (mix: Mix) => pruneDraft(mix.draft, tagIds);
+  const playMix = (mix: Mix) => playQuery(buildQuery(mixDraft(mix)), { label: mix.name, draft: mixDraft(mix) });
+  const editMix = (mix: Mix) => {
+    setDraft(mix.draft);
+    setEditingId(mix.id);
+    setBrowsing(true);
+  };
+  const describeMix = (mix: Mix) => describeQuery(buildQuery(mixDraft(mix)), names);
+  // A mix wears the colour of its first tag (artists and albums have none).
+  const mixColor = (mix: Mix) => hues.get(mix.draft.ingredients.flat().find(isTagRef) ?? -1) ?? tagColor(null);
   // An unchanged mix plays under its own name.
   const playLabel = editingMix && sameDraft(current, editingMix.draft) ? editingMix.name : undefined;
 
   return (
     <PotDragContext.Provider value={drag}>
-      <View
-        ref={drag.rootRef}
-        style={styles.screen}
-        onLayout={(e) => {
-          const { height } = e.nativeEvent.layout;
-          setRoom(height);
-          setFullRoom((full) => Math.max(full, height));
-        }}
-      >
-        {/* Open: the pot to build in, at the top. Its contents appear as the
-            frame below lands in its place. */}
-        <Animated.View
-          pointerEvents={browsing ? 'auto' : 'none'}
-          importantForAccessibility={browsing ? 'auto' : 'no-hide-descendants'}
+      <View ref={drag.rootRef} style={styles.screen} onLayout={(e) => setRoom(e.nativeEvent.layout.height)}>
+        <View
           onLayout={(e) => {
             // Only the part that never changes is kept, so dragging the tray doesn't re-render.
             const chrome = Math.round(e.nativeEvent.layout.height - trayNow.current);
             setPotChrome((was) => (was === chrome ? was : chrome));
           }}
-          style={[styles.potSlot, { opacity: reveal.interpolate({ inputRange: [0, 0.55, 1], outputRange: [0, 0, 1] }) }]}
         >
           <Pot
             draft={current}
@@ -445,38 +423,55 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, init
             onTapExcluded={(ref) => setDraft(tapExcluded(current, ref))}
             rows={rows}
             tray={tray}
+            onAdd={browsing ? undefined : () => setBrowsing(true)}
           />
-        </Animated.View>
+        </View>
 
+        <Divider
+          label={browsing ? 'Mixes' : 'Tags'}
+          onTap={browsing ? fold : () => setBrowsing(true)}
+          tray={tray}
+          rows={rows}
+          minRows={MIN_POT_ROWS}
+          maxRows={maxPotRows}
+          onSettle={(settled) => {
+            setPotRows(settled);
+            setSetting(db, SettingKey.potRows, String(settled));
+          }}
+          pull={browsing ? pull : undefined}
+          onPullFold={browsing ? fold : undefined}
+        />
+
+        {/* Below the divider: your mixes, or your tags while building, swapping in place. */}
         <View style={styles.screen}>
+          <Animated.View
+            pointerEvents={browsing ? 'none' : 'auto'}
+            importantForAccessibility={browsing ? 'no-hide-descendants' : 'auto'}
+            style={[styles.below, { opacity: reveal.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}
+          >
+            <MixShelf
+              mixes={mixes}
+              art={mixArt}
+              describe={describeMix}
+              colorOf={mixColor}
+              onPlay={playMix}
+              onEdit={editMix}
+              scrollEnabled={still}
+            />
+          </Animated.View>
 
           <Animated.View
             pointerEvents={browsing ? 'auto' : 'none'}
             importantForAccessibility={browsing ? 'auto' : 'no-hide-descendants'}
             style={[
-              styles.browser,
+              styles.below,
               {
-                opacity: reveal.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0, 0, 1] }),
-                transform: [
-                  { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [RISE, 0] }) },
-                  // Pulled down past the pot's largest size, to fold.
-                  { translateY: pull },
-                ],
+                opacity: reveal,
+                // Pulled down past the pot's largest size, to fold.
+                transform: [{ translateY: pull }],
               },
             ]}
           >
-            <FoldHandle
-              onFold={fold}
-              pull={pull}
-              rows={rows}
-              minRows={MIN_POT_ROWS}
-              maxRows={maxPotRows}
-              tray={tray}
-              onSettle={(settled) => {
-                setPotRows(settled);
-                setSetting(db, SettingKey.potRows, String(settled));
-              }}
-            />
             <ScrollView
               style={styles.screen}
               contentContainerStyle={styles.content}
@@ -568,61 +563,6 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, init
           </Animated.View>
         </View>
 
-        {/* The card becoming the pot: a frame that starts as the cover's card
-            and stretches to the pot's place, corners straightening and colour
-            melting into the page, while what's inside swaps over. Only there
-            mid-change; at rest the card and the pot draw themselves. */}
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.frame,
-            {
-              opacity: grow.interpolate({ inputRange: [0, 0.02, 0.98, 1], outputRange: [0, 1, 1, 0] }),
-              top: grow.interpolate({ inputRange: [0, 1], outputRange: [coverTop, 0] }),
-              left: grow.interpolate({ inputRange: [0, 1], outputRange: [spacing.lg, 0] }),
-              right: grow.interpolate({ inputRange: [0, 1], outputRange: [spacing.lg, 0] }),
-              height: grow.interpolate({ inputRange: [0, 1], outputRange: [coverHeight, Math.max(potHeight, 1)] }),
-              borderRadius: grow.interpolate({ inputRange: [0, 1], outputRange: [radius.lg, 0] }),
-              backgroundColor: grow.interpolate({ inputRange: [0, 1], outputRange: [colors.surface, colors.bg] }),
-            },
-          ]}
-        />
-
-        {/* Folded: the mix as a card in the middle of the screen. Opening, its
-            contents fade early as the frame carries its shape up. */}
-        <Animated.View
-          pointerEvents={browsing ? 'none' : 'box-none'}
-          importantForAccessibility={browsing ? 'no-hide-descendants' : 'auto'}
-          style={[
-            styles.coverSlot,
-            {
-              opacity: reveal.interpolate({ inputRange: [0, 0.3, 1], outputRange: [1, 0, 0] }),
-              transform: [
-                { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [0, -RISE] }) },
-                { scale: reveal.interpolate({ inputRange: [0, 1], outputRange: [1, 0.96] }) },
-              ],
-            },
-          ]}
-        >
-          <View
-            style={{ top: coverTop, opacity: coverRest > 0 && room > 0 ? 1 : 0 }}
-            onLayout={(e) => setCoverRest(e.nativeEvent.layout.height - (potEmpty ? 0 : coverArt))}
-          >
-          <PotCover
-            artSize={coverArt}
-            empty={potEmpty}
-            title={describeQuery(query, names)}
-            hues={coverHues}
-            covers={covers}
-            counted={counted}
-            editing={editingMix?.name ?? null}
-            onOpen={() => setBrowsing(true)}
-            onSave={() => setSaving(true)}
-            onShuffle={() => playQuery(query, { draft: current, label: playLabel })}
-          />
-          </View>
-        </Animated.View>
-
         <MusicPicker
           visible={picking !== null}
           title={picking === 'albums' ? 'Albums' : 'Artists'}
@@ -680,20 +620,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     gap: spacing.xl,
   },
-  // Layers, back to front: the browser, the growing frame, the pot, the cover.
-  frame: {
-    position: 'absolute',
-    zIndex: 1,
-  },
-  potSlot: {
-    zIndex: 2,
-  },
-  // The cover inside is placed by `coverTop`. Empty space passes taps through.
-  coverSlot: {
-    ...StyleSheet.absoluteFill,
-    zIndex: 3,
-  },
-  browser: {
+  // The mixes and the tags, one over the other, swapping by fading.
+  below: {
     ...StyleSheet.absoluteFill,
   },
   // A picture row runs to the screen's edges, starting in line with the grid.

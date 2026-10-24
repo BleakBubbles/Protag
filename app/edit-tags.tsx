@@ -201,7 +201,7 @@ export default function EditTagsScreen() {
             <EmptyState
               icon="tag"
               title="Your first tag"
-              body="Tags are your own words for songs: a mood, a moment, anything. Mix them in Shuffle later."
+              body="Tags are your own words for songs: a mood, a moment, anything. Mix them in Play later."
             >
               <Button label="Create a tag" icon="add" variant="tonal" onPress={() => setNaming(true)} />
             </EmptyState>

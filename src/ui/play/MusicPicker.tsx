@@ -34,7 +34,7 @@ export interface MusicPickerProps {
 }
 
 /**
- * Every artist (or album), searchable, for the ones the Shuffle tab's row
+ * Every artist (or album), searchable, for the ones the Play tab's row
  * doesn't show. A tap puts one in the pot or takes it out, as on a tile, and
  * the sheet stays open to pick several.
  */

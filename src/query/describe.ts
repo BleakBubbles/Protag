@@ -7,7 +7,7 @@ type Position = 'top' | 'and' | 'or' | 'not';
 /**
  * Render a query as a short human label, e.g. "kpop × chill + lofi, not sad":
  * × for songs that have both (an ingredient of combined tags), + for either
- * (separate ingredients), the way the Shuffle tab's pot shows them.
+ * (separate ingredients), the way the Play tab's pot shows them.
  *
  * The player shows this so it's always obvious *why* a given set of songs is
  * playing — which is the whole point of shuffling by query instead of by list.

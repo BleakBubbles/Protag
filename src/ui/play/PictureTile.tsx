@@ -34,7 +34,7 @@ export interface PictureTileProps {
 }
 
 /**
- * An artist or album in the Shuffle tab: its picture with its name under it,
+ * An artist or album in the Play tab: its picture with its name under it,
  * working exactly like a tag tile — tap to put it in the pot, hold to drag it,
  * a white ring and ✓ when it's in, a red ring and − when it's kept out.
  */

@@ -24,7 +24,7 @@ export const colors = {
   border: '#34322F',
   /**
    * A step up from `border`: the neutral pill of an artist or album in the
-   * Shuffle tab's pot, where tags have their colours (colour is a tag's identity).
+   * Play tab's pot, where tags have their colours (colour is a tag's identity).
    */
   raised: '#3D3B38',
   /** Dims the app behind something floating over it (the (i) bubble), so it stands out. */

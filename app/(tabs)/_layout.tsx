@@ -35,21 +35,12 @@ export default function TabsLayout() {
           }}
         >
           <Tabs.Screen
-            name="(mixes)"
+            name="(play)"
             options={{
-              title: 'Mixes',
+              title: 'Play',
               // Filled when selected, outlined otherwise: the usual Android tab pattern.
               tabBarIcon: ({ color, size, focused }) => (
-                <Icon name={focused ? 'albums' : 'albums-outline'} color={color} size={size} />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="shuffle"
-            options={{
-              title: 'Shuffle',
-              tabBarIcon: ({ color, size, focused }) => (
-                <Icon name={focused ? 'shuffle' : 'shuffle-outline'} color={color} size={size} />
+                <Icon name={focused ? 'play-circle' : 'play-circle-outline'} color={color} size={size} />
               ),
             }}
           />

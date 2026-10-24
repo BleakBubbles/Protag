@@ -20,7 +20,7 @@ export interface SectionHeadProps {
   tall?: boolean;
 }
 
-/** A Shuffle tab section's label, with its order beside it as a quiet control. */
+/** A Play tab section's label, with its order beside it as a quiet control. */
 export function SectionHead({ label, sort, onSort, children, tall }: SectionHeadProps) {
   return (
     <View style={[styles.head, tall && styles.tall]}>

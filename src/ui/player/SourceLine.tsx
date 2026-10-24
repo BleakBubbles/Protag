@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { notifyLibraryChanged } from '@/db/changes';
 import { listMixes, saveMixAs } from '@/db/mixes';
-import { openShuffle } from '@/navigation';
+import { openPlay } from '@/navigation';
 import type { QueueState } from '@/player/queue';
 import { isEmptyDraft, sameDraft } from '@/query/types';
 import { formatCount } from '@/ui/format';
@@ -20,7 +20,7 @@ const PILL_PADDING = spacing.md;
 
 export interface SourceLineProps {
   queue: QueueState;
-  /** Closes the player, before going to the Shuffle tab. */
+  /** Closes the player, before going to the Play tab. */
   onClose: () => void;
 }
 
@@ -28,7 +28,7 @@ export interface SourceLineProps {
  * "Shuffling · kpop × chill  3 of 114": what's playing, the label scrolling sideways
  * when it's too long to fit. Often you only know a combination is good once
  * you've heard it, so when the queue came from tags, the line sits in a soft
- * pill that can be tapped: save it as a mix, or open it in Shuffle to tweak it.
+ * pill that can be tapped: save it as a mix, or open it in Play to tweak it.
  */
 export function SourceLine({ queue, onClose }: SourceLineProps) {
   const db = useSQLiteContext();
@@ -85,10 +85,10 @@ export function SourceLine({ queue, onClose }: SourceLineProps) {
             actions={[
               ...(saved ? [] : [{ label: 'Save as mix', onPress: () => setSaving(true) }]),
               {
-                label: 'Edit in Shuffle',
+                label: 'Edit in Play',
                 onPress: () => {
                   onClose();
-                  openShuffle(saved ? { mixId: saved.id } : { draft });
+                  openPlay(saved ? { mixId: saved.id } : { draft });
                 },
               },
             ]}
