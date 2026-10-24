@@ -36,7 +36,7 @@ const WIDTH = 240;
  */
 export function PopupMenu({ anchor, actions, onClose, header, dim }: PopupMenuProps) {
   return (
-    <Popover anchor={anchor} onClose={onClose} width={WIDTH} dim={dim}>
+    <Popover anchor={anchor} onClose={onClose} width={WIDTH} dim={dim} dark>
       <View style={styles.menu} accessibilityRole="menu">
         {header && <View style={styles.header}>{header}</View>}
         {actions.map((action, i) => (
@@ -56,7 +56,7 @@ export function PopupMenu({ anchor, actions, onClose, header, dim }: PopupMenuPr
                 <Icon
                   name={action.icon}
                   size={iconSize.sm}
-                  color={action.destructive ? colors.danger : action.disabled ? colors.textFaint : colors.textDim}
+                  color={action.destructive ? colors.danger : action.disabled ? colors.textFaint : colors.text}
                 />
               )}
               <Text
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   label: {
-    ...font.body,
+    ...font.name,
     flexShrink: 1,
     color: colors.text,
   },

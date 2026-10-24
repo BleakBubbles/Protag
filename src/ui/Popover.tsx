@@ -35,6 +35,8 @@ export interface PopoverProps {
   pointer?: boolean;
   /** Dims the app behind it, for something to read rather than a quick pick. */
   dim?: boolean;
+  /** Darker, with a fine edge (menus), rather than the lighter bubble (an explanation, a picker). */
+  dark?: boolean;
   children: ReactNode;
 }
 
@@ -45,12 +47,12 @@ export interface PopoverProps {
  * fonts and short screens; anything taller than either side isn't worth more
  * machinery, since what goes in one is short. Tap outside (or back) to close.
  */
-export function Popover({ anchor, onClose, width: wanted, pointer = false, dim = false, children }: PopoverProps) {
+export function Popover({ anchor, onClose, width: wanted, pointer = false, dim = false, dark = false, children }: PopoverProps) {
   return (
     <Modal visible={anchor !== null} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <Pressable style={[styles.scrim, dim && styles.dimmed]} onPress={onClose} accessibilityLabel="Close">
         {anchor && (
-          <Placed anchor={anchor} wanted={wanted} pointer={pointer}>
+          <Placed anchor={anchor} wanted={wanted} pointer={pointer} dark={dark}>
             {children}
           </Placed>
         )}
@@ -60,7 +62,19 @@ export function Popover({ anchor, onClose, width: wanted, pointer = false, dim =
 }
 
 /** Hidden for the one frame it takes to measure itself. */
-function Placed({ anchor, wanted, pointer, children }: { anchor: Rect; wanted: number; pointer: boolean; children: ReactNode }) {
+function Placed({
+  anchor,
+  wanted,
+  pointer,
+  dark,
+  children,
+}: {
+  anchor: Rect;
+  wanted: number;
+  pointer: boolean;
+  dark: boolean;
+  children: ReactNode;
+}) {
   const screen = useWindowDimensions();
   const [natural, setNatural] = useState<number | null>(null);
 
@@ -78,7 +92,7 @@ function Placed({ anchor, wanted, pointer, children }: { anchor: Rect; wanted: n
 
   return (
     <View
-      style={[styles.panel, { width, left, top, opacity: natural === null ? 0 : 1 }]}
+      style={[styles.panel, dark && styles.dark, { width, left, top, opacity: natural === null ? 0 : 1 }]}
       onLayout={(e) => setNatural(e.nativeEvent.layout.height)}
     >
       {pointer && (
@@ -104,6 +118,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: colors.raised,
     elevation: 12,
+  },
+  dark: {
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
   // A square turned on its corner, half of it showing past the panel's edge.
   pointer: {
