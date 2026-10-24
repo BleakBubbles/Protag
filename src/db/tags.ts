@@ -68,6 +68,11 @@ export async function listTagPlays(db: SQLiteDatabase): Promise<Map<number, numb
   return new Map(rows.map((r) => [r.id, r.plays]));
 }
 
+/** Whether the library has any tags at all: whether its owner tags, as far as ProTag asks. */
+export async function hasAnyTags(db: SQLiteDatabase): Promise<boolean> {
+  return (await db.getFirstAsync('SELECT 1 FROM tags LIMIT 1')) !== null;
+}
+
 /** The whole tree with counts, in one query: for views that show every level, like the query builder. */
 export async function listAllTagsWithCounts(db: SQLiteDatabase): Promise<TagWithCounts[]> {
   return db.getAllAsync<TagWithCounts>(`${TAGS_WITH_COUNTS} ORDER BY t.sort_order, t.name COLLATE NOCASE`);
