@@ -20,6 +20,14 @@ const LOOP: Record<EngineRepeat, AudioPlaylistLoopMode> = { off: 'none', all: 'a
 
 /** The longest a new order waits to load before taking over from the old one regardless. */
 const HANDOFF_MS = 1000;
+/**
+ * A handoff's crossfade: the new order starts silently this far ahead of the
+ * old one (and gets that long to get going), then fades up as the old one
+ * fades down, so any small mismatch is smeared rather than heard as a cut.
+ */
+const LEAD_SEC = 0.25;
+const CROSSFADE_MS = 300;
+const CROSSFADE_STEP_MS = 30;
 
 /** Lock-screen metadata *without* artwork — see the note in `setNowPlaying`. */
 function baseMetadata(np: NowPlaying): AudioMetadata {
@@ -196,31 +204,63 @@ export const useExpoAudioEngine = ({ onEnded, onMoved }: EngineCallbacks): Audio
         };
 
         // A new order of the same song while it plays (shuffle changed): the
-        // old order plays on until the new one has loaded, which then picks up
-        // where it's got to, so there's no gap. Otherwise, straight over.
+        // old order plays on while the new one loads, then the new one starts
+        // silently just ahead and the two crossfade, so there's no gap or cut.
+        // Otherwise, straight over.
         if (!(options.autoplay && previous.playing)) return takeOver(options.positionSec);
         let done = false;
-        const finish = () => {
-          if (done) return;
+        let fading: ReturnType<typeof setInterval> | null = null;
+        let lead: ReturnType<typeof setTimeout> | null = null;
+        const stop = () => {
           done = true;
           sub.remove();
           clearTimeout(timer);
+          if (lead) clearTimeout(lead);
+          if (fading) clearInterval(fading);
+        };
+        const settled = () => {
           // The move to `start` was reported before anything listened to this playlist.
           if (ownMoves.current[0] === start) ownMoves.current.shift();
-          takeOver(previous.currentTime);
+          next.volume = 1;
+        };
+        /** Straight over, now: something was asked of playback, or loading took too long. */
+        const finish = () => {
+          if (done) return;
+          const wasPlaying = next.playing;
+          stop();
+          settled();
+          if (wasPlaying) takeOver(undefined);
+          else takeOver(previous.currentTime);
+        };
+        const crossfade = () => {
+          if (done) return;
+          const began = Date.now();
+          fading = setInterval(() => {
+            const t = Math.min(1, (Date.now() - began) / CROSSFADE_MS);
+            next.volume = t;
+            previous.volume = 1 - t;
+            if (t < 1) return;
+            stop();
+            settled();
+            takeOver(undefined);
+          }, CROSSFADE_STEP_MS);
         };
         const sub = next.addListener('playlistStatusUpdate', (status) => {
-          if (status.isLoaded) finish();
+          if (!status.isLoaded || lead || done) return;
+          clearTimeout(timer); // Loaded in time: the crossfade takes it from here.
+          next.volume = 0;
+          guarded('seekTo', () => next.seekTo(previous.currentTime + LEAD_SEC));
+          next.play();
+          lead = setTimeout(crossfade, LEAD_SEC * 1000);
         });
         const timer = setTimeout(finish, HANDOFF_MS);
         handoff.current = {
           from: previous,
           finish,
           cancel: () => {
-            done = true;
-            sub.remove();
-            clearTimeout(timer);
+            stop();
             next.release();
+            previous.volume = 1;
             handoff.current = null;
           },
         };
