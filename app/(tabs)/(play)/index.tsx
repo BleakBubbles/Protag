@@ -415,6 +415,12 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
     setBrowsing(true);
   };
   const describeMix = (mix: Mix) => describeQuery(buildQuery(mixDraft(mix)), names);
+  // Its ingredients as chips for its menu: names joined like the pot's (×), on the first tag's colour.
+  const mixChips = (mix: Mix) =>
+    mixDraft(mix).ingredients.map((refs) => ({
+      label: refs.map((ref) => look(ref).name).join(' × '),
+      color: refs.map((ref) => look(ref).hue).find((hue) => hue !== null) ?? null,
+    }));
   // A mix wears the colour of its first tag (artists and albums have none).
   const mixColor = (mix: Mix) => hues.get(mix.draft.ingredients.flat().find(isTagRef) ?? -1) ?? tagColor(null);
   // An unchanged mix plays under its own name.
@@ -491,7 +497,7 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
               onPlay={playMix}
               onEdit={editMix}
               scrollEnabled={still}
-              hidden={browsing}
+              chipsOf={mixChips}
             />
           </View>
 

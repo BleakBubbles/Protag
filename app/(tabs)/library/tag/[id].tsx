@@ -145,9 +145,9 @@ export default function TagScreen() {
   };
 
   const menu: MenuAction[] = [
-    { label: 'Rename', onPress: () => setDialog('rename') },
-    { label: 'Move to…', onPress: () => setDialog('move') },
-    { label: 'Delete', destructive: true, onPress: confirmDelete },
+    { label: 'Rename', icon: 'text-outline', onPress: () => setDialog('rename') },
+    { label: 'Move to…', icon: 'folder-open-outline', onPress: () => setDialog('move') },
+    { label: 'Delete', icon: 'trash-outline', destructive: true, onPress: confirmDelete },
   ];
 
   const moveTargets: MenuAction[] =

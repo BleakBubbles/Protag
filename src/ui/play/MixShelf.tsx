@@ -1,14 +1,23 @@
-import { AndroidHaptics, performAndroidHapticsAsync } from 'expo-haptics';
-import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useState } from 'react';
-import { Alert, BackHandler, FlatList, Pressable, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { useState } from 'react';
+import { Alert, FlatList, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { notifyLibraryChanged } from '../../db/changes';
 import { deleteMix, renameMix, type Mix } from '../../db/mixes';
+import type { Rect } from '../Popover';
+import { PopupMenu } from '../PopupMenu';
 import { PromptDialog } from '../PromptDialog';
-import { colors, font, spacing } from '../theme';
+import { colors, font, radius, spacing } from '../theme';
+import { ArtMosaic } from './ArtMosaic';
 import { MixCard } from './MixCard';
+
+const THUMB = 44;
+
+/** One of a mix's ingredients, as a small chip in its menu: its name, on its tag's colour (null: an artist or album). */
+export interface MixChip {
+  label: string;
+  color: string | null;
+}
 
 const COLUMNS = 2;
 const GAP = spacing.md;
@@ -21,42 +30,28 @@ export interface MixShelfProps {
   describe: (mix: Mix) => string;
   /** A mix's colour, for one with no artwork: its first tag's. */
   colorOf: (mix: Mix) => string;
+  /** Its ingredients as chips, for the head of its menu. */
+  chipsOf: (mix: Mix) => readonly MixChip[];
   onPlay: (mix: Mix) => void;
   /** Loads it into the pot above, to change. */
   onEdit: (mix: Mix) => void;
   /** Disables scrolling while something is being dragged. */
   scrollEnabled?: boolean;
-  /** Covered by the tags: a held card lets go. */
-  hidden?: boolean;
 }
 
 /**
  * Saved mixes, under the pot on the Play tab: what you've made before, below
  * what you're making now (a mix is a saved pot). Tap one to shuffle it; hold
- * it and its artwork offers Edit (into the pot), Rename and Delete. A tap
- * anywhere else, a scroll or Back lets it go.
+ * it for a menu under its artwork, headed by the mix itself (artwork, name,
+ * its tags as chips): Edit (into the pot), Rename, Delete.
  */
-export function MixShelf({ mixes, art, describe, colorOf, onPlay, onEdit, scrollEnabled, hidden }: MixShelfProps) {
+export function MixShelf({ mixes, art, describe, colorOf, chipsOf, onPlay, onEdit, scrollEnabled }: MixShelfProps) {
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const cardWidth = (screenWidth - spacing.lg * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
-  /** The mix being held (offering its actions), and the one being renamed. */
-  const [heldId, setHeldId] = useState<number | null>(null);
+  /** The mix whose menu is open (and where its artwork is), and the one being renamed. */
+  const [menu, setMenu] = useState<{ mix: Mix; at: Rect } | null>(null);
   const [renaming, setRenaming] = useState<Mix | null>(null);
-  const letGo = useCallback(() => setHeldId(null), []);
-  useEffect(() => {
-    if (hidden) letGo();
-  }, [hidden, letGo]);
-  useFocusEffect(
-    useCallback(() => {
-      if (heldId === null) return;
-      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        letGo();
-        return true;
-      });
-      return () => sub.remove();
-    }, [heldId, letGo])
-  );
 
   const confirmDelete = (mix: Mix) =>
     Alert.alert(`Delete "${mix.name}"?`, 'The mix goes; its tags and songs stay.', [
@@ -72,15 +67,13 @@ export function MixShelf({ mixes, art, describe, colorOf, onPlay, onEdit, scroll
     ]);
 
   return (
-    // A tap on the space between cards lets a held one go.
-    <Pressable style={styles.fill} onPress={letGo} disabled={heldId === null} accessible={false}>
+    <>
       <FlatList
         data={mixes}
         keyExtractor={(mix) => String(mix.id)}
         numColumns={COLUMNS}
         scrollEnabled={scrollEnabled}
-        onScrollBeginDrag={letGo}
-        extraData={heldId}
+        extraData={menu}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.grid}
         ListEmptyComponent={
@@ -93,33 +86,26 @@ export function MixShelf({ mixes, art, describe, colorOf, onPlay, onEdit, scroll
             albumIds={art.get(item.id) ?? []}
             color={colorOf(item)}
             width={cardWidth}
-            // While one is held, a tap anywhere (another card too) only lets it go.
-            onPress={() => (heldId === null ? onPlay(item) : letGo())}
-            onLongPress={() => {
-              setHeldId(item.id);
-              performAndroidHapticsAsync(AndroidHaptics.Long_Press).catch(() => {});
-            }}
-            held={
-              heldId === item.id
-                ? {
-                    onEdit: () => {
-                      letGo();
-                      onEdit(item);
-                    },
-                    onRename: () => {
-                      letGo();
-                      setRenaming(item);
-                    },
-                    onDelete: () => {
-                      letGo();
-                      confirmDelete(item);
-                    },
-                  }
-                : undefined
-            }
-            faded={heldId !== null && heldId !== item.id}
+            onPress={() => onPlay(item)}
+            onLongPress={(at) => setMenu({ mix: item, at })}
+            held={menu?.mix.id === item.id}
           />
         )}
+      />
+      <PopupMenu
+        anchor={menu?.at ?? null}
+        dim
+        header={menu && <MixMenuHead name={menu.mix.name} albumIds={art.get(menu.mix.id) ?? []} color={colorOf(menu.mix)} chips={chipsOf(menu.mix)} />}
+        actions={
+          menu
+            ? [
+                { label: 'Edit', icon: 'create-outline', onPress: () => onEdit(menu.mix) },
+                { label: 'Rename', icon: 'text-outline', onPress: () => setRenaming(menu.mix) },
+                { label: 'Delete', icon: 'trash-outline', destructive: true, onPress: () => confirmDelete(menu.mix) },
+              ]
+            : []
+        }
+        onClose={() => setMenu(null)}
       />
       <PromptDialog
         visible={renaming !== null}
@@ -132,14 +118,38 @@ export function MixShelf({ mixes, art, describe, colorOf, onPlay, onEdit, scroll
         }}
         onClose={() => setRenaming(null)}
       />
-    </Pressable>
+    </>
+  );
+}
+
+/** The head of a mix's menu: the mix it's for, by its artwork, name and tags. */
+function MixMenuHead({ name, albumIds, color, chips }: { name: string; albumIds: readonly string[]; color: string; chips: readonly MixChip[] }) {
+  return (
+    <View style={styles.head}>
+      <View style={styles.headRow}>
+        <View style={styles.thumb}>
+          <ArtMosaic albumIds={albumIds} size={THUMB} fallbackColor={color} />
+        </View>
+        <Text style={styles.headName} numberOfLines={2}>
+          {name}
+        </Text>
+      </View>
+      {chips.length > 0 && (
+        <View style={styles.chips}>
+          {chips.map((chip, i) => (
+            <View key={i} style={[styles.chip, { backgroundColor: chip.color ?? colors.border }]}>
+              <Text style={[styles.chipText, chip.color === null && styles.chipNeutral]} numberOfLines={1}>
+                {chip.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: {
-    flex: 1,
-  },
   grid: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
@@ -147,6 +157,42 @@ const styles = StyleSheet.create({
   },
   row: {
     gap: GAP,
+  },
+  head: {
+    gap: spacing.sm,
+  },
+  headRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  thumb: {
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+  },
+  headName: {
+    ...font.name,
+    flexShrink: 1,
+    color: colors.text,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs + 2,
+  },
+  chip: {
+    height: 22,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+    maxWidth: '100%',
+  },
+  chipText: {
+    ...font.caption,
+    color: colors.bg,
+  },
+  chipNeutral: {
+    color: colors.text,
   },
   hint: {
     ...font.caption,
