@@ -15,6 +15,9 @@ import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { useStagedSave } from '@/ui/hooks/useStagedSave';
 import { TAG_CHECK_ROW_HEIGHT, TagCheckRow } from '@/ui/library/TagCheckRow';
+import { Button } from '@/ui/Button';
+import { EmptyState } from '@/ui/EmptyState';
+import { PromptDialog } from '@/ui/PromptDialog';
 import { SaveButton } from '@/ui/SaveButton';
 import { SearchField } from '@/ui/SearchField';
 import { colors, font, spacing } from '@/ui/theme';
@@ -154,6 +157,9 @@ export default function EditTagsScreen() {
     setMarks((prev) => new Map(prev).set(target.id, 'all'));
     setQuery('');
   };
+  // No tags in the library yet, and none typed or staged: the editor starts from its empty state.
+  const firstTag = data !== undefined && data.ordered.length === 0 && newPaths.length === 0 && path.length === 0;
+  const [naming, setNaming] = useState(false);
   const genre = data?.genreToCreate;
   const showGenre = path.length === 0 && genre != null && !newPaths.some((p) => lower(p) === lower([genre]));
 
@@ -189,6 +195,18 @@ export default function EditTagsScreen() {
             onPress={toggle}
           />
         )}
+        // A library with no tags yet: how to make the first, built round one obvious button.
+        ListEmptyComponent={
+          firstTag ? (
+            <EmptyState
+              icon="tag"
+              title="Your first tag"
+              body="Tags are your own words for songs: a mood, a moment, anything. Mix them in Shuffle later."
+            >
+              <Button label="Create a tag" icon="add" variant="tonal" onPress={() => setNaming(true)} />
+            </EmptyState>
+          ) : undefined
+        }
         ListHeaderComponent={
           <View onLayout={onHeaderLayout}>
             <View style={styles.search}>
@@ -202,16 +220,18 @@ export default function EditTagsScreen() {
               />
               {/* Always one line, so the first tap doesn't push the list down. */}
               <Text style={[styles.status, dirty && styles.pending]} numberOfLines={1}>
-                {dirty
-                  ? [
-                      adding > 0 && `${plural(adding, 'tag')} to add`,
-                      removing > 0 && `${plural(removing, 'tag')} to remove`,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')
-                  : n === 1
-                    ? 'Tap a tag to add it, again to remove it.'
-                    : 'Tap a tag to put it on every song, again to take it off.'}
+                {firstTag
+                  ? ' ' // The empty state below says it.
+                  : dirty
+                    ? [
+                        adding > 0 && `${plural(adding, 'tag')} to add`,
+                        removing > 0 && `${plural(removing, 'tag')} to remove`,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')
+                    : n === 1
+                      ? 'Tap a tag to add it, again to remove it.'
+                      : 'Tap a tag to put it on every song, again to take it off.'}
               </Text>
             </View>
             {!exists && (
@@ -233,6 +253,18 @@ export default function EditTagsScreen() {
             ))}
           </View>
         }
+      />
+      <PromptDialog
+        visible={naming}
+        title="New tag"
+        message={n === 1 ? 'It goes on this song when you save.' : `It goes on all ${n} songs when you save.`}
+        placeholder="chill"
+        confirmLabel="Create"
+        onSubmit={async (name) => {
+          const names = parseTagPath(name);
+          if (names.length > 0) addNew(names);
+        }}
+        onClose={() => setNaming(false)}
       />
     </View>
   );
