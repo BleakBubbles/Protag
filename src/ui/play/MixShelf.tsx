@@ -99,9 +99,9 @@ export function MixShelf({ mixes, art, describe, colorOf, chipsOf, onPlay, onEdi
         actions={
           menu
             ? [
-                { label: 'Edit', icon: 'create-outline', onPress: () => onEdit(menu.mix) },
-                { label: 'Rename', icon: 'text-outline', onPress: () => setRenaming(menu.mix) },
-                { label: 'Delete', icon: 'trash-outline', destructive: true, onPress: () => confirmDelete(menu.mix) },
+                { label: 'Edit', icon: 'edit', onPress: () => onEdit(menu.mix) },
+                { label: 'Rename', icon: 'rename', onPress: () => setRenaming(menu.mix) },
+                { label: 'Delete', icon: 'delete', destructive: true, onPress: () => confirmDelete(menu.mix) },
               ]
             : []
         }

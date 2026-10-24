@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon, type IconName } from './Icon';
 import { Popover, type Rect } from './Popover';
-import { colors, font, iconSize, radius, spacing, touchTarget } from './theme';
+import { colors, font, radius, spacing, touchTarget } from './theme';
 
 export interface MenuAction {
   label: string;
@@ -28,6 +28,8 @@ export interface PopupMenuProps {
 }
 
 const WIDTH = 240;
+/** A touch bigger than the small icon size, to sit level with the menu's medium-weight labels. */
+const MENU_ICON = 22;
 
 /**
  * A short list of actions dropping from whatever opened it, like Android's
@@ -55,7 +57,7 @@ export function PopupMenu({ anchor, actions, onClose, header, dim }: PopupMenuPr
               {action.icon && (
                 <Icon
                   name={action.icon}
-                  size={iconSize.sm}
+                  size={MENU_ICON}
                   color={action.destructive ? colors.danger : action.disabled ? colors.textFaint : colors.text}
                 />
               )}

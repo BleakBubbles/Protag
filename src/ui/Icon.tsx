@@ -5,18 +5,24 @@ import type { ColorValue } from 'react-native';
 /**
  * ProTag's own icons, drawn from another icon set where Ionicons' version
  * didn't suit. The tag: Ionicons' is thin and angular; this one is rounder and
- * sturdier. Changing a glyph here changes it everywhere.
+ * sturdier. The menu actions likewise: Ionicons' outlines read spindly at a
+ * menu's small size. Changing a glyph here changes it everywhere.
  */
 const OWN = {
   tag: 'tag-outline',
   'tag-filled': 'tag',
   tags: 'tag-multiple-outline',
   'tags-filled': 'tag-multiple',
+  edit: 'pencil-outline',
+  rename: 'rename-outline',
+  delete: 'trash-can-outline',
+  'move-to': 'folder-move-outline',
+  'save-mix': 'bookmark-outline',
 } as const satisfies Record<string, ComponentProps<typeof MaterialCommunityIcons>['name']>;
 
 type OwnIconName = keyof typeof OWN;
 
-/** Any Ionicons name, or one of ProTag's own (`tag`, `tags`, and their `-filled` forms). */
+/** Any Ionicons name, or one of ProTag's own (`tag`, `tags` and their `-filled` forms; the menu actions). */
 export type IconName = ComponentProps<typeof Ionicons>['name'] | OwnIconName;
 
 export interface IconProps {

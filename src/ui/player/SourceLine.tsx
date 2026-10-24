@@ -83,10 +83,10 @@ export function SourceLine({ queue, onClose }: SourceLineProps) {
           <PopupMenu
             anchor={menu.rect}
             actions={[
-              ...(saved ? [] : [{ label: 'Save as mix', icon: 'bookmark-outline' as const, onPress: () => setSaving(true) }]),
+              ...(saved ? [] : [{ label: 'Save as mix', icon: 'save-mix' as const, onPress: () => setSaving(true) }]),
               {
                 label: 'Edit in Play',
-                icon: 'create-outline',
+                icon: 'edit',
                 onPress: () => {
                   onClose();
                   openPlay(saved ? { mixId: saved.id } : { draft });
