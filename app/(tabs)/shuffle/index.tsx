@@ -222,6 +222,8 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, init
   // The tray's height, which the divider drags directly (no re-render per
   // frame), and settles to `rows`' height; tracked for measuring the pot.
   const tray = useRef(new Animated.Value(trayHeight(rows))).current;
+  /** How far the divider has pulled the tag list down past the pot's largest size. */
+  const pull = useRef(new Animated.Value(0)).current;
   const trayNow = useRef(trayHeight(rows));
   useEffect(() => {
     const id = tray.addListener(({ value }) => {
@@ -457,12 +459,15 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, init
                 opacity: reveal.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0, 0, 1] }),
                 transform: [
                   { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [RISE, 0] }) },
+                  // Pulled down past the pot's largest size, to fold.
+                  { translateY: pull },
                 ],
               },
             ]}
           >
             <FoldHandle
               onFold={fold}
+              pull={pull}
               rows={rows}
               minRows={MIN_POT_ROWS}
               maxRows={maxPotRows}

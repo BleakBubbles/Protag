@@ -13,6 +13,9 @@ const DRAG = 32;
 const FLICK = 0.4;
 /** How much of the finger's travel the dragged thing follows: a little weight to it. */
 const FOLLOW = 0.5;
+/** Pulled this far past the pot's largest size (or flicked down there), letting go folds the tags. */
+const FOLD_PULL = 80;
+const FOLD_FLICK = 0.5;
 
 /**
  * Lets something be dragged by the finger "somewhat": `offset` follows a
@@ -54,14 +57,17 @@ export function useDragToAct({
  * The handle between the pot and the tag list: a divider. Drag it and the
  * pot's tray follows the finger, giving the pot more rows of tiles or the
  * tags more room; let go and it settles on the nearest whole row, with a tick
- * at each row on the way. Tap it to fold the tags away. (Dragging only ever
- * resizes, so a resize can never fold by accident.) In its own strip, outside
- * the scrolling list, so the drag is never mistaken for a scroll; its touch
- * area reaches well past the bar.
+ * at each row on the way. Keep pulling down once the pot is as big as it gets
+ * and the tag list itself slides away with the finger: let go far enough on
+ * (a firmer tick says where) and it folds, else it springs back. A plain
+ * resize can never fold, since folding only starts past the largest size.
+ * Tap it to fold, too. In its own strip, outside the scrolling list, so the
+ * drag is never mistaken for a scroll; its touch area reaches well past the bar.
  */
 export function FoldHandle({
   onFold,
   tray,
+  pull,
   rows,
   minRows,
   maxRows,
@@ -70,6 +76,8 @@ export function FoldHandle({
   onFold: () => void;
   /** The tray's height, which the drag moves directly. */
   tray: Animated.Value;
+  /** How far the tag list has been pulled down, past the pot's largest size. */
+  pull: Animated.Value;
   rows: number;
   minRows: number;
   maxRows: number;
@@ -78,7 +86,7 @@ export function FoldHandle({
 }) {
   const latest = useRef({ onFold, rows, minRows, maxRows, onSettle });
   latest.current = { onFold, rows, minRows, maxRows, onSettle };
-  const drag = useRef({ from: 0, tick: rows });
+  const drag = useRef({ from: 0, tick: rows, folding: false });
 
   const nearest = (height: number) => {
     const { minRows: low, maxRows: high } = latest.current;
@@ -99,25 +107,46 @@ export function FoldHandle({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
         // From where the tray actually is: it may still be settling from the last drag.
-        drag.current = { from: trayHeight(latest.current.rows), tick: latest.current.rows };
+        drag.current = { from: trayHeight(latest.current.rows), tick: latest.current.rows, folding: false };
         tray.stopAnimation((height) => {
-          drag.current = { from: height, tick: nearest(height) };
+          drag.current = { from: height, tick: nearest(height), folding: false };
         });
       },
       onPanResponderMove: (_, { dy }) => {
         const { minRows: low, maxRows: high } = latest.current;
-        const height = Math.min(trayHeight(high), Math.max(trayHeight(low), drag.current.from + dy));
+        const wanted = drag.current.from + dy;
+        const height = Math.min(trayHeight(high), Math.max(trayHeight(low), wanted));
         tray.setValue(height);
+        // Past the largest size, the tag list follows the finger down instead.
+        const past = Math.max(0, wanted - trayHeight(high));
+        pull.setValue(past);
+        const folding = past > FOLD_PULL;
+        if (folding !== drag.current.folding) {
+          drag.current.folding = folding;
+          if (folding) performAndroidHapticsAsync(AndroidHaptics.Confirm).catch(() => {});
+        }
         const row = nearest(height);
         if (row === drag.current.tick) return;
         drag.current.tick = row;
         performAndroidHapticsAsync(AndroidHaptics.Segment_Tick).catch(() => {});
       },
-      onPanResponderRelease: (_, { dx, dy }) => {
+      onPanResponderRelease: (_, { dx, dy, vy }) => {
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return latest.current.onFold();
+        const past = drag.current.from + dy - trayHeight(latest.current.maxRows);
+        if (past > FOLD_PULL || (past > 0 && vy > FOLD_FLICK)) {
+          latest.current.onFold();
+          // The list fades as it folds; it and the pot are back as they were for next time
+          // (passing through the largest size on the way isn't choosing it).
+          Animated.timing(pull, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+          return settle(nearest(drag.current.from));
+        }
+        Animated.spring(pull, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
         settle(nearest(drag.current.from + dy));
       },
-      onPanResponderTerminate: () => settle(latest.current.rows),
+      onPanResponderTerminate: () => {
+        Animated.spring(pull, { toValue: 0, useNativeDriver: true }).start();
+        settle(latest.current.rows);
+      },
     })
   ).current.panHandlers;
 
