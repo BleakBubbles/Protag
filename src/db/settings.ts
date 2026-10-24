@@ -18,6 +18,8 @@ export const SettingKey = {
   lastScanAt: 'library.lastScanAt',
   /** JSON `ShuffleSorts`: how each Shuffle tab section is ordered (library/sorts.ts). */
   shuffleSorts: 'shuffle.sorts',
+  /** How many rows of tiles the open pot shows, as last set with its divider. */
+  potRows: 'shuffle.potRows',
 } as const;
 
 export type SettingKey = (typeof SettingKey)[keyof typeof SettingKey];

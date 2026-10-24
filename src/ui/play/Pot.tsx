@@ -43,8 +43,10 @@ const RING = RING_GAP + RING_WIDTH;
  * with the tile columns.
  */
 const INSET = RING + spacing.sm - 2;
-/** Two rows of tiles; more scroll. Fixed, so the pot never changes height. */
-const CONTENT = TILE * 2 + GAP + INSET * 2;
+/** One more row of tiles in the tray: what the divider below the pot moves it by. */
+export const POT_ROW = TILE + GAP;
+/** The tray's height for `rows` rows of tiles; more scroll. Set by the divider, otherwise fixed. */
+export const trayHeight = (rows: number) => TILE * rows + GAP * (rows - 1) + INSET * 2;
 const ACTIONS = 56;
 /** The gap holding the × between a combination's tags. */
 const SYMBOL = 18;
@@ -97,6 +99,8 @@ export interface PotProps {
   onClear: () => void;
   onTapIngredient: (index: number) => void;
   onTapExcluded: (ref: Ref) => void;
+  /** How many rows of tiles the tray shows (the divider below sets it). */
+  rows?: number;
 }
 
 /**
@@ -124,6 +128,7 @@ export function Pot({
   onClear,
   onTapIngredient,
   onTapExcluded,
+  rows = 2,
 }: PotProps) {
   const { active, hover } = usePotDragState();
   const screen = useWindowDimensions();
@@ -142,7 +147,7 @@ export function Pot({
   /** Something held over the pot that would land in it: the tray lights up where it will. */
   const landing = pot.hovered && active?.kind !== 'ingredient';
   const keys = [...draft.ingredients.map(ingredientKey), ...draft.exclude.map(excludedKey)];
-  const shown = useShowNewTiles(keys);
+  const shown = useShowNewTiles(keys, trayHeight(rows));
 
   /** Each ingredient as a screen reader says it ("kpop and chill"), for naming what to combine with. */
   const spoken = draft.ingredients.map((tags) => tags.map((ref) => look(ref).name).join(' and '));
@@ -180,7 +185,7 @@ export function Pot({
       </View>
 
       {/* The tray the tiles sit in: dashed while empty, a soft dish once filled. */}
-      <View style={[styles.content, !empty && styles.tray, !empty && landing && styles.trayLanding]}>
+      <View style={[{ height: trayHeight(rows) }, !empty && styles.tray, !empty && landing && styles.trayLanding]}>
         {!empty ? (
           <FadeIn>
             <ScrollView
@@ -350,7 +355,7 @@ const excludedKey = (ref: Ref) => `x${ref}`;
  * Only additions: the tiles a merge, removal or keep-out touches are ones
  * already in view. Filling the pot all at once (opening a mix) stays at the top.
  */
-function useShowNewTiles(keys: readonly string[]) {
+function useShowNewTiles(keys: readonly string[], height: number) {
   const ref = useRef<ScrollViewInstance>(null);
   const scrollY = useRef(0);
   const known = useRef<ReadonlySet<string>>(new Set(keys));
@@ -374,7 +379,7 @@ function useShowNewTiles(keys: readonly string[]) {
       const { y, height } = e.nativeEvent.layout;
       const top = y - INSET;
       const bottom = y + height + INSET;
-      if (bottom > scrollY.current + CONTENT) ref.current?.scrollTo({ y: bottom - CONTENT, animated: true });
+      if (bottom > scrollY.current + height) ref.current?.scrollTo({ y: bottom - height, animated: true });
       else if (top < scrollY.current) ref.current?.scrollTo({ y: top, animated: true });
     },
   };
@@ -681,9 +686,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-  },
-  content: {
-    height: CONTENT,
   },
   fill: {
     flex: 1,

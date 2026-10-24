@@ -53,7 +53,7 @@ import { plural } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { MusicPicker } from '@/ui/play/MusicPicker';
 import { PictureTile, SeeAllTile } from '@/ui/play/PictureTile';
-import { ingredientKey, Pot, type Look, type ShuffleCount } from '@/ui/play/Pot';
+import { ingredientKey, Pot, POT_ROW, trayHeight, type Look, type ShuffleCount } from '@/ui/play/Pot';
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
 import { FoldHandle } from '@/ui/play/FoldHandle';
 import { COVER_ART, PotCover } from '@/ui/play/PotCover';
@@ -74,6 +74,10 @@ const NO_CHILDREN = new Map<number | null, TagWithCounts[]>();
 
 /** The smallest the cover's artwork gets on a short screen, and the room kept around the cover. */
 const MIN_ART = 96;
+/** The open pot's rows of tiles: two to start, at least one, and the tags always keep this much room. */
+const POT_ROWS = 2;
+const MIN_POT_ROWS = 1;
+const MIN_BROWSER = 200;
 const COVER_MARGIN = spacing.lg;
 
 /** How long the cover takes to become the pot, and back. */
@@ -101,7 +105,7 @@ export default function ShuffleScreen() {
   );
 
   const { data } = useLibraryQuery(async (db) => {
-    const [songs, tags, descendants, mixes, artists, albums, tagPlays, sorts] = await Promise.all([
+    const [songs, tags, descendants, mixes, artists, albums, tagPlays, sorts, potRows] = await Promise.all([
       countSongs(db),
       listAllTagsWithCounts(db),
       buildDescendantMap(db),
@@ -110,6 +114,7 @@ export default function ShuffleScreen() {
       listAlbums(db),
       listTagPlays(db),
       getSetting(db, SettingKey.shuffleSorts),
+      getSetting(db, SettingKey.potRows),
     ]);
     // A tag with nothing under it can't be shuffled, so the builder leaves it out.
     return {
@@ -120,6 +125,7 @@ export default function ShuffleScreen() {
       music: { artists, albums },
       tagPlays,
       initialSorts: parseSorts(sorts),
+      initialRows: Number(potRows) >= MIN_POT_ROWS ? Number(potRows) : POT_ROWS,
     };
   }, []);
 
@@ -156,10 +162,12 @@ type BuilderProps = {
   tagPlays: ReadonlyMap<number, number>;
   /** How each section was last sorted; changes here are kept. */
   initialSorts: ShuffleSorts;
+  /** The open pot's rows of tiles, as last set with its divider. */
+  initialRows: number;
   openRequest: OpenRequest;
 };
 
-function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, openRequest }: BuilderProps) {
+function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, initialRows, openRequest }: BuilderProps) {
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const playQuery = usePlayQuery();
@@ -196,10 +204,22 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
       Animated.timing(grow, { ...timing, useNativeDriver: false }),
     ]).start();
   }, [browsing, reveal, grow]);
-  /** How far the fold handle has dragged the browser down. */
-  const pull = useRef(new Animated.Value(0)).current;
   /** The open pot's height, for the frame to grow to. */
   const [potHeight, setPotHeight] = useState(0);
+
+  // The divider between the pot and the tags: how many rows of tiles the pot
+  // shows, kept between visits. The most it can give the pot leaves the tags
+  // `MIN_BROWSER` of the screen.
+  const [potRows, setPotRows] = useState(initialRows);
+  /** The pot's height apart from its tray, which doesn't change with the rows. */
+  const [potChrome, setPotChrome] = useState(0);
+  const maxPotRows = Math.max(
+    MIN_POT_ROWS,
+    Math.floor((room - potChrome - MIN_BROWSER - trayHeight(1) + POT_ROW) / POT_ROW)
+  );
+  const rows = room > 0 && potChrome > 0 ? Math.min(potRows, maxPotRows) : potRows;
+  const drawnRows = useRef(rows);
+  drawnRows.current = rows;
   const fold = useCallback(() => {
     Keyboard.dismiss();
     setSearch('');
@@ -388,7 +408,11 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
         <Animated.View
           pointerEvents={browsing ? 'auto' : 'none'}
           importantForAccessibility={browsing ? 'auto' : 'no-hide-descendants'}
-          onLayout={(e) => setPotHeight(e.nativeEvent.layout.height)}
+          onLayout={(e) => {
+            const { height } = e.nativeEvent.layout;
+            setPotHeight(height);
+            setPotChrome(height - trayHeight(drawnRows.current));
+          }}
           style={[styles.potSlot, { opacity: reveal.interpolate({ inputRange: [0, 0.55, 1], outputRange: [0, 0, 1] }) }]}
         >
           <Pot
@@ -407,6 +431,7 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
             onClear={() => setDraft(EMPTY_DRAFT)}
             onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
             onTapExcluded={(ref) => setDraft(tapExcluded(current, ref))}
+            rows={rows}
           />
         </Animated.View>
 
@@ -421,13 +446,18 @@ function Builder({ tags, descendants, mixes, music, tagPlays, initialSorts, open
                 opacity: reveal.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0, 0, 1] }),
                 transform: [
                   { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [RISE, 0] }) },
-                  // Follows the fold handle while it's dragged.
-                  { translateY: pull },
                 ],
               },
             ]}
           >
-            <FoldHandle onFold={fold} offset={pull} />
+            <FoldHandle
+              onFold={fold}
+              rows={rows}
+              minRows={MIN_POT_ROWS}
+              maxRows={maxPotRows}
+              onRows={setPotRows}
+              onSettle={(settled) => setSetting(db, SettingKey.potRows, String(settled))}
+            />
             <ScrollView
               style={styles.screen}
               contentContainerStyle={styles.content}
