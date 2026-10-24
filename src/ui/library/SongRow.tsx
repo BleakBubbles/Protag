@@ -3,7 +3,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { TagRow as Tag } from '../../db/types';
-import { IconButton } from '../IconButton';
 import { Artwork, artworkRadius } from '../player/Artwork';
 import { TagChip } from '../TagChip';
 import { colors, font, iconSize, spacing } from '../theme';
@@ -35,10 +34,8 @@ export interface SongRowProps {
    * callback to every row and memo actually skips re-rendering unchanged rows.
    */
   onPress: (id: number) => void;
-  /** Starts a list's selection mode. */
+  /** Starts a list's selection mode, which is how songs are tagged from a list. */
   onLongPress?: (id: number) => void;
-  /** Shows a tag button on the right. Lists with their own way to tag leave it out. */
-  onEditTags?: (id: number) => void;
 }
 
 export const SongRow = memo(function SongRow({
@@ -52,7 +49,6 @@ export const SongRow = memo(function SongRow({
   selected,
   onPress,
   onLongPress,
-  onEditTags,
 }: SongRowProps) {
   const hidden = tags.length - MAX_CHIPS;
 
@@ -70,7 +66,6 @@ export const SongRow = memo(function SongRow({
       accessibilityState={selecting ? { selected } : undefined}
       style={({ pressed }) => [
         styles.row,
-        !onEditTags && styles.rowWithoutButton,
         selected ? styles.selected : pressed && !selecting && styles.pressed,
       ]}
     >
@@ -101,14 +96,6 @@ export const SongRow = memo(function SongRow({
           {hidden > 0 && <Text style={styles.more}>+{hidden}</Text>}
         </View>
       </View>
-      {onEditTags && (
-        <IconButton
-          icon={tags.length > 0 ? 'tag-filled' : 'tag'}
-          label={`Edit tags for ${title}`}
-          color={tags.length > 0 ? colors.textDim : colors.textFaint}
-          onPress={() => onEditTags(id)}
-        />
-      )}
     </Pressable>
   );
 });
@@ -119,11 +106,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingLeft: spacing.lg,
-    paddingRight: spacing.sm,
-  },
-  rowWithoutButton: {
-    paddingRight: spacing.lg,
+    paddingHorizontal: spacing.lg,
   },
   pressed: {
     backgroundColor: colors.surface,

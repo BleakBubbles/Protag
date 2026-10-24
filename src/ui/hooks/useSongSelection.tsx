@@ -11,7 +11,9 @@ import { colors } from '../theme';
 /**
  * Selection mode for a list of songs (long-press a row to start): which songs
  * are picked, the header to show while picking, and opening the tag editor for
- * them. Used by tag pages and the Library's "Not tagged yet" songs.
+ * them. Used by every song list in the Library: tag pages, "Not tagged yet",
+ * the Songs view, and album and artist pages. Hold a song, then Tag…, is how
+ * songs are tagged from a list.
  *
  * - Long-press starts selecting; then taps toggle. Only the header's close
  *   button or back leaves selection mode: deselecting everything keeps it, so

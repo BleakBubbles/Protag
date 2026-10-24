@@ -36,10 +36,11 @@ export default function LibraryScreen() {
   const { data: songCount } = useLibraryQuery(countSongs, []);
   const scan = useLibraryScan();
   const [view, setView] = useState<LibraryView>('tags');
-  // Selecting "Not tagged yet" songs in the Tags view. It lives here because
-  // the header is this screen's; switching to Songs ends it.
+  // Selecting songs, in the Tags view ("Not tagged yet") or the Songs view. It
+  // lives here because the header is this screen's; switching views ends it.
   const [looseIds, setLooseIds] = useState<readonly number[]>();
-  const selection = useSongSelection(view === 'tags' ? looseIds : undefined);
+  const [songIds, setSongIds] = useState<readonly number[]>();
+  const selection = useSongSelection(view === 'tags' ? looseIds : view === 'songs' ? songIds : undefined);
   const switchView = useCallback(
     (next: LibraryView) => {
       selection.clear();
@@ -77,7 +78,7 @@ export default function LibraryScreen() {
         swipeEnabled={!selection.selecting}
         pages={[
           { value: 'tags', label: 'Tags', render: () => <TagsView selection={selection} onLooseSongs={setLooseIds} /> },
-          { value: 'songs', label: 'Songs', render: () => <SongsView /> },
+          { value: 'songs', label: 'Songs', render: () => <SongsView selection={selection} onSongs={setSongIds} /> },
           { value: 'artists', label: 'Artists', render: () => <ArtistsView /> },
           { value: 'albums', label: 'Albums', render: () => <AlbumsView /> },
         ]}

@@ -4,12 +4,14 @@ import { FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions,
 
 import type { SongRow as Song, TagRow } from '../../db/types';
 import { albumArtUri } from '../../library/assets';
-import { openEditTags, openSongTags, openTag } from '../../navigation';
+import { openEditTags, openTag } from '../../navigation';
 import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
 import { ARTIST_MODES } from '../../player/queue';
 import { Button } from '../../ui/Button';
 import { CardActions } from '../../ui/Card';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
+import { useSongSelection } from '../../ui/hooks/useSongSelection';
+import { SELECTION_BAR_HEIGHT, SelectionBar } from '../../ui/library/SelectionBar';
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { Artwork } from '../../ui/player/Artwork';
 import { useBackToPlayer } from '../../ui/player/BackToPlayer';
@@ -73,6 +75,9 @@ export function SongCollection({
   const { song: current } = useNowPlaying();
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
   const ids = useMemo(() => songs.map((s) => s.id), [songs]);
+  // Press and hold a song to start selecting; then Tag… tags them.
+  const selection = useSongSelection(ids);
+  const { selecting, selected, toggle } = selection;
   const size = Math.min(MAX_PICTURE, screen.width * 0.55);
 
   /** The tags on these songs, the most widely used first. */
@@ -96,12 +101,14 @@ export function SongCollection({
 
   return (
     <>
-      <Stack.Screen options={{ title: '', ...backToPlayer }} />
+      <Stack.Screen options={selecting ? selection.header : { title: '', ...backToPlayer }} />
       <FlatList
         style={styles.screen}
         data={songs}
         keyExtractor={(song) => String(song.id)}
         getItemLayout={getItemLayout}
+        extraData={selection.selection}
+        contentContainerStyle={selecting ? { paddingBottom: SELECTION_BAR_HEIGHT } : undefined}
         renderItem={({ item }) => (
           <SongRow
             id={item.id}
@@ -110,9 +117,11 @@ export function SongCollection({
             artworkUri={albumArtUri(item.album_id)}
             tags={tags.get(item.id) ?? NO_TAGS}
             active={current?.id === item.id}
+            selecting={selecting}
+            selected={selection.selection?.has(item.id) ?? false}
             // In order from it (an album), or shuffled by song starting with it (an artist).
-            onPress={(id) => play(id, !inOrder, false)}
-            onEditTags={openSongTags}
+            onPress={selecting ? toggle : (id) => play(id, !inOrder, false)}
+            onLongPress={toggle}
           />
         )}
         ListHeaderComponent={
@@ -175,6 +184,9 @@ export function SongCollection({
           </View>
         }
       />
+      {selecting && (
+        <SelectionBar disabled={selected.length === 0} actions={[{ label: 'Tag…', icon: 'tags', onPress: selection.editTags }]} />
+      )}
     </>
   );
 }
