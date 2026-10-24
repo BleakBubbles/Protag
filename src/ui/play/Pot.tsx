@@ -39,8 +39,7 @@ const RING_WIDTH = 2;
 const RING = RING_GAP + RING_WIDTH;
 /**
  * How far the tiles sit in from the tray's edge (room for a kept-out tile's
- * ring, and a margin). The buttons below are inset the same, so they line up
- * with the tile columns.
+ * ring, and a margin).
  */
 const INSET = RING + spacing.sm - 2;
 /** One more row of tiles in the tray: what the divider below the pot moves it by. */
@@ -257,8 +256,8 @@ export interface FinishButtonsProps {
 }
 
 /**
- * The two ways to finish: keep it, or hear it. Equal halves, lined up with the
- * pot's tile columns; Shuffle, the usual one, stands out by being filled. The
+ * The two ways to finish: keep it, or hear it. Equal halves, edge to edge with
+ * the pot's tray; Shuffle, the usual one, stands out by being filled. The
  * song count is in the line above, not on the button.
  */
 export function FinishButtons({ empty, editing, counted, onSave, onShuffle, children }: FinishButtonsProps) {
@@ -822,12 +821,11 @@ const styles = StyleSheet.create({
     color: colors.bg,
     opacity: 0.75,
   },
-  // The tiles' gap and inset, so each button sits exactly under a column.
+  // Edge to edge with the tray above, with the tiles' gap between the two.
   actions: {
     height: ACTIONS,
     flexDirection: 'row',
     gap: GAP,
-    paddingHorizontal: INSET,
   },
   // Squared off like the tiles and the empty well above, rather than pills.
   finish: {
