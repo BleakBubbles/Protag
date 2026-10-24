@@ -486,10 +486,13 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
               styles.below,
               styles.keyboard,
               {
-                // Hidden until it knows how far it has to rise.
-                opacity: below > 0 ? 1 : 0,
+                // Fully hidden while down, not just out of sight: dragging the divider grows this
+                // area at once, and the tags' resting place a moment later.
+                opacity: reveal.interpolate({ inputRange: [0, 0.001, 1], outputRange: [0, 1, 1] }),
                 transform: [
-                  { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [Math.max(below, 1), 0] }) },
+                  {
+                    translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [Math.max(below, room, 1), 0] }),
+                  },
                   // Pulled down past the pot's largest size, to fold; lifted by a nudge.
                   { translateY: pull },
                   { translateY: nudge },
@@ -654,8 +657,11 @@ const styles = StyleSheet.create({
   below: {
     ...StyleSheet.absoluteFill,
   },
-  // The tags cover the mixes as they rise, on the page's own colour.
+  // The tags cover the mixes as they rise, on the page's own colour; reaching
+  // past the bottom, so a nudge lifting them never shows the mixes beneath.
   keyboard: {
+    bottom: -NUDGE * 2,
+    paddingBottom: NUDGE * 2,
     backgroundColor: colors.bg,
   },
   // A picture row runs to the screen's edges, starting in line with the grid.
