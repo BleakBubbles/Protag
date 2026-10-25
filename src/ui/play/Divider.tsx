@@ -1,9 +1,9 @@
 import { AndroidHaptics, performAndroidHapticsAsync } from 'expo-haptics';
 import { useRef, useState } from 'react';
-import { Animated, PanResponder, StyleSheet, Text, View } from 'react-native';
+import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 
 import { feelHold, HOLD_MS } from '../haptics';
-import { colors, font, spacing } from '../theme';
+import { colors, spacing } from '../theme';
 import { POT_ROW, trayHeight } from './Pot';
 
 /** The strip it sits in: thin, so what's below barely moves for it. */
@@ -22,7 +22,7 @@ const RESET_AFTER_MS = 400;
 type Mode = 'undecided' | 'swipe' | 'resize';
 
 export interface DividerProps {
-  /** What a tap switches the area below to: "Tags" at rest, "Mixes" while building. */
+  /** What a tap switches the area below to ("Tags" at rest, "Mixes" while building), for screen readers. */
   label: string;
   /** A tap, or a swipe towards it: switch what's below. */
   onTap: () => void;
@@ -186,7 +186,6 @@ export function Divider({ label, onTap, tray, rows, minRows, maxRows, onSettle, 
       style={styles.strip}
     >
       <View style={[styles.bar, holding && styles.barHeld]} />
-      <Text style={styles.label}>{label}</Text>
     </View>
   );
 }
@@ -198,7 +197,6 @@ const styles = StyleSheet.create({
     minWidth: BAR * 3,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
   },
   bar: {
     width: BAR,
@@ -209,11 +207,5 @@ const styles = StyleSheet.create({
   // Picked up: brighter, so it's clear what the drag will do.
   barHeld: {
     backgroundColor: colors.textDim,
-  },
-  label: {
-    ...font.caption,
-    color: colors.textFaint,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
   },
 });
