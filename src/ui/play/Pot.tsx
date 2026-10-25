@@ -47,6 +47,10 @@ export const POT_ROW = TILE + GAP;
 /** The tray's height for `rows` rows of tiles; more scroll. Set by the divider, otherwise fixed. */
 export const trayHeight = (rows: number) => TILE * rows + GAP * (rows - 1) + INSET * 2;
 const ACTIONS = 56;
+/** The tray's edge: always there, only its colour changes, so lighting it never moves a tile. */
+const EDGE = 1.5;
+/** As long as the tags take to rise, so the pot lights up with them. */
+const LIGHT_MS = 260;
 /** The gap holding the × between a combination's tags. */
 const SYMBOL = 18;
 const BADGE = 18;
@@ -160,6 +164,17 @@ export function Pot({
   const landing = pot.hovered && active?.kind !== 'ingredient';
   const keys = [...draft.ingredients.map(ingredientKey), ...draft.exclude.map(excludedKey)];
   const shown = useShowNewTiles(keys, trayHeight(rows));
+  // Building (the tags are up): the edge lights up, so it's clear this is what's being made.
+  const building = !onOpen;
+  const lit = useRef(new Animated.Value(building ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.timing(lit, { toValue: building ? 1 : 0, duration: LIGHT_MS, useNativeDriver: false }).start();
+  }, [building, lit]);
+  // At rest the empty pot keeps its faint dashes and a filled one shows no edge.
+  const edgeColor = lit.interpolate({
+    inputRange: [0, 1],
+    outputRange: [empty ? colors.border : withAlpha(colors.textDim, 0), colors.textDim],
+  });
 
   /** Each ingredient as a screen reader says it ("kpop and chill"), for naming what to combine with. */
   const spoken = draft.ingredients.map((tags) => tags.map((ref) => look(ref).name).join(' and '));
@@ -196,8 +211,15 @@ export function Pot({
         </View>
       </View>
 
-      {/* The tray the tiles sit in: dashed while empty, a soft dish once filled. */}
-      <Animated.View style={[{ height: tray ?? trayHeight(rows) }, !empty && styles.tray, !empty && landing && styles.trayLanding]}>
+      {/* The tray the tiles sit in: dashed while empty, a soft dish once filled, its edge lit while building. */}
+      <Animated.View
+        style={[
+          styles.edge,
+          { height: tray ?? trayHeight(rows), borderColor: edgeColor, borderStyle: empty ? 'dashed' : 'solid' },
+          !empty && styles.tray,
+          landing && styles.landing,
+        ]}
+      >
         {!empty ? (
           <FadeIn>
             <ScrollView
@@ -238,7 +260,7 @@ export function Pot({
           <Pressable
             onPress={onOpen ?? onWellPress}
             accessibilityRole="button"
-            style={({ pressed }) => [styles.well, landing && styles.wellLanding, pressed && styles.dimmed]}
+            style={({ pressed }) => [styles.well, pressed && styles.dimmed]}
           >
             {onOpen && <Icon name="add" size={iconSize.md} color={colors.textDim} />}
             <Text style={styles.wellText}>{onOpen ? 'Add tags, artists or albums' : 'Tap your tags or drag them here'}</Text>
@@ -719,22 +741,18 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  edge: {
     borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: colors.border,
+    borderWidth: EDGE,
   },
   // A step up from the page, like the folded cover's card: somewhere for the tiles to sit.
   tray: {
-    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     overflow: 'hidden',
   },
   // Something held over the pot: a teal wash where it will land.
-  trayLanding: {
-    backgroundColor: colors.accentTint,
-  },
-  wellLanding: {
+  landing: {
     borderColor: colors.accentFg,
     backgroundColor: colors.accentTint,
   },
@@ -772,7 +790,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: GAP,
-    padding: INSET,
+    // INSET counts from the tray's outside, edge included.
+    padding: INSET - EDGE,
   },
   // A constant border that only changes colour: never added or removed (see TagTile's outline).
   tile: {
