@@ -4,8 +4,9 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
  * The development build is its own app ("ProTag Dev", `com.protag.app.dev`),
  * so it installs beside the real one instead of replacing it. Each keeps its
  * own library and tags. EAS's development profile sets `APP_VARIANT`; the
- * rest of the config is app.json. `APP_VARIANT=engine` is a third, for trying
- * a local release build of the engine branch beside both (temporary).
+ * rest of the config is app.json. `APP_VARIANT=engine` ("ProTag Engine") is a
+ * third, for trying a local release build of native changes on a phone beside
+ * both, without touching either (see NOTES.md, local tooling).
  */
 const VARIANTS = {
   development: { name: 'ProTag Dev', scheme: 'protag-dev', id: 'com.protag.app.dev' },
