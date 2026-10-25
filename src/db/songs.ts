@@ -112,14 +112,21 @@ export async function getSong(db: SQLiteDatabase, id: number): Promise<SongRow |
  * engine for a whole queue. One query however long the queue (no bound
  * parameter per id), and a song that's gone still holds its place.
  */
-export async function getSongUris(db: SQLiteDatabase, ids: readonly number[]): Promise<string[]> {
-  const rows = await db.getAllAsync<{ id: number; uri: string }>(
-    'SELECT id, uri FROM songs WHERE id IN (SELECT value FROM json_each(?))',
+/** What playing a song needs: where it is, and what the lock screen shows for it. */
+export type PlayableSong = Pick<SongRow, 'id' | 'uri' | 'title' | 'artist' | 'album' | 'album_id'>;
+
+/** The songs of a play order, in that order, from one query. */
+export async function getPlayableSongs(db: SQLiteDatabase, ids: readonly number[]): Promise<PlayableSong[]> {
+  const rows = await db.getAllAsync<PlayableSong>(
+    'SELECT id, uri, title, artist, album, album_id FROM songs WHERE id IN (SELECT value FROM json_each(?))',
     JSON.stringify(ids)
   );
-  const byId = new Map(rows.map((r) => [r.id, r.uri]));
-  // An unplayable placeholder keeps later songs at their indexes; playing it shows an error.
-  return ids.map((id) => byId.get(id) ?? `content://protag/missing/${id}`);
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  // An unplayable placeholder keeps later songs at their indexes; the player skips past it.
+  return ids.map(
+    (id) =>
+      byId.get(id) ?? { id, uri: `content://protag/missing/${id}`, title: 'Missing song', artist: null, album: null, album_id: null }
+  );
 }
 
 /** Every present song, by title. The Songs view loads them all and filters in memory. */

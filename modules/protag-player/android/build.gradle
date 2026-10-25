@@ -1,0 +1,21 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.protag'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.protagplayer"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  def media3 = "1.9.1"
+  implementation "androidx.media3:media3-exoplayer:$media3"
+  implementation "androidx.media3:media3-session:$media3"
+}

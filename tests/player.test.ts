@@ -2,9 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { freshDatabase, insertSong } from './helpers/db.ts';
-import { getSongUris } from '../src/db/songs.ts';
+import { getPlayableSongs } from '../src/db/songs.ts';
 import { addTagToSong, createTag } from '../src/db/tags.ts';
-import { artworkCacheKey, isNativeLoadableUrl } from '../src/player/artworkUrls.ts';
 import { albumGroups, queueForQuery } from '../src/player/sources.ts';
 import { MATCH_ALL } from '../src/query/types.ts';
 import { formatCount, formatDaysAgo, formatTime, plural } from '../src/ui/format.ts';
@@ -54,22 +53,6 @@ test('a query becomes a queue whose label reads like the query', async () => {
 
 // ---------------------------------------------------------------- lock-screen artwork
 
-test('only URLs the native side can parse are ever sent to the lock screen', () => {
-  // The bug: a content:// URI rejected the whole lock-screen registration.
-  assert.equal(isNativeLoadableUrl('content://media/external/audio/albumart/7'), false);
-  assert.equal(isNativeLoadableUrl('file:///data/user/0/com.protag.app/cache/art/7.img'), true);
-  assert.equal(isNativeLoadableUrl('https://example.com/cover.jpg'), true);
-  assert.equal(isNativeLoadableUrl(''), false);
-  assert.equal(isNativeLoadableUrl(null), false);
-});
-
-test('artwork is cached per album under a filesystem-safe key', () => {
-  assert.equal(artworkCacheKey('content://media/external/audio/albumart/7'), '7');
-  assert.equal(artworkCacheKey('content://media/external/audio/albumart/12?x=1'), '12');
-  assert.equal(artworkCacheKey('content://media/../weird:name'), 'weirdname');
-  assert.equal(artworkCacheKey('content://'), null, 'no shared fallback key');
-});
-
 test('days ago counts calendar days, not 24-hour spans', () => {
   const now = new Date(2026, 9, 8, 0, 30).getTime();
   assert.equal(formatDaysAgo(new Date(2026, 9, 8, 0, 5).getTime(), now), 'today');
@@ -78,12 +61,12 @@ test('days ago counts calendar days, not 24-hour spans', () => {
   assert.equal(formatDaysAgo(new Date(2026, 5, 1).getTime(), now), '4 months ago');
 });
 
-test('a queue’s URIs come back in queue order, each song holding its place', async () => {
+test('a queue’s songs come back in queue order, each song holding its place', async () => {
   const db = await freshDatabase();
   const a = await insertSong(db, 'A');
   const b = await insertSong(db, 'B');
-  const uris = await getSongUris(db as never, [b, 999, a, b]);
-  assert.deepEqual(uris, [
+  const songs = await getPlayableSongs(db as never, [b, 999, a, b]);
+  assert.deepEqual(songs.map((s) => s.uri), [
     'content://media/external/audio/media/B',
     'content://protag/missing/999',
     'content://media/external/audio/media/A',

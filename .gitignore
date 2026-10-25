@@ -46,3 +46,6 @@ NOTES.md
 /ios
 /android
 .scratch/
+
+# native module build output
+modules/*/android/build/

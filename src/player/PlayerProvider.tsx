@@ -10,12 +10,12 @@ import {
   type ReactNode,
 } from 'react';
 
-import { getSong, getSongUris, recordPlay } from '../db/songs';
+import { getPlayableSongs, getSong, recordPlay } from '../db/songs';
 import type { SongRow } from '../db/types';
 import { albumArtUri } from '../library/assets';
 import type { QueryDraft, TagQuery } from '../query/types';
-import type { EngineStatus, UseAudioEngine } from './engine';
-import { useExpoAudioEngine } from './expoAudioEngine';
+import type { EngineStatus, Track, UseAudioEngine } from './engine';
+import { useNativeEngine } from './nativeEngine';
 import {
   advance,
   createQueue,
@@ -35,7 +35,7 @@ import {
 import { albumGroups, queueForQuery } from './sources';
 
 /** The one line to change to swap audio engines. */
-const useEngine: UseAudioEngine = useExpoAudioEngine;
+const useEngine: UseAudioEngine = useNativeEngine;
 
 /** A play counts once this much has been heard (or half the song, if shorter). */
 const PLAY_COUNT_THRESHOLD_SEC = 30;
@@ -130,7 +130,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     onEnded: () => applyRef.current(advance(queueRef.current, 'ended')),
     // The lock screen, headphones, a song ending or repeat-all wrapping round
     // moved playback by itself; the queue follows.
-    onMoved: (index) => {
+    onMoved: (index, repeated) => {
+      // Repeat-one going round: the same song again, heard again.
+      if (repeated) playCounted.current = false;
       const next = jumpToIndex(queueRef.current, index);
       if (next === queueRef.current) return;
       setQueue(next);
@@ -144,7 +146,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const engineOrder = useRef<readonly number[] | null>(null);
   const orderToken = useRef(0);
 
-  /** Show the queue's current song, in the app and on the lock screen. */
+  /** Show the queue's current song in the app (the engine shows it everywhere else). */
   const showSong = useCallback(
     async (queue: QueueState) => {
       const id = currentId(queue);
@@ -158,29 +160,45 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setSong(row);
         playCounted.current = false;
       }
-      if (!row) return;
-      engineRef.current.setNowPlaying({
-        title: row.title,
-        artist: row.artist,
-        album: row.album,
-        artworkUri: albumArtUri(row.album_id),
-      });
     },
     [db]
   );
 
-  /** Hand the engine the queue's whole order, starting at its current song. */
+  /**
+   * Hand the engine the queue's whole order, starting at its current song.
+   * `keepPlaying`: it's the song already playing (shuffle changed), which
+   * plays on while the order is swapped around it.
+   */
   const loadOrder = useCallback(
-    async (queue: QueueState, options: { autoplay: boolean; positionSec?: number }) => {
+    async (queue: QueueState, options: { autoplay: boolean; keepPlaying?: boolean }) => {
       const token = ++orderToken.current;
-      const uris = await getSongUris(db, queue.order);
+      const tracks = (await getPlayableSongs(db, queue.order)).map(
+        (s): Track => ({ ...s, artworkUri: albumArtUri(s.album_id) })
+      );
       if (token !== orderToken.current) return;
       engineOrder.current = queue.order;
-      engineRef.current.setOrder(uris, queue.index, { ...options, repeat: queue.repeat });
+      // The queue as it stands, for `restore` to bring back (its index moves on without us).
+      const memo = JSON.stringify({ ...queue, index: undefined });
+      if (options.keepPlaying) engineRef.current.reorder(tracks, queue.index, memo);
+      else engineRef.current.setOrder(tracks, queue.index, { autoplay: options.autoplay, repeat: queue.repeat, memo });
       showSong(queue);
     },
     [db, showSong]
   );
+
+  // Playback outlives the app (swiped away mid-song): opening it again picks
+  // up the queue that's still playing.
+  useEffect(() => {
+    engineRef.current.restore().then((playing) => {
+      if (!playing || queueRef.current !== EMPTY_QUEUE) return;
+      const memo = JSON.parse(playing.memo) as Omit<QueueState, 'index'>;
+      if (playing.index < 0 || playing.index >= memo.order.length) return;
+      const queue: QueueState = { ...memo, index: playing.index, repeat: playing.repeat };
+      engineOrder.current = queue.order;
+      setQueue(queue);
+      showSong(queue);
+    });
+  }, [setQueue, showSong]);
 
   applyRef.current = ({ queue: next, action }) => {
     setQueue(next);
@@ -245,9 +263,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       seekTo: (seconds) => {
         engineRef.current.seekTo(seconds);
       },
-      // Off → songs → albums → off. A new order for the engine, picking up the
-      // same song where it was: the lock screen can only skip through an order
-      // it was given whole.
+      // Off → songs → albums → off. A new order for the engine around the
+      // song that's playing, which plays on.
       toggleShuffle: async () => {
         const queue = queueRef.current;
         const mode = nextShuffleMode(shuffleModeOf(queue), shuffleModesOf(queue.source));
@@ -257,8 +274,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (queueRef.current !== queue) return; // Something else changed the queue meanwhile.
         const next = setShuffleMode(queue, mode, { groups });
         setQueue(next);
-        const { playing, positionSec } = engineRef.current.status;
-        loadOrder(next, { autoplay: playing, positionSec });
+        loadOrder(next, { autoplay: engineRef.current.status.playing, keepPlaying: true });
       },
       cycleRepeat: () => {
         const next = cycleRepeatMode(queueRef.current);

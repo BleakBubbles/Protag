@@ -21,7 +21,6 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.READ_MEDIA_AUDIO"
@@ -32,13 +31,6 @@
     },
     "plugins": [
       "expo-router",
-      [
-        "expo-audio",
-        {
-          "enableBackgroundPlayback": true,
-          "recordAudioAndroid": false
-        }
-      ],
       "expo-sqlite",
       "expo-sharing",
       "expo-music-library",
