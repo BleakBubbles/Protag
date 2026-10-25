@@ -157,7 +157,7 @@ export function Pot({
   // The hint, kept as it was while it lingers after letting go.
   const hinting = useLinger(active !== null || empty, LINGER_MS);
   const lastHint = useRef('');
-  if (active !== null || empty) lastHint.current = hintFor(active, hover);
+  if (active !== null || empty) lastHint.current = hintFor(active, hover, !!onOpen);
   const hint = lastHint.current;
   const hintShown = useRef(new Animated.Value(hinting ? 1 : 0)).current;
   useEffect(() => {
@@ -342,7 +342,7 @@ function shuffleText(counted: ShuffleCount | null): { title: string; count: stri
 }
 
 /** The pot's top line while something's lifted (what letting go will do), or while it's empty (a tip). */
-function hintFor(active: PotItem | null, hover: string): string {
+function hintFor(active: PotItem | null, hover: string, resting: boolean): string {
   if (active) {
     if (hover.startsWith('i')) return 'Let go to combine: songs need both';
     if (hover === 'keepOut') return 'Let go to keep its songs out';
@@ -350,7 +350,9 @@ function hintFor(active: PotItem | null, hover: string): string {
     if (hover === 'pot') return active.kind === 'excluded' ? 'Let go to add it' : 'Drop it on another to combine';
     return 'Let go to take it out';
   }
-  // Empty and still: a tip on the one thing the well can't show, how tags combine.
+  // Empty at rest: what the pot is for. Combining only matters once the tags are up to drop.
+  if (resting) return 'Mix your tags into a shuffle';
+  // Empty and building: a tip on the one thing the well can't show, how tags combine.
   return 'Each tag adds songs · drop one on another for both';
 }
 
