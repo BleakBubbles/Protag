@@ -1,5 +1,6 @@
-import { usePathname } from 'expo-router';
-import { StyleSheet, Text, View, type GestureResponderHandlers } from 'react-native';
+import { useFocusEffect, usePathname } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { BackHandler, StyleSheet, Text, View, type GestureResponderHandlers } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { SongRow } from '@/db/types';
@@ -9,8 +10,9 @@ import { useNowPlaying, usePlaybackStatus, usePlayerActions } from '@/player/Pla
 import { shuffleModeOf, shuffleModesOf, type QueueState } from '@/player/queue';
 import { EmptyState } from '@/ui/EmptyState';
 import { IconButton } from '@/ui/IconButton';
-import { colors, font, spacing, touchTarget } from '@/ui/theme';
+import { colors, font, spacing } from '@/ui/theme';
 import { ArtworkSlot } from './ArtworkSlot';
+import { QueueList } from './QueueList';
 import { SeekBar } from './SeekBar';
 import { SongTagsRow } from './SongTagsRow';
 import { SourceLine } from './SourceLine';
@@ -57,6 +59,20 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
     open();
   };
 
+  // The queue shows where the artwork was; everything else stays put.
+  const [showQueue, setShowQueue] = useState(false);
+  // Back puts the artwork back before it closes the player.
+  useFocusEffect(
+    useCallback(() => {
+      if (!showQueue) return;
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        setShowQueue(false);
+        return true;
+      });
+      return () => sub.remove();
+    }, [showQueue])
+  );
+
   return (
     // Not a ScrollView: everything but the artwork has a fixed height, and the
     // artwork takes the rest, so the screen always fits exactly.
@@ -67,15 +83,21 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
         { paddingTop: insets.top + spacing.sm, paddingBottom: insets.bottom + spacing.xl },
       ]}
     >
-      <View style={styles.dragArea} {...dragHandlers}>
+      {/* Drag-to-close stays off the queue, which scrolls. */}
+      <View style={showQueue ? styles.topArea : styles.dragArea} {...dragHandlers}>
         <View style={styles.topRow}>
           <IconButton icon="chevron-down" label="Close player" onPress={onClose} />
           <SourceLine queue={queue} onClose={onClose} />
-          {/* Free for now (tagging moved under the title); it keeps the pill centred. */}
-          <View style={styles.topSpacer} />
+          <IconButton
+            icon="list"
+            label={showQueue ? 'Hide queue' : 'Show queue'}
+            active={showQueue}
+            onPress={() => setShowQueue((shown) => !shown)}
+          />
         </View>
-        <ArtworkSlot uri={albumArtUri(song.album_id)} />
+        {!showQueue && <ArtworkSlot uri={albumArtUri(song.album_id)} />}
       </View>
+      {showQueue && <QueueList queue={queue} />}
 
       <TrackInfo
         title={song.title}
@@ -119,13 +141,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.lg,
   },
+  topArea: {
+    alignSelf: 'stretch',
+  },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'stretch',
-  },
-  topSpacer: {
-    width: touchTarget,
   },
   error: {
     ...font.body,

@@ -19,6 +19,7 @@ import {
   setShuffle,
   upNext,
   queueSongs,
+  removeUpcoming,
 } from '../src/player/queue.ts';
 import { EMPTY_DRAFT } from '../src/query/types.ts';
 
@@ -250,4 +251,17 @@ test('shuffling while a queued song plays leads with it', () => {
 
 test('nothing is queued onto an empty queue', () => {
   assert.equal(queueSongs(EMPTY_QUEUE, [1], 'next').at, -1);
+});
+
+test('removing an upcoming song: a queued one just goes, one from the source leaves it for good', () => {
+  const q = queueSongs(createQueue([1, 2, 3, 4], { startId: 1 }), [10, 11], 'last').queue; // 1 10 11 2 3 4
+  const a = removeUpcoming(q, 1);
+  assert.deepEqual(a.order, [1, 11, 2, 3, 4]);
+  assert.equal(a.queuedEnd, 2);
+  assert.deepEqual(a.original, [1, 2, 3, 4]);
+  const b = removeUpcoming(a, 3);
+  assert.deepEqual(b.order, [1, 11, 2, 4]);
+  assert.deepEqual(b.original, [1, 2, 4]);
+  assert.deepEqual(setShuffleMode(b, 'songs', { random: seeded() }).order.slice(0, 2), [1, 11]);
+  assert.equal(removeUpcoming(b, 0), b, 'the current song stays');
 });

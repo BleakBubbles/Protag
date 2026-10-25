@@ -25,6 +25,7 @@ import {
   jumpTo as jumpToIndex,
   nextShuffleMode,
   queueSongs as queueSongsInto,
+  removeUpcoming as removeUpcomingAt,
   retreat,
   setShuffleMode,
   shuffleModesOf,
@@ -71,6 +72,8 @@ export interface PlayerActions {
    * after whatever's queued already. With nothing playing, they just play.
    */
   queueSongs(ids: readonly number[], where: 'next' | 'last'): void;
+  /** Take an upcoming song (by its place in the order) out of the queue. */
+  removeUpcoming(at: number): void;
 }
 
 export interface NowPlayingState {
@@ -305,9 +308,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         // Its order is the engine's, with these added: moves within it stay skips.
         engineOrder.current = next.order;
         const token = orderToken.current;
-        const [added, all] = await Promise.all([tracksOf(ids), tracksOf(next.order)]);
+        const added = await tracksOf(ids);
         if (token !== orderToken.current) return; // A new order was loaded meanwhile.
-        engineRef.current.insert(added, at, all, memoOf(next));
+        engineRef.current.insert(added, at, memoOf(next));
+      },
+      removeUpcoming(at) {
+        const next = removeUpcomingAt(queueRef.current, at);
+        if (next === queueRef.current) return;
+        setQueue(next);
+        engineOrder.current = next.order;
+        engineRef.current.remove(at, memoOf(next));
       },
       jumpTo(index) {
         const next = jumpToIndex(queueRef.current, index);

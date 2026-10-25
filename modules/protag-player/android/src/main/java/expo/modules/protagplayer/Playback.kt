@@ -79,13 +79,17 @@ object SavedQueue {
 
   class Saved(val memo: String, val tracks: List<Track>, val index: Int, val positionMs: Long, val repeat: Int)
 
-  fun saveOrder(context: Context, tracks: List<Track>, memo: String) {
+  /** The order the player now holds; call on the main thread after changing it. */
+  fun saveOrder(context: Context, player: Player, memo: String) {
     val list = JSONArray()
-    for (t in tracks) {
+    for (i in 0 until player.mediaItemCount) {
+      val item = player.getMediaItemAt(i)
+      val m = item.mediaMetadata
       list.put(
         JSONObject()
-          .put("id", t.id).put("uri", t.uri).put("title", t.title)
-          .put("artist", t.artist).put("album", t.album).put("artwork", t.artwork)
+          .put("id", item.mediaId).put("uri", item.localConfiguration?.uri?.toString())
+          .put("title", m.title?.toString()).put("artist", m.artist?.toString())
+          .put("album", m.albumTitle?.toString()).put("artwork", m.artworkUri?.toString())
       )
     }
     val text = JSONObject().put("memo", memo).put("tracks", list).toString()
@@ -118,7 +122,7 @@ object SavedQueue {
       Track().apply {
         id = o.getString("id")
         uri = o.getString("uri")
-        title = o.getString("title")
+        title = o.optString("title")
         artist = o.optString("artist").takeIf { o.has("artist") && !o.isNull("artist") }
         album = o.optString("album").takeIf { o.has("album") && !o.isNull("album") }
         artwork = o.optString("artwork").takeIf { o.has("artwork") && !o.isNull("artwork") }

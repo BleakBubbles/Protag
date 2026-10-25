@@ -49,9 +49,11 @@ export interface AudioEngine {
   reorder(tracks: readonly Track[], index: number, memo: string): void;
   /**
    * Songs added into the order at `at` (queued by the listener); what's
-   * playing plays on. `all` is the whole order afterwards.
+   * playing plays on.
    */
-  insert(tracks: readonly Track[], at: number, all: readonly Track[], memo: string): void;
+  insert(tracks: readonly Track[], at: number, memo: string): void;
+  /** An upcoming song (after the current one) taken out of the order. */
+  remove(at: number, memo: string): void;
   /**
    * What's already playing when the app starts: playback can outlive the app
    * (swiped away mid-song). The memo of the order, where it is, and repeat.

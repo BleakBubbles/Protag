@@ -279,6 +279,23 @@ export function queueSongs(
   return { queue: { ...queue, order, queuedEnd: end + ids.length }, at };
 }
 
+/**
+ * Take an upcoming song out of the queue (`at`, after the current one). A
+ * song the listener queued just goes; one from the source leaves `original`
+ * too, so turning shuffle off or on doesn't bring it back.
+ */
+export function removeUpcoming(queue: QueueState, at: number): QueueState {
+  if (at <= queue.index || at >= queue.order.length) return queue;
+  const queued = at < queue.queuedEnd;
+  const order = queue.order.filter((_, i) => i !== at);
+  let original = queue.original;
+  if (!queued) {
+    const i = original.indexOf(queue.order[at]);
+    if (i >= 0) original = original.filter((_, j) => j !== i);
+  }
+  return { ...queue, order, original, queuedEnd: queued ? queue.queuedEnd - 1 : queue.queuedEnd };
+}
+
 /** Shuffle on (songs) or off: what shuffling meant before albums. */
 export function setShuffle(queue: QueueState, on: boolean, options: ShuffleOptions = {}): QueueState {
   return setShuffleMode(queue, on ? 'songs' : 'off', options);

@@ -124,12 +124,12 @@ class ProTagPlayerModule : Module() {
     AsyncFunction("setQueue") { tracks: List<Track>, index: Int, positionMs: Double, autoplay: Boolean, repeat: String, memo: String ->
       val p = ready()
       Playback.memo = memo
-      SavedQueue.saveOrder(p.context(), tracks, memo)
       reported = index
       p.repeatMode = repeatMode(repeat)
       p.setMediaItems(tracks.map(::mediaItem), index, positionMs.toLong())
       p.prepare()
       p.playWhenReady = autoplay
+      SavedQueue.saveOrder(p.context(), p, memo)
       sendStatus()
     }.runOnQueue(Queues.MAIN)
 
@@ -141,7 +141,6 @@ class ProTagPlayerModule : Module() {
     AsyncFunction("reorder") { tracks: List<Track>, index: Int, memo: String ->
       val p = ready()
       Playback.memo = memo
-      SavedQueue.saveOrder(p.context(), tracks, memo)
       val current = p.currentMediaItemIndex
       reported = index
       if (p.mediaItemCount == 0 || p.currentMediaItem?.mediaId != tracks.getOrNull(index)?.id) {
@@ -155,16 +154,27 @@ class ProTagPlayerModule : Module() {
         p.addMediaItems(0, tracks.subList(0, index).map(::mediaItem))
         p.addMediaItems(tracks.subList(index + 1, tracks.size).map(::mediaItem))
       }
+      SavedQueue.saveOrder(p.context(), p, memo)
       sendStatus()
     }.runOnQueue(Queues.MAIN)
 
     /** Songs queued into the order at `at` (Play next, Add to queue); the song playing plays on. */
-    AsyncFunction("insert") { tracks: List<Track>, at: Int, all: List<Track>, memo: String ->
+    AsyncFunction("insert") { tracks: List<Track>, at: Int, memo: String ->
       val p = ready()
       Playback.memo = memo
-      SavedQueue.saveOrder(p.context(), all, memo)
       p.addMediaItems(at.coerceIn(0, p.mediaItemCount), tracks.map(::mediaItem))
       reported = p.currentMediaItemIndex
+      SavedQueue.saveOrder(p.context(), p, memo)
+      sendStatus()
+    }.runOnQueue(Queues.MAIN)
+
+    /** An upcoming song taken out of the order. */
+    AsyncFunction("remove") { at: Int, memo: String ->
+      val p = ready()
+      if (at <= p.currentMediaItemIndex || at >= p.mediaItemCount) return@AsyncFunction
+      Playback.memo = memo
+      p.removeMediaItem(at)
+      SavedQueue.saveOrder(p.context(), p, memo)
       sendStatus()
     }.runOnQueue(Queues.MAIN)
 
