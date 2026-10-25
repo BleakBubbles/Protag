@@ -209,11 +209,11 @@ export function Pot({
         </View>
       </View>
 
-      {/* The pot's dashed edge, which the tiles sit inside: faint at rest, lit while building. */}
+      {/* The pot's edge, which the tiles sit inside: dashed while empty, solid once filled; faint at rest, lit while building. */}
       <Animated.View
         style={[
           styles.edge,
-          { height: tray ?? trayHeight(rows), borderColor: edgeColor },
+          { height: tray ?? trayHeight(rows), borderColor: edgeColor, borderStyle: empty ? 'dashed' : 'solid' },
           landing && styles.landing,
         ]}
       >
@@ -745,7 +745,6 @@ const styles = StyleSheet.create({
   edge: {
     borderRadius: radius.lg,
     borderWidth: EDGE,
-    borderStyle: 'dashed',
     overflow: 'hidden',
   },
   // Something held over the pot: a teal wash where it will land.
