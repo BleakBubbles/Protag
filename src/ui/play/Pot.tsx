@@ -170,11 +170,9 @@ export function Pot({
   useEffect(() => {
     Animated.timing(lit, { toValue: building ? 1 : 0, duration: LIGHT_MS, useNativeDriver: false }).start();
   }, [building, lit]);
-  // At rest the empty pot keeps its faint dashes and a filled one shows no edge.
-  const edgeColor = lit.interpolate({
-    inputRange: [0, 1],
-    outputRange: [empty ? colors.border : withAlpha(colors.textDim, 0), colors.textDim],
-  });
+  const edgeColor = lit.interpolate({ inputRange: [0, 1], outputRange: [colors.border, colors.textDim] });
+  // The empty pot's words light up with its edge, to the same colour.
+  const wellColor = lit.interpolate({ inputRange: [0, 1], outputRange: [colors.textFaint, colors.textDim] });
 
   /** Each ingredient as a screen reader says it ("kpop and chill"), for naming what to combine with. */
   const spoken = draft.ingredients.map((tags) => tags.map((ref) => look(ref).name).join(' and '));
@@ -211,12 +209,11 @@ export function Pot({
         </View>
       </View>
 
-      {/* The tray the tiles sit in: dashed while empty, a soft dish once filled, its edge lit while building. */}
+      {/* The pot's dashed edge, which the tiles sit inside: faint at rest, lit while building. */}
       <Animated.View
         style={[
           styles.edge,
-          { height: tray ?? trayHeight(rows), borderColor: edgeColor, borderStyle: empty ? 'dashed' : 'solid' },
-          !empty && styles.tray,
+          { height: tray ?? trayHeight(rows), borderColor: edgeColor },
           landing && styles.landing,
         ]}
       >
@@ -263,7 +260,9 @@ export function Pot({
             style={({ pressed }) => [styles.well, pressed && styles.dimmed]}
           >
             {onOpen && <Icon name="add" size={iconSize.md} color={colors.textDim} />}
-            <Text style={styles.wellText}>{onOpen ? 'Add tags, artists or albums' : 'Tap your tags or drag them here'}</Text>
+            <Animated.Text style={[styles.wellText, { color: wellColor }]}>
+              {onOpen ? 'Add tags, artists or albums' : 'Tap your tags or drag them here'}
+            </Animated.Text>
           </Pressable>
         )}
       </Animated.View>
@@ -742,13 +741,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // No fill: the edge alone says where the tiles go. Clips them to its corners as they scroll.
   edge: {
     borderRadius: radius.lg,
     borderWidth: EDGE,
-  },
-  // A step up from the page, like the folded cover's card: somewhere for the tiles to sit.
-  tray: {
-    backgroundColor: colors.surface,
+    borderStyle: 'dashed',
     overflow: 'hidden',
   },
   // Something held over the pot: a teal wash where it will land.
@@ -758,7 +755,6 @@ const styles = StyleSheet.create({
   },
   wellText: {
     ...font.label,
-    color: colors.textFaint,
   },
   lifting: {
     opacity: 0.3,
