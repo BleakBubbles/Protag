@@ -18,13 +18,16 @@ export interface SectionHeadProps {
   children?: ReactNode;
   /** Keeps the row the search row's height, for the section that hosts it. */
   tall?: boolean;
+  /** Shown in place of the label, like a `Trail` while inside a tag. */
+  title?: ReactNode;
 }
 
 /** A Play tab section's label, with its order beside it as a quiet control. */
-export function SectionHead({ label, sort, onSort, children, tall }: SectionHeadProps) {
+export function SectionHead({ label, sort, onSort, children, tall, title }: SectionHeadProps) {
   return (
     <View style={[styles.head, tall && styles.tall]}>
-      <Text style={styles.label}>{label} ·</Text>
+      {title ?? <Text style={styles.label}>{label}</Text>}
+      <Text style={styles.label}>·</Text>
       <Pressable
         onPress={onSort}
         hitSlop={SLOP}
@@ -37,6 +40,44 @@ export function SectionHead({ label, sort, onSort, children, tall }: SectionHead
         <Ionicons name="swap-vertical" size={12} color={colors.textDim} />
       </Pressable>
       {children}
+    </View>
+  );
+}
+
+export interface TrailProps {
+  /** Where it starts: "Your tags". */
+  root: string;
+  /** The tags gone in to, outermost first; the last is where you are. */
+  path: readonly { id: number; name: string }[];
+  /** Go back out to one of them, or to the start (null). */
+  onGo: (id: number | null) => void;
+}
+
+/** Where you are among your tags, like "Your tags › kpop › generations": tap any but the last to go back out to it. */
+export function Trail({ root, path, onGo }: TrailProps) {
+  const crumbs = [{ id: null, name: root }, ...path];
+  return (
+    <View style={styles.trail}>
+      {crumbs.map((crumb, i) => {
+        const here = i === crumbs.length - 1;
+        return (
+          <View key={crumb.id ?? 'root'} style={[styles.crumb, here && styles.here]}>
+            {i > 0 && <Ionicons name="chevron-forward" size={10} color={colors.textFaint} />}
+            <Pressable
+              onPress={() => onGo(crumb.id)}
+              disabled={here}
+              hitSlop={SLOP}
+              accessibilityRole="button"
+              accessibilityLabel={here ? crumb.name : `Back to ${crumb.name}`}
+              style={({ pressed }) => [styles.crumb, pressed && styles.pressed]}
+            >
+              <Text style={[styles.label, here && styles.hereText]} numberOfLines={1}>
+                {crumb.name}
+              </Text>
+            </Pressable>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -96,6 +137,26 @@ const styles = StyleSheet.create({
   },
   tall: {
     height: SEARCH_HEIGHT,
+  },
+  // Long trails give way from the middle; where you are keeps its room.
+  trail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flexShrink: 1,
+  },
+  crumb: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flexShrink: 1,
+  },
+  here: {
+    flexShrink: 0,
+    maxWidth: '60%',
+  },
+  hereText: {
+    color: colors.text,
   },
   label: {
     ...font.caption,

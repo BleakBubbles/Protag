@@ -22,6 +22,8 @@ export const SettingKey = {
   potRows: 'shuffle.potRows',
   /** JSON `KeptPot`: what's in the pot (and the mix it was opened from), so it's there after a restart. */
   pot: 'shuffle.pot',
+  /** Id of the tag the Play tab's tags were last gone in to, to come back there; empty at the top. */
+  tagsAt: 'shuffle.tagsAt',
 } as const;
 
 export type SettingKey = (typeof SettingKey)[keyof typeof SettingKey];

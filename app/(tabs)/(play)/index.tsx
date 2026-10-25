@@ -60,7 +60,7 @@ import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
 import { Divider, DIVIDER_HEIGHT } from '@/ui/play/Divider';
 import { MixShelf } from '@/ui/play/MixShelf';
 import { PreviewSheet } from '@/ui/play/PreviewSheet';
-import { SearchButton, SearchRow, SectionHead } from '@/ui/play/SectionHead';
+import { SearchButton, SearchRow, SectionHead, Trail } from '@/ui/play/SectionHead';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
 import { PromptDialog } from '@/ui/PromptDialog';
@@ -71,8 +71,6 @@ const COVERS = 5;
 const COVER_SAMPLE = 60;
 /** How many artists and albums each picture row shows before "All". */
 const ROW = 12;
-/** Search results are one flat grid: no tag opens to show subtags. */
-const NO_CHILDREN = new Map<number | null, TagWithCounts[]>();
 
 /** The pot's rows of tiles: two to start, at least one, and the area below always keeps this much room. */
 const POT_ROWS = 2;
@@ -85,6 +83,9 @@ const RISE_MS = 260;
 const FLICK_FALL_MS = 180;
 /** How far the tags bob up inside their panel when the empty well is tapped while they're up. */
 const NUDGE = 12;
+/** Going in to a tag (or back out): its subtags slide in this far from the side they're coming from. */
+const SLIDE = 48;
+const SLIDE_MS = 200;
 
 /**
  * Play tab, where the app opens: the pot at the top, never moving, and below
@@ -107,7 +108,7 @@ export default function PlayScreen() {
   );
 
   const { data } = useLibraryQuery(async (db) => {
-    const [songs, allTags, descendants, mixes, artists, albums, tagPlays, sorts, potRows, pot] = await Promise.all([
+    const [songs, allTags, descendants, mixes, artists, albums, tagPlays, sorts, potRows, pot, tagsAt] = await Promise.all([
       countSongs(db),
       listAllTagsWithCounts(db),
       buildDescendantMap(db),
@@ -118,6 +119,7 @@ export default function PlayScreen() {
       getSetting(db, SettingKey.shuffleSorts),
       getSetting(db, SettingKey.potRows),
       getSetting(db, SettingKey.pot),
+      getSetting(db, SettingKey.tagsAt),
     ]);
     const mixArt = await loadMixArt(db, mixes, new Set(allTags.map((t) => t.id)), descendants);
     // A tag with nothing under it can't be shuffled, so the builder leaves it out.
@@ -132,6 +134,7 @@ export default function PlayScreen() {
       initialSorts: parseSorts(sorts),
       initialRows: Number(potRows) >= MIN_POT_ROWS ? Number(potRows) : POT_ROWS,
       initialPot: parseKeptPot(pot),
+      initialAt: tagsAt ? Number(tagsAt) : null,
     };
   }, []);
 
@@ -174,6 +177,8 @@ type BuilderProps = {
   initialRows: number;
   /** The pot as it was left, last time. */
   initialPot: KeptPot;
+  /** The tag the tags were last gone in to. */
+  initialAt: number | null;
   openRequest: OpenRequest;
 };
 
@@ -187,13 +192,13 @@ function Builder({
   initialSorts,
   initialRows,
   initialPot,
+  initialAt,
   openRequest,
 }: BuilderProps) {
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const playQuery = usePlayQuery();
   const [draft, setDraft] = useState<QueryDraft>(initialPot.draft);
-  const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
   /** The mix opened for editing, by id, so a rename elsewhere doesn't lose it. */
   const [editingId, setEditingId] = useState<number | null>(initialPot.editing);
   const editingMix = mixes.find((m) => m.id === editingId) ?? null;
@@ -266,17 +271,6 @@ function Builder({
     setSearching(false);
     setBrowsing(false);
   }, []);
-  // Back folds the browser before it leaves the tab.
-  useFocusEffect(
-    useCallback(() => {
-      if (!browsing) return;
-      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        fold();
-        return true;
-      });
-      return () => sub.remove();
-    }, [browsing, fold])
-  );
 
   // Everything an ingredient can be, by ref: its name, a tag's colour, an artist's or album's picture.
   const tagIds = useMemo(() => new Set(tags.map((t) => t.id)), [tags]);
@@ -316,6 +310,8 @@ function Builder({
     for (const tag of sortTags(tags, sorts.tags, tagPlays)) map.set(tag.parent_id, [...(map.get(tag.parent_id) ?? []), tag]);
     return map;
   }, [tags, sorts.tags, tagPlays]);
+  const subtagsOf = useCallback((id: number) => children.get(id)?.length ?? 0, [children]);
+  const byId = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags]);
 
   // Search: one field for every section. While it has text, tags show as one
   // flat grid from every level, and the picture rows draw on everyone, not
@@ -339,6 +335,46 @@ function Builder({
   const parentName = useCallback(
     (tag: TagWithCounts) => (tag.parent_id === null ? undefined : names.get(tag.parent_id)),
     [names]
+  );
+  // The tags show one level at a time: the top, or the subtags of the tag
+  // gone in to (`at`), kept between visits. A tag that's since gone (deleted,
+  // emptied) puts you back at the top.
+  const [at, setAt] = useState(initialAt);
+  const place = at !== null && byId.has(at) ? at : null;
+  const trail = useMemo(() => {
+    const path: { id: number; name: string }[] = [];
+    let tag = place === null ? undefined : byId.get(place);
+    while (tag) {
+      path.unshift({ id: tag.id, name: tag.name });
+      tag = tag.parent_id === null ? undefined : byId.get(tag.parent_id);
+    }
+    return path;
+  }, [place, byId]);
+  // In from the right going deeper, from the left coming back out.
+  const slide = useRef(new Animated.Value(0)).current;
+  const goTo = useCallback(
+    (id: number | null) => {
+      // Anywhere but back out to a tag on the trail is further in.
+      const deeper = id !== null && !trail.some((crumb) => crumb.id === id);
+      setAt(id);
+      setSetting(db, SettingKey.tagsAt, id === null ? '' : String(id)).catch(() => {});
+      tagList.current?.scrollTo({ y: 0, animated: false });
+      slide.setValue(deeper ? 1 : -1);
+      Animated.timing(slide, { toValue: 0, duration: SLIDE_MS, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    },
+    [db, trail, slide]
+  );
+  // Back goes out of a tag a level at a time, then folds the browser before it leaves the tab.
+  useFocusEffect(
+    useCallback(() => {
+      if (!browsing) return;
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (place !== null && !searching) goTo(byId.get(place)?.parent_id ?? null);
+        else fold();
+        return true;
+      });
+      return () => sub.remove();
+    }, [browsing, fold, place, searching, goTo, byId])
   );
   const artists = found?.artists ?? music.artists;
   const albums = found?.albums ?? music.albums;
@@ -417,16 +453,6 @@ function Builder({
     if (!potEmpty) setCleared(null);
   }, [potEmpty]);
 
-  const toggleExpanded = useCallback(
-    (id: number) =>
-      setExpanded((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        return next;
-      }),
-    []
-  );
   const choiceOf = useCallback((ref: Ref) => tagChoice(current, ref), [current]);
   // Pot changes apply to the pruned draft: it's what's on screen, so its indices are the ones tapped.
   const tap = useCallback((ref: Ref) => setDraft(tapTag(current, ref)), [current]);
@@ -575,6 +601,7 @@ function Builder({
                     <SectionHead
                       tall
                       label="Your tags"
+                      title={trail.length > 0 ? <Trail root="Your tags" path={trail} onGo={goTo} /> : undefined}
                       sort={SORT_LABEL[sorts.tags]}
                       onSort={() => changeSorts({ ...sorts, tags: nextTagSort(sorts.tags) })}
                     >
@@ -585,11 +612,14 @@ function Builder({
                     found.tags.length > 0 ? (
                       <TagGrid
                         tags={found.tags}
-                        childrenOf={NO_CHILDREN}
-                        expanded={expanded}
+                        subtagsOf={subtagsOf}
                         choiceOf={choiceOf}
                         onTap={tap}
-                        onToggleExpanded={toggleExpanded}
+                        onOpen={(id) => {
+                          // A search result's subtags: going in leaves the search.
+                          closeSearch();
+                          goTo(id);
+                        }}
                         width={screenWidth - spacing.lg * 2}
                         parentOf={parentName}
                       />
@@ -599,15 +629,21 @@ function Builder({
                   ) : tags.length === 0 ? (
                     <Text style={styles.hint}>Tag some songs in the Library to mix them here.</Text>
                   ) : (
-                    <TagGrid
-                      tags={children.get(null) ?? []}
-                      childrenOf={children}
-                      expanded={expanded}
-                      choiceOf={choiceOf}
-                      onTap={tap}
-                      onToggleExpanded={toggleExpanded}
-                      width={screenWidth - spacing.lg * 2}
-                    />
+                    <Animated.View
+                      style={{
+                        opacity: slide.interpolate({ inputRange: [-1, 0, 1], outputRange: [0, 1, 0] }),
+                        transform: [{ translateX: slide.interpolate({ inputRange: [-1, 1], outputRange: [-SLIDE, SLIDE] }) }],
+                      }}
+                    >
+                      <TagGrid
+                        tags={children.get(place) ?? []}
+                        subtagsOf={subtagsOf}
+                        choiceOf={choiceOf}
+                        onTap={tap}
+                        onOpen={goTo}
+                        width={screenWidth - spacing.lg * 2}
+                      />
+                    </Animated.View>
                   )}
                 </View>
 

@@ -8,6 +8,8 @@ import { useDraggable, usePotDrop } from './PotDrag';
 
 export const TAG_TILE_HEIGHT = 64;
 const BADGE = 20;
+/** The strip down a tile's right edge that opens its subtags. */
+const STRIP = 40;
 /** How strongly each state shows the tag's colour (1 = solid). Kept out is still part of the mix, so it's solid too. */
 const WASH: Record<TagChoice, number> = { include: 1, off: 0.5, exclude: 1 };
 
@@ -48,9 +50,9 @@ export interface TagTileProps {
   choice: TagChoice;
   width: number;
   onPress: () => void;
-  /** Present when the tag has subtags: an arrow that reveals them. */
-  expanded?: boolean;
-  onToggleExpanded?: () => void;
+  /** How many subtags it has; with `onOpen`, a strip on its right edge that goes in to them. */
+  subtags?: number;
+  onOpen?: () => void;
 }
 
 /**
@@ -60,8 +62,10 @@ export interface TagTileProps {
  * off is a soft wash; anything in the mix is full colour with a ring around
  * it, white with a check when it's in, red with a minus when it's kept out.
  * The ring sits just outside the tile, so it shows against any tag colour.
+ * A tag with subtags has a strip down its right edge, with how many and an
+ * arrow, that goes in to them; the rest of the tile still drops it in the pot.
  */
-export function TagTile({ tagId, name, parent, color, songCount, choice, width, onPress, expanded, onToggleExpanded }: TagTileProps) {
+export function TagTile({ tagId, name, parent, color, songCount, choice, width, onPress, subtags, onOpen }: TagTileProps) {
   const hue = tagColor(color);
   const included = choice === 'include';
   const excluded = choice === 'exclude';
@@ -76,6 +80,7 @@ export function TagTile({ tagId, name, parent, color, songCount, choice, width, 
   const drop = usePotDrop();
   const shown = pressed ? AFTER_TAP[choice] : choice;
   const text = shown === 'off' ? colors.text : colors.bg;
+  const opens = onOpen !== undefined && (subtags ?? 0) > 0;
 
   return (
     <View style={[styles.tile, { width }, lifting && styles.lifting]}>
@@ -94,7 +99,7 @@ export function TagTile({ tagId, name, parent, color, songCount, choice, width, 
           drop({ kind: 'tile', ref: tagId }, { kind: 'keepOut' });
           AccessibilityInfo.announceForAccessibility(`${name} kept out`);
         }}
-        style={[styles.main, { backgroundColor: withAlpha(hue, WASH[shown]) }]}
+        style={[styles.main, opens && styles.mainOpens, { backgroundColor: withAlpha(hue, WASH[shown]) }]}
       >
         <Text style={[styles.name, { color: text }]} numberOfLines={1}>
           {parent && <Text style={styles.parent}>{parent} › </Text>}
@@ -112,26 +117,23 @@ export function TagTile({ tagId, name, parent, color, songCount, choice, width, 
 
       {choice !== 'off' && (
         <View
-          style={[styles.badge, { backgroundColor: included ? colors.bg : colors.exclude }]}
+          style={[styles.badge, opens && styles.badgeOpens, { backgroundColor: included ? colors.bg : colors.exclude }]}
           pointerEvents="none"
         >
           <Ionicons name={included ? 'checkmark' : 'remove'} size={iconSize.sm - 6} color={included ? hue : colors.bg} />
         </View>
       )}
 
-      {onToggleExpanded && (
+      {opens && (
         <Pressable
-          onPress={onToggleExpanded}
-          hitSlop={10}
+          onPress={onOpen}
           accessibilityRole="button"
-          accessibilityLabel={expanded ? `Hide subtags of ${name}` : `Show subtags of ${name}`}
-          style={styles.expand}
+          accessibilityLabel={`Open ${name}: ${subtags} ${subtags === 1 ? 'subtag' : 'subtags'}`}
+          style={({ pressed }) => [styles.strip, pressed && styles.stripPressed]}
         >
-          <Ionicons
-            name={expanded ? 'chevron-up' : 'chevron-down'}
-            size={iconSize.sm - 2}
-            color={choice === 'off' ? colors.textDim : colors.bg}
-          />
+          <View style={[styles.seam, { backgroundColor: shown === 'off' ? colors.textFaint : colors.bg }]} />
+          <Text style={[styles.count, { color: shown === 'off' ? colors.textDim : text }]}>{subtags}</Text>
+          <Ionicons name="chevron-forward" size={iconSize.sm - 4} color={shown === 'off' ? colors.textDim : text} />
         </Pressable>
       )}
     </View>
@@ -164,6 +166,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingRight: spacing.md + BADGE,
   },
+  // Clear of the strip, which sits over its right edge.
+  mainOpens: {
+    paddingRight: STRIP + spacing.sm + BADGE,
+  },
   name: {
     ...font.listTitle,
   },
@@ -183,10 +189,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  expand: {
+  badgeOpens: {
+    right: STRIP + spacing.sm,
+  },
+  strip: {
     position: 'absolute',
-    right: spacing.xs,
-    bottom: spacing.xs,
-    padding: spacing.xs,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: STRIP,
+    borderTopRightRadius: radius.md,
+    borderBottomRightRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stripPressed: {
+    backgroundColor: withAlpha(colors.bg, 0.2),
+  },
+  // A short line between the tile and its strip, so the strip reads as its own target.
+  seam: {
+    position: 'absolute',
+    left: 0,
+    top: spacing.md,
+    bottom: spacing.md,
+    width: 1,
+    opacity: 0.35,
   },
 });
