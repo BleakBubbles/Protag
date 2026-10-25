@@ -1,12 +1,10 @@
 package expo.modules.protagplayer
 
 import android.content.ComponentName
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -126,6 +124,7 @@ class ProTagPlayerModule : Module() {
     AsyncFunction("setQueue") { tracks: List<Track>, index: Int, positionMs: Double, autoplay: Boolean, repeat: String, memo: String ->
       val p = ready()
       Playback.memo = memo
+      SavedQueue.saveOrder(p.context(), tracks, memo)
       reported = index
       p.repeatMode = repeatMode(repeat)
       p.setMediaItems(tracks.map(::mediaItem), index, positionMs.toLong())
@@ -142,6 +141,7 @@ class ProTagPlayerModule : Module() {
     AsyncFunction("reorder") { tracks: List<Track>, index: Int, memo: String ->
       val p = ready()
       Playback.memo = memo
+      SavedQueue.saveOrder(p.context(), tracks, memo)
       val current = p.currentMediaItemIndex
       reported = index
       if (p.mediaItemCount == 0 || p.currentMediaItem?.mediaId != tracks.getOrNull(index)?.id) {
@@ -241,6 +241,8 @@ class ProTagPlayerModule : Module() {
     return p
   }
 
+  private fun ExoPlayer.context() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+
   private fun sendStatus() {
     val p = player ?: return
     val state = p.playbackState
@@ -265,22 +267,4 @@ class ProTagPlayerModule : Module() {
     "one" -> Player.REPEAT_MODE_ONE
     else -> Player.REPEAT_MODE_OFF
   }
-
-  private fun mediaItem(track: Track): MediaItem =
-    MediaItem.Builder()
-      .setMediaId(track.id)
-      .setUri(track.uri)
-      .setMediaMetadata(
-        MediaMetadata.Builder()
-          .setTitle(track.title)
-          .setArtist(track.artist)
-          .setAlbumTitle(track.album)
-          // Media3 loads content:// album art itself, for the notification, lock screen and car.
-          .setArtworkUri(track.artwork?.let(Uri::parse))
-          .setIsPlayable(true)
-          .setIsBrowsable(false)
-          .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-          .build()
-      )
-      .build()
 }
