@@ -48,7 +48,7 @@ export const POT_ROW = TILE + GAP;
 export const trayHeight = (rows: number) => TILE * rows + GAP * (rows - 1) + INSET * 2;
 const ACTIONS = 56;
 /** The tray's edge: always there, only its colour changes, so lighting it never moves a tile. */
-const EDGE = 1.5;
+const EDGE = 2;
 /** As long as the tags take to rise, so the pot lights up with them. */
 const LIGHT_MS = 260;
 /** The gap holding the × between a combination's tags. */
