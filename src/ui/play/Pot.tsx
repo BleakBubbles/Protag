@@ -100,6 +100,8 @@ export interface PotProps {
   onSave: () => void;
   onShuffle: () => void;
   onClear: () => void;
+  /** Once emptied with ×: brings back what was in it, from the same corner. */
+  onRestore?: () => void;
   onTapIngredient: (index: number) => void;
   onTapExcluded: (ref: Ref) => void;
   /** How many rows of tiles the tray shows (the divider below sets it). */
@@ -139,6 +141,7 @@ export function Pot({
   onSave,
   onShuffle,
   onClear,
+  onRestore,
   onTapIngredient,
   onTapExcluded,
   rows = 2,
@@ -203,8 +206,12 @@ export function Pot({
           </Animated.View>
         </View>
         <View style={styles.clearSlot}>
-          {!empty && (
+          {!empty ? (
             <IconButton icon="close" label="Empty the mix" size={iconSize.sm} color={colors.textDim} onPress={onClear} />
+          ) : (
+            onRestore && (
+              <IconButton icon="restore" label="Bring back the mix" size={iconSize.sm} color={colors.textDim} onPress={onRestore} />
+            )
           )}
         </View>
       </View>

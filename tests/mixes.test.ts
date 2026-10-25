@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { freshDatabase } from './helpers/db.ts';
-import { deleteMix, listMixes, MixError, parseDraft, renameMix, saveMix, saveMixAs } from '../src/db/mixes.ts';
-import { EMPTY_DRAFT, sameDraft } from '../src/query/types.ts';
+import { deleteMix, keepPot, listMixes, MixError, parseDraft, parseKeptPot, renameMix, saveMix, saveMixAs } from '../src/db/mixes.ts';
+import { EMPTY_DRAFT, sameDraft, type QueryDraft } from '../src/query/types.ts';
 
 const driving = { ...EMPTY_DRAFT, ingredients: [[1]], exclude: [2] };
 
@@ -64,6 +64,17 @@ test('a damaged stored draft loads as an empty mix rather than crashing', () => 
     ...EMPTY_DRAFT,
     ingredients: [['artist:IU', 2], ['album:9']],
     exclude: ['artist:SZA'],
+  });
+});
+
+test('the pot comes back as it was kept, and a damaged one comes back empty', () => {
+  const pot = { draft: { ...EMPTY_DRAFT, ingredients: [[1, 'artist:IU']], exclude: [3] } as QueryDraft, editing: 7 };
+  assert.deepEqual(parseKeptPot(keepPot(pot)), pot);
+  assert.deepEqual(parseKeptPot(null), { draft: EMPTY_DRAFT, editing: null });
+  assert.deepEqual(parseKeptPot('{oops'), { draft: EMPTY_DRAFT, editing: null });
+  assert.deepEqual(parseKeptPot('{"draft":{"ingredients":[[2]]},"editing":"x"}'), {
+    draft: { ...EMPTY_DRAFT, ingredients: [[2]] },
+    editing: null,
   });
 });
 

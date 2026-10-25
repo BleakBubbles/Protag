@@ -20,6 +20,8 @@ export const SettingKey = {
   shuffleSorts: 'shuffle.sorts',
   /** How many rows of tiles the open pot shows, as last set with its divider. */
   potRows: 'shuffle.potRows',
+  /** JSON `KeptPot`: what's in the pot (and the mix it was opened from), so it's there after a restart. */
+  pot: 'shuffle.pot',
 } as const;
 
 export type SettingKey = (typeof SettingKey)[keyof typeof SettingKey];

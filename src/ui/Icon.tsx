@@ -18,6 +18,7 @@ const OWN = {
   delete: 'trash-can-outline',
   'move-to': 'folder-move-outline',
   'save-mix': 'bookmark-outline',
+  restore: 'restore',
 } as const satisfies Record<string, ComponentProps<typeof MaterialCommunityIcons>['name']>;
 
 type OwnIconName = keyof typeof OWN;

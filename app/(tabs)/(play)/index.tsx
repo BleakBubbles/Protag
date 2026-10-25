@@ -17,7 +17,7 @@ import {
 
 import { listAlbums, listArtists, type AlbumSummary, type ArtistSummary } from '@/db/albums';
 import { notifyLibraryChanged } from '@/db/changes';
-import { listMixes, parseDraft, saveMixAs, type Mix } from '@/db/mixes';
+import { keepPot, listMixes, parseDraft, parseKeptPot, saveMixAs, type KeptPot, type Mix } from '@/db/mixes';
 import { countSongs } from '@/db/songs';
 import { getSetting, setSetting, SettingKey } from '@/db/settings';
 import { buildDescendantMap, listAllTagsWithCounts, listTagPlays } from '@/db/tags';
@@ -107,7 +107,7 @@ export default function PlayScreen() {
   );
 
   const { data } = useLibraryQuery(async (db) => {
-    const [songs, allTags, descendants, mixes, artists, albums, tagPlays, sorts, potRows] = await Promise.all([
+    const [songs, allTags, descendants, mixes, artists, albums, tagPlays, sorts, potRows, pot] = await Promise.all([
       countSongs(db),
       listAllTagsWithCounts(db),
       buildDescendantMap(db),
@@ -117,6 +117,7 @@ export default function PlayScreen() {
       listTagPlays(db),
       getSetting(db, SettingKey.shuffleSorts),
       getSetting(db, SettingKey.potRows),
+      getSetting(db, SettingKey.pot),
     ]);
     const mixArt = await loadMixArt(db, mixes, new Set(allTags.map((t) => t.id)), descendants);
     // A tag with nothing under it can't be shuffled, so the builder leaves it out.
@@ -130,6 +131,7 @@ export default function PlayScreen() {
       tagPlays,
       initialSorts: parseSorts(sorts),
       initialRows: Number(potRows) >= MIN_POT_ROWS ? Number(potRows) : POT_ROWS,
+      initialPot: parseKeptPot(pot),
     };
   }, []);
 
@@ -170,17 +172,30 @@ type BuilderProps = {
   initialSorts: ShuffleSorts;
   /** The open pot's rows of tiles, as last set with its divider. */
   initialRows: number;
+  /** The pot as it was left, last time. */
+  initialPot: KeptPot;
   openRequest: OpenRequest;
 };
 
-function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSorts, initialRows, openRequest }: BuilderProps) {
+function Builder({
+  tags,
+  descendants,
+  mixes,
+  mixArt,
+  music,
+  tagPlays,
+  initialSorts,
+  initialRows,
+  initialPot,
+  openRequest,
+}: BuilderProps) {
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const playQuery = usePlayQuery();
-  const [draft, setDraft] = useState<QueryDraft>(EMPTY_DRAFT);
+  const [draft, setDraft] = useState<QueryDraft>(initialPot.draft);
   const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
   /** The mix opened for editing, by id, so a rename elsewhere doesn't lose it. */
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(initialPot.editing);
   const editingMix = mixes.find((m) => m.id === editingId) ?? null;
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
@@ -391,6 +406,17 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
     if (potEmpty) setEditingId(null);
   }, [potEmpty]);
 
+  // Kept as it changes, so it's still there after Android closes the app.
+  useEffect(() => {
+    setSetting(db, SettingKey.pot, keepPot({ draft: current, editing: editingId })).catch(() => {});
+  }, [db, current, editingId]);
+
+  // The pot just emptied with ×, to bring back: until something new goes in (or the app closes).
+  const [cleared, setCleared] = useState<KeptPot | null>(null);
+  useEffect(() => {
+    if (!potEmpty) setCleared(null);
+  }, [potEmpty]);
+
   const toggleExpanded = useCallback(
     (id: number) =>
       setExpanded((prev) => {
@@ -449,7 +475,18 @@ function Builder({ tags, descendants, mixes, mixArt, music, tagPlays, initialSor
               playQuery(query, { draft: current, label: playLabel });
               fold();
             }}
-            onClear={() => setDraft(EMPTY_DRAFT)}
+            onClear={() => {
+              setCleared({ draft: current, editing: editingId });
+              setDraft(EMPTY_DRAFT);
+            }}
+            onRestore={
+              cleared
+                ? () => {
+                    setDraft(cleared.draft);
+                    setEditingId(cleared.editing);
+                  }
+                : undefined
+            }
             onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
             onTapExcluded={(ref) => setDraft(tapExcluded(current, ref))}
             rows={rows}

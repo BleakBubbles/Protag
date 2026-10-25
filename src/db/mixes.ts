@@ -40,6 +40,27 @@ export function parseDraft(json: string): QueryDraft {
   }
 }
 
+/** The pot as kept between launches: what's in it, and the mix it was opened from (if any). */
+export type KeptPot = { draft: QueryDraft; editing: number | null };
+
+export function keepPot(pot: KeptPot): string {
+  return JSON.stringify(pot);
+}
+
+/** Read back a kept pot; anything damaged is an empty one. */
+export function parseKeptPot(json: string | null): KeptPot {
+  if (!json) return { draft: EMPTY_DRAFT, editing: null };
+  try {
+    const data = JSON.parse(json) as { draft?: unknown; editing?: unknown };
+    return {
+      draft: parseDraft(JSON.stringify(data.draft ?? {})),
+      editing: typeof data.editing === 'number' ? data.editing : null,
+    };
+  } catch {
+    return { draft: EMPTY_DRAFT, editing: null };
+  }
+}
+
 function legacyIngredients(include: Ref[], mode: unknown): Ref[][] {
   if (include.length === 0) return [];
   return mode === 'or' ? include.map((id) => [id]) : [include];
