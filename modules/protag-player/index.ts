@@ -41,6 +41,7 @@ declare class ProTagPlayerModule extends NativeModule<Events> {
   reorder(tracks: NativeTrack[], index: number, memo: string): Promise<void>;
   insert(tracks: NativeTrack[], at: number, memo: string): Promise<void>;
   remove(at: number, memo: string): Promise<void>;
+  move(from: number, to: number, memo: string): Promise<void>;
   restore(): Promise<{ memo: string; index: number; repeat: NativeRepeat } | null>;
   skipTo(index: number, autoplay: boolean): Promise<void>;
   play(): Promise<void>;

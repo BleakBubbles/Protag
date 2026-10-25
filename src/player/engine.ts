@@ -54,6 +54,8 @@ export interface AudioEngine {
   insert(tracks: readonly Track[], at: number, memo: string): void;
   /** An upcoming song (after the current one) taken out of the order. */
   remove(at: number, memo: string): void;
+  /** An upcoming song moved from `from` to `to` in the order. */
+  move(from: number, to: number, memo: string): void;
   /**
    * What's already playing when the app starts: playback can outlive the app
    * (swiped away mid-song). The memo of the order, where it is, and repeat.

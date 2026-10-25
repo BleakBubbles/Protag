@@ -296,6 +296,29 @@ export function removeUpcoming(queue: QueueState, at: number): QueueState {
   return { ...queue, order, original, queuedEnd: queued ? queue.queuedEnd - 1 : queue.queuedEnd };
 }
 
+/**
+ * Move an upcoming song from `from` to `to` (places in `order`, both after
+ * the current song), within its own part of the queue: queued songs among
+ * queued, the rest among the rest. Unshuffled, the move is kept in
+ * `original` too, so it survives shuffle going on and off again.
+ */
+export function moveUpcoming(queue: QueueState, from: number, to: number): QueueState {
+  const n = queue.order.length;
+  if (from === to || from <= queue.index || to <= queue.index || from >= n || to >= n) return queue;
+  const queuedEnd = Math.max(queue.index + 1, queue.queuedEnd);
+  if (from < queuedEnd !== to < queuedEnd) return queue;
+  const order = [...queue.order];
+  const [id] = order.splice(from, 1);
+  order.splice(to, 0, id);
+  let original = queue.original;
+  if (!queue.shuffled && from >= queuedEnd) {
+    const rest = queue.original.filter((_, i) => i !== queue.original.indexOf(id));
+    const before = to + 1 < n ? rest.indexOf(order[to + 1]) : -1;
+    original = before < 0 ? [...rest, id] : [...rest.slice(0, before), id, ...rest.slice(before)];
+  }
+  return { ...queue, order, original };
+}
+
 /** Shuffle on (songs) or off: what shuffling meant before albums. */
 export function setShuffle(queue: QueueState, on: boolean, options: ShuffleOptions = {}): QueueState {
   return setShuffleMode(queue, on ? 'songs' : 'off', options);

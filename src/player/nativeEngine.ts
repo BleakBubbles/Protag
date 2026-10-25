@@ -67,6 +67,9 @@ export const useNativeEngine = ({ onEnded, onMoved }: EngineCallbacks): AudioEng
       insert(tracks: readonly Track[], at: number, memo: string) {
         guarded('insert', ProTagPlayer.insert(tracks.map(toNative), at, memo));
       },
+      move(from: number, to: number, memo: string) {
+        guarded('move', ProTagPlayer.move(from, to, memo));
+      },
       remove(at: number, memo: string) {
         guarded('remove', ProTagPlayer.remove(at, memo));
       },

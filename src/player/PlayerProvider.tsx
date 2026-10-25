@@ -26,6 +26,7 @@ import {
   nextShuffleMode,
   queueSongs as queueSongsInto,
   removeUpcoming as removeUpcomingAt,
+  moveUpcoming as moveUpcomingTo,
   retreat,
   setShuffleMode,
   shuffleModesOf,
@@ -74,6 +75,8 @@ export interface PlayerActions {
   queueSongs(ids: readonly number[], where: 'next' | 'last'): void;
   /** Take an upcoming song (by its place in the order) out of the queue. */
   removeUpcoming(at: number): void;
+  /** Move an upcoming song within its part of the queue (see `moveUpcoming` in queue.ts). */
+  moveUpcoming(from: number, to: number): void;
 }
 
 export interface NowPlayingState {
@@ -311,6 +314,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         const added = await tracksOf(ids);
         if (token !== orderToken.current) return; // A new order was loaded meanwhile.
         engineRef.current.insert(added, at, memoOf(next));
+      },
+      moveUpcoming(from, to) {
+        const next = moveUpcomingTo(queueRef.current, from, to);
+        if (next === queueRef.current) return;
+        setQueue(next);
+        engineOrder.current = next.order;
+        engineRef.current.move(from, to, memoOf(next));
       },
       removeUpcoming(at) {
         const next = removeUpcomingAt(queueRef.current, at);

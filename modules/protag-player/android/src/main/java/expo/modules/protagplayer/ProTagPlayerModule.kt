@@ -168,6 +168,17 @@ class ProTagPlayerModule : Module() {
       sendStatus()
     }.runOnQueue(Queues.MAIN)
 
+    /** An upcoming song moved from `from` to `to` in the order. */
+    AsyncFunction("move") { from: Int, to: Int, memo: String ->
+      val p = ready()
+      val current = p.currentMediaItemIndex
+      if (from <= current || to <= current || from >= p.mediaItemCount || to >= p.mediaItemCount) return@AsyncFunction
+      Playback.memo = memo
+      p.moveMediaItem(from, to)
+      SavedQueue.saveOrder(p.context(), p, memo)
+      sendStatus()
+    }.runOnQueue(Queues.MAIN)
+
     /** An upcoming song taken out of the order. */
     AsyncFunction("remove") { at: Int, memo: String ->
       val p = ready()

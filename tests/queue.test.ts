@@ -20,6 +20,7 @@ import {
   upNext,
   queueSongs,
   removeUpcoming,
+  moveUpcoming,
 } from '../src/player/queue.ts';
 import { EMPTY_DRAFT } from '../src/query/types.ts';
 
@@ -264,4 +265,22 @@ test('removing an upcoming song: a queued one just goes, one from the source lea
   assert.deepEqual(b.original, [1, 2, 4]);
   assert.deepEqual(setShuffleMode(b, 'songs', { random: seeded() }).order.slice(0, 2), [1, 11]);
   assert.equal(removeUpcoming(b, 0), b, 'the current song stays');
+});
+
+test('upcoming songs move within their own part of the queue', () => {
+  const q = queueSongs(createQueue([1, 2, 3, 4, 5], { startId: 1 }), [10, 11], 'last').queue; // 1 10 11 2 3 4 5
+  assert.deepEqual(moveUpcoming(q, 2, 1).order, [1, 11, 10, 2, 3, 4, 5]);
+  assert.deepEqual(moveUpcoming(q, 6, 3).order, [1, 10, 11, 5, 2, 3, 4]);
+  assert.equal(moveUpcoming(q, 3, 1), q, 'not from the rest into the queued songs');
+  assert.equal(moveUpcoming(q, 1, 4), q, 'nor the other way');
+  assert.equal(moveUpcoming(q, 0, 3), q, 'the current song stays');
+});
+
+test('unshuffled, a move survives shuffle going on and off', () => {
+  const q = createQueue([1, 2, 3, 4, 5], { startId: 1 });
+  const moved = moveUpcoming(q, 4, 1); // 1 5 2 3 4
+  assert.deepEqual(moved.original, [1, 5, 2, 3, 4]);
+  const back = setShuffleMode(setShuffleMode(moved, 'songs', { random: seeded() }), 'off');
+  assert.deepEqual(back.order, [1, 5, 2, 3, 4]);
+  assert.deepEqual(moveUpcoming(q, 1, 4).original, [1, 3, 4, 5, 2], 'to the end');
 });
