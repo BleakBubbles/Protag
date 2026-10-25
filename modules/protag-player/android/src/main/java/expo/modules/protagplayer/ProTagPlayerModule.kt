@@ -158,6 +158,16 @@ class ProTagPlayerModule : Module() {
       sendStatus()
     }.runOnQueue(Queues.MAIN)
 
+    /** Songs queued into the order at `at` (Play next, Add to queue); the song playing plays on. */
+    AsyncFunction("insert") { tracks: List<Track>, at: Int, all: List<Track>, memo: String ->
+      val p = ready()
+      Playback.memo = memo
+      SavedQueue.saveOrder(p.context(), all, memo)
+      p.addMediaItems(at.coerceIn(0, p.mediaItemCount), tracks.map(::mediaItem))
+      reported = p.currentMediaItemIndex
+      sendStatus()
+    }.runOnQueue(Queues.MAIN)
+
     /**
      * What's already playing, for JS starting up again while the player
      * carried on without it (the app swiped away mid-song, then reopened):

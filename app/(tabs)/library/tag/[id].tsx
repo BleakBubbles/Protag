@@ -85,7 +85,7 @@ export default function TagScreen() {
   const ancestors = data && tag ? data.index.path(id).slice(0, -1) : [];
 
   const songIds = useMemo(() => data?.songs.map((s) => s.id), [data]);
-  const { selection, selecting, selected, toggle, clear, editTags, header: selectionHeader } = useSongSelection(songIds);
+  const { selection, selecting, selected, toggle, clear, editTags, queueActions, header: selectionHeader } = useSongSelection(songIds);
 
   const playFrom = useCallback(
     (songId: number) =>
@@ -335,6 +335,7 @@ export default function TagScreen() {
               icon: 'tags',
               onPress: editTags,
             },
+            ...queueActions,
             { label: 'Remove', icon: 'remove-circle-outline', destructive: true, onPress: confirmRemove },
           ]}
         />

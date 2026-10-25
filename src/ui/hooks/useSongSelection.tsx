@@ -1,11 +1,13 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler } from 'react-native';
+import { BackHandler, ToastAndroid } from 'react-native';
 
 import { useLibraryVersion } from '../../db/changes';
 import { openEditTags } from '../../navigation';
+import { usePlayerActions } from '../../player/PlayerProvider';
 import { plural } from '../format';
 import { IconButton } from '../IconButton';
+import type { SelectionAction } from '../library/SelectionBar';
 import { colors } from '../theme';
 
 /**
@@ -18,6 +20,8 @@ import { colors } from '../theme';
  * - Long-press starts selecting; then taps toggle. Only the header's close
  *   button or back leaves selection mode: deselecting everything keeps it, so
  *   the next pick is still one tap.
+ * - Play next / Add to queue (`queueActions`) queue the songs, say so in a
+ *   toast, and end selection.
  * - The tag editor is its own screen. If it saves (the library changes while
  *   it's open), the job is done and selection ends; if it's discarded, the
  *   selection is still there to try again.
@@ -72,6 +76,29 @@ export function useSongSelection(songIds: readonly number[] | undefined) {
     openEditTags(selected);
   };
 
+  const { queueSongs } = usePlayerActions();
+  /** The bar's queueing actions, beside Tag…: in list order, whatever order they were picked in. */
+  const queueActions: SelectionAction[] = [
+    {
+      label: 'Play next',
+      icon: 'play-next',
+      onPress: () => {
+        queueSongs(selected, 'next');
+        ToastAndroid.show(`${selected.length === 1 ? 'Song' : plural(selected.length, 'song')} playing next`, ToastAndroid.SHORT);
+        clear();
+      },
+    },
+    {
+      label: 'Add to queue',
+      icon: 'add-to-queue',
+      onPress: () => {
+        queueSongs(selected, 'last');
+        ToastAndroid.show(`${selected.length === 1 ? 'Song' : plural(selected.length, 'song')} added to queue`, ToastAndroid.SHORT);
+        clear();
+      },
+    },
+  ];
+
   /** Header options while selecting: a count, close on the left, select-all on the right. */
   const header = {
     title: selected.length > 0 ? `${plural(selected.length, 'song')} selected` : 'Select songs',
@@ -92,7 +119,7 @@ export function useSongSelection(songIds: readonly number[] | undefined) {
       ),
   };
 
-  return { selection, selecting, selected, toggle, clear, editTags, header };
+  return { selection, selecting, selected, toggle, clear, editTags, queueActions, header };
 }
 
 export type SongSelection = ReturnType<typeof useSongSelection>;

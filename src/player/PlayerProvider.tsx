@@ -24,6 +24,7 @@ import {
   EMPTY_QUEUE,
   jumpTo as jumpToIndex,
   nextShuffleMode,
+  queueSongs as queueSongsInto,
   retreat,
   setShuffleMode,
   shuffleModesOf,
@@ -36,6 +37,9 @@ import { albumGroups, queueForQuery } from './sources';
 
 /** The one line to change to swap audio engines. */
 const useEngine: UseAudioEngine = useNativeEngine;
+
+/** The queue as it stands, for the engine's `restore` to bring back (its index moves on without us). */
+const memoOf = (queue: QueueState) => JSON.stringify({ ...queue, index: undefined });
 
 /** A play counts once this much has been heard (or half the song, if shorter). */
 const PLAY_COUNT_THRESHOLD_SEC = 30;
@@ -62,6 +66,11 @@ export interface PlayerActions {
   toggleShuffle(): void;
   cycleRepeat(): void;
   jumpTo(index: number): void;
+  /**
+   * Queue songs after the current one: `next` straight after it, `last`
+   * after whatever's queued already. With nothing playing, they just play.
+   */
+  queueSongs(ids: readonly number[], where: 'next' | 'last'): void;
 }
 
 export interface NowPlayingState {
@@ -164,6 +173,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [db]
   );
 
+  const tracksOf = useCallback(
+    async (ids: readonly number[]) =>
+      (await getPlayableSongs(db, ids)).map((s): Track => ({ ...s, artworkUri: albumArtUri(s.album_id) })),
+    [db]
+  );
   /**
    * Hand the engine the queue's whole order, starting at its current song.
    * `keepPlaying`: it's the song already playing (shuffle changed), which
@@ -172,18 +186,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const loadOrder = useCallback(
     async (queue: QueueState, options: { autoplay: boolean; keepPlaying?: boolean }) => {
       const token = ++orderToken.current;
-      const tracks = (await getPlayableSongs(db, queue.order)).map(
-        (s): Track => ({ ...s, artworkUri: albumArtUri(s.album_id) })
-      );
+      const tracks = await tracksOf(queue.order);
       if (token !== orderToken.current) return;
       engineOrder.current = queue.order;
-      // The queue as it stands, for `restore` to bring back (its index moves on without us).
-      const memo = JSON.stringify({ ...queue, index: undefined });
+      const memo = memoOf(queue);
       if (options.keepPlaying) engineRef.current.reorder(tracks, queue.index, memo);
       else engineRef.current.setOrder(tracks, queue.index, { autoplay: options.autoplay, repeat: queue.repeat, memo });
       showSong(queue);
     },
-    [db, showSong]
+    [tracksOf, showSong]
   );
 
   // Playback outlives the app (swiped away mid-song): opening it again picks
@@ -191,9 +202,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     engineRef.current.restore().then((playing) => {
       if (!playing || queueRef.current !== EMPTY_QUEUE) return;
-      const memo = JSON.parse(playing.memo) as Omit<QueueState, 'index'>;
+      // Memos from before queuing existed have no `queuedEnd`.
+      const memo = JSON.parse(playing.memo) as Omit<QueueState, 'index' | 'queuedEnd'> & { queuedEnd?: number };
       if (playing.index < 0 || playing.index >= memo.order.length) return;
-      const queue: QueueState = { ...memo, index: playing.index, repeat: playing.repeat };
+      const queue: QueueState = { ...memo, queuedEnd: memo.queuedEnd ?? 0, index: playing.index, repeat: playing.repeat };
       engineOrder.current = queue.order;
       setQueue(queue);
       showSong(queue);
@@ -280,6 +292,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         const next = cycleRepeatMode(queueRef.current);
         setQueue(next);
         engineRef.current.setRepeat(next.repeat);
+      },
+      queueSongs: async (ids, where) => {
+        const queue = queueRef.current;
+        const { queue: next, at } = queueSongsInto(queue, ids, where);
+        if (at < 0) {
+          const source = { label: 'Picked songs' };
+          applyRef.current({ queue: createQueue(ids, { source, repeat: queue.repeat }), action: 'play' });
+          return;
+        }
+        setQueue(next);
+        // Its order is the engine's, with these added: moves within it stay skips.
+        engineOrder.current = next.order;
+        const token = orderToken.current;
+        const [added, all] = await Promise.all([tracksOf(ids), tracksOf(next.order)]);
+        if (token !== orderToken.current) return; // A new order was loaded meanwhile.
+        engineRef.current.insert(added, at, all, memoOf(next));
       },
       jumpTo(index) {
         const next = jumpToIndex(queueRef.current, index);

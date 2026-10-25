@@ -39,6 +39,8 @@ declare class ProTagPlayerModule extends NativeModule<Events> {
     memo: string
   ): Promise<void>;
   reorder(tracks: NativeTrack[], index: number, memo: string): Promise<void>;
+  /** `all`: the whole order afterwards, kept for resuming after the app is gone. */
+  insert(tracks: NativeTrack[], at: number, all: NativeTrack[], memo: string): Promise<void>;
   restore(): Promise<{ memo: string; index: number; repeat: NativeRepeat } | null>;
   skipTo(index: number, autoplay: boolean): Promise<void>;
   play(): Promise<void>;

@@ -18,6 +18,7 @@ import {
   shuffleModeOf,
   setShuffle,
   upNext,
+  queueSongs,
 } from '../src/player/queue.ts';
 import { EMPTY_DRAFT } from '../src/query/types.ts';
 
@@ -203,4 +204,50 @@ test('every transition on an empty queue is safe', () => {
   assert.equal(retreat(EMPTY_QUEUE, 0).action, 'stop');
   assert.equal(currentId(setShuffle(EMPTY_QUEUE, true)), null);
   assert.deepEqual(upNext(EMPTY_QUEUE, 5), []);
+});
+
+test('play next goes straight after the current song, ahead of anything queued before', () => {
+  const q = createQueue([1, 2, 3, 4], { startId: 2 });
+  const a = queueSongs(q, [10], 'next');
+  assert.equal(a.at, 2);
+  const b = queueSongs(a.queue, [11, 12], 'next');
+  assert.deepEqual(b.queue.order, [1, 2, 11, 12, 10, 3, 4]);
+  assert.equal(b.queue.queuedEnd, 5);
+  assert.deepEqual(b.queue.original, [1, 2, 3, 4], 'queued songs are extra, not part of the source');
+});
+
+test('add to queue goes after what is queued, but before the rest of the order', () => {
+  const q = createQueue([1, 2, 3, 4], { startId: 1 });
+  const a = queueSongs(q, [10], 'last');
+  const b = queueSongs(a.queue, [11], 'last');
+  assert.deepEqual(b.queue.order, [1, 10, 11, 2, 3, 4]);
+  assert.equal(b.at, 2);
+  // Once the queued songs have played, the next one queued goes after the current song again.
+  const played = jumpTo(b.queue, 3);
+  assert.deepEqual(queueSongs(played, [12], 'last').queue.order, [1, 10, 11, 2, 12, 3, 4]);
+});
+
+test('queued songs stay next when shuffle changes', () => {
+  const ids = Array.from({ length: 20 }, (_, i) => i + 1);
+  const q = queueSongs(createQueue(ids, { startId: 5 }), [100, 101], 'last').queue;
+  for (const mode of ['songs', 'off'] as const) {
+    const s = setShuffleMode(mode === 'off' ? setShuffleMode(q, 'songs', { random: seeded() }) : q, mode, { random: seeded() });
+    assert.equal(currentId(s), 5);
+    assert.deepEqual(s.order.slice(s.index + 1, s.index + 3), [100, 101], mode);
+    assert.equal(s.queuedEnd, s.index + 3);
+    assert.equal(s.order.length, 22);
+  }
+});
+
+test('shuffling while a queued song plays leads with it', () => {
+  const q = queueSongs(createQueue([1, 2, 3], { startId: 1 }), [100, 101], 'last').queue;
+  const playing = jumpTo(q, 1); // 100, with 101 still queued
+  const s = setShuffleMode(playing, 'songs', { random: seeded() });
+  assert.deepEqual(s.order.slice(0, 2), [100, 101]);
+  assert.equal(s.index, 0);
+  assert.deepEqual([...s.order.slice(2)].sort(), [1, 2, 3]);
+});
+
+test('nothing is queued onto an empty queue', () => {
+  assert.equal(queueSongs(EMPTY_QUEUE, [1], 'next').at, -1);
 });

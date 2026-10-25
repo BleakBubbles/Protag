@@ -64,6 +64,9 @@ export const useNativeEngine = ({ onEnded, onMoved }: EngineCallbacks): AudioEng
       reorder(tracks: readonly Track[], index: number, memo: string) {
         guarded('reorder', ProTagPlayer.reorder(tracks.map(toNative), index, memo));
       },
+      insert(tracks: readonly Track[], at: number, all: readonly Track[], memo: string) {
+        guarded('insert', ProTagPlayer.insert(tracks.map(toNative), at, all.map(toNative), memo));
+      },
       restore: () =>
         ProTagPlayer.restore().catch((error) => {
           console.warn('[audio] restore failed', error);

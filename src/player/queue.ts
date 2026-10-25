@@ -43,6 +43,12 @@ export interface QueueState {
   byAlbum: boolean;
   repeat: RepeatMode;
   source: QueueSource | null;
+  /**
+   * Songs the listener queued (Play next, Add to queue) sit right after the
+   * current song, up to here (exclusive index into `order`). They aren't in
+   * `original`: they're extra, and stay next whatever happens to shuffle.
+   */
+  queuedEnd: number;
 }
 
 /** How a queue shuffles: not at all, song by song, or album by album. */
@@ -75,6 +81,7 @@ export const EMPTY_QUEUE: QueueState = {
   byAlbum: false,
   repeat: 'off',
   source: null,
+  queuedEnd: 0,
 };
 
 export interface ShuffleOptions {
@@ -158,6 +165,7 @@ export function createQueue(
     byAlbum,
     repeat: options.repeat ?? 'off',
     source: options.source ?? null,
+    queuedEnd: 0,
   };
 }
 
@@ -220,6 +228,7 @@ export function jumpTo(queue: QueueState, index: number): QueueState {
  *   song's album comes first, from where it is, its earlier tracks behind it.
  *   Needs `groups` (see `shuffleAlbums`); without them it shuffles songs.
  * - `off`: the original order resumes from wherever that song sits in it.
+ * Songs still queued (see `queueSongs`) stay right after it.
  */
 export function setShuffleMode(
   queue: QueueState,
@@ -228,22 +237,46 @@ export function setShuffleMode(
 ): QueueState {
   if (mode === shuffleModeOf(queue)) return queue;
   const current = currentId(queue);
+  // A queued song playing now isn't part of the source order: the new order leads with it.
+  const lead = current !== null && queue.original.includes(current) ? current : null;
 
-  if (mode === 'albums' && options.groups) {
-    const order = shuffleAlbums(options.groups, current, options);
-    return { ...queue, order, index: current === null ? -1 : order.indexOf(current), shuffled: true, byAlbum: true };
-  }
-  if (mode !== 'off') {
-    const order = shuffleAround(queue.original, current, options);
-    return { ...queue, order, index: current === null ? -1 : 0, shuffled: true, byAlbum: false };
-  }
-  return {
-    ...queue,
-    order: queue.original,
-    index: current === null ? -1 : queue.original.indexOf(current),
-    shuffled: false,
-    byAlbum: false,
-  };
+  let base: number[];
+  if (mode === 'albums' && options.groups) base = shuffleAlbums(options.groups, lead, options);
+  else if (mode !== 'off') base = shuffleAround(queue.original, lead, options);
+  else base = queue.original;
+  const shuffled = mode !== 'off';
+  const byAlbum = mode === 'albums' && !!options.groups;
+
+  // Songs still queued come straight after the current one in the new order too.
+  const queued = queue.order.slice(queue.index + 1, Math.max(queue.index + 1, queue.queuedEnd));
+  const at = lead === null ? -1 : base.indexOf(lead);
+  const order =
+    current === null
+      ? base
+      : at < 0
+        ? [current, ...queued, ...base]
+        : [...base.slice(0, at + 1), ...queued, ...base.slice(at + 1)];
+  const index = current === null ? -1 : Math.max(at, 0);
+  return { ...queue, order, index, shuffled, byAlbum, queuedEnd: index + 1 + queued.length };
+}
+
+/**
+ * Queue songs to play straight after the current one, ahead of anything
+ * queued before ("Play next"), or after what's already queued ("Add to
+ * queue") — either way before the rest of the order, which in a long shuffle
+ * may never come round. `at` is where they went in `order`. An empty queue
+ * stays empty: there's nothing to play them after.
+ */
+export function queueSongs(
+  queue: QueueState,
+  ids: readonly number[],
+  where: 'next' | 'last'
+): { queue: QueueState; at: number } {
+  if (queue.index < 0 || ids.length === 0) return { queue, at: -1 };
+  const end = Math.max(queue.index + 1, queue.queuedEnd);
+  const at = where === 'next' ? queue.index + 1 : end;
+  const order = [...queue.order.slice(0, at), ...ids, ...queue.order.slice(at)];
+  return { queue: { ...queue, order, queuedEnd: end + ids.length }, at };
 }
 
 /** Shuffle on (songs) or off: what shuffling meant before albums. */

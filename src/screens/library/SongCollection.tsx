@@ -185,7 +185,7 @@ export function SongCollection({
         }
       />
       {selecting && (
-        <SelectionBar disabled={selected.length === 0} actions={[{ label: 'Tag…', icon: 'tags', onPress: selection.editTags }]} />
+        <SelectionBar disabled={selected.length === 0} actions={[{ label: 'Tag…', icon: 'tags', onPress: selection.editTags }, ...selection.queueActions]} />
       )}
     </>
   );
