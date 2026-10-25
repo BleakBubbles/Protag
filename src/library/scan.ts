@@ -4,7 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { setSetting, SettingKey } from '../db/settings';
 import type { ScannedSong } from '../db/songs';
 import { toScannedSong, type SkipReason } from './assets';
-import { completeScan, recordScanPage } from './ingest';
+import { completeScan, lastSongId, recordScanPage } from './ingest';
 import { leftOutOfScan } from './libraryFolders';
 
 const PAGE_SIZE = 500;
@@ -68,6 +68,7 @@ export async function scanLibrary(
   const leaveOut = new Set(leftOut);
 
   const startedAt = Date.now();
+  const knownUpTo = await lastSongId(db);
   const summary: ScanSummary = {
     found: 0,
     skipped: { unavailable: 0, 'no-uri': 0, 'too-short': 0 },
@@ -110,7 +111,7 @@ export async function scanLibrary(
   }
 
   // Reached only if every page succeeded — see completeScan.
-  const flagged = await completeScan(db, startedAt, summary.found, leftOut);
+  const flagged = await completeScan(db, startedAt, summary.found, leftOut, knownUpTo);
   summary.missing = flagged.missing;
   summary.hidden = flagged.hidden;
   await setSetting(db, SettingKey.lastScanAt, String(Date.now()));

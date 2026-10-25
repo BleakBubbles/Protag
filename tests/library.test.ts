@@ -9,7 +9,7 @@ import { findSongs } from '../src/query/run.ts';
 import { getTagsForSong } from '../src/db/tags.ts';
 import type { ScannedSong } from '../src/db/songs.ts';
 import { albumArtUri, MIN_DURATION_MS, toScannedSong } from '../src/library/assets.ts';
-import { completeScan, recordScanPage } from '../src/library/ingest.ts';
+import { completeScan, lastSongId, recordScanPage } from '../src/library/ingest.ts';
 import { baseName, entryLabel, parseM3u, playlistNameFromUri } from '../src/library/m3u.ts';
 import { normalize, SongMatcher } from '../src/library/match.ts';
 import { importPlaylistAsTag } from '../src/library/playlists.ts';
@@ -184,6 +184,44 @@ test('a scan that saw nothing does not wipe the library', async () => {
     'SELECT COUNT(*) AS n FROM songs WHERE is_missing = 1'
   );
   assert.equal(missing?.n, 0);
+  db.close();
+});
+
+test('a moved file is the same song: it keeps its row, tags and plays', async () => {
+  const db = await freshDatabase();
+  await recordScanPage(db as never, [scanned('1', { filename: 'Ditto.mp3' }), scanned('2')], 1000);
+  const { id } = (await db.getFirstAsync<{ id: number }>("SELECT id FROM songs WHERE media_id = '1'"))!;
+  await db.runAsync("INSERT INTO tags (name, created_at) VALUES ('kpop', 0)");
+  await db.runAsync('INSERT INTO song_tags (song_id, tag_id, added_at) VALUES (?, 1, 0)', id);
+  await db.runAsync('INSERT INTO play_history (song_id, played_at) VALUES (?, 0)', id);
+
+  // Moved to the SD card: Android gives it a new number. '2' really went.
+  const knownUpTo = await lastSongId(db as never);
+  await recordScanPage(db as never, [scanned('9', { filename: 'Ditto.mp3', album: 'OMG' })], 2000);
+  assert.deepEqual(await completeScan(db as never, 2000, 1, [], knownUpTo), { missing: 1, hidden: 0 });
+
+  const rows = await db.getAllAsync<{ id: number; media_id: string; album: string; is_missing: number }>(
+    'SELECT id, media_id, album, is_missing FROM songs ORDER BY id'
+  );
+  assert.deepEqual(rows[0], { id, media_id: '9', album: 'OMG', is_missing: 0 });
+  assert.equal(rows.length, 2, 'no leftover new row');
+  assert.equal((await getTagsForSong(db as never, id)).length, 1);
+  assert.equal((await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM play_history WHERE song_id = ?', id))?.n, 1);
+  db.close();
+});
+
+test('a moved song is only reunited when the match is one-to-one', async () => {
+  const db = await freshDatabase();
+  // Two old songs both called Intro by the same artist: the new Intro could be either.
+  await recordScanPage(
+    db as never,
+    [scanned('1', { filename: 'Intro.mp3', title: 'Intro' }), scanned('2', { filename: 'intro.MP3', title: 'Intro' })],
+    1000
+  );
+  const knownUpTo = await lastSongId(db as never);
+  await recordScanPage(db as never, [scanned('9', { filename: 'Intro.mp3', title: 'Intro' })], 2000);
+  assert.deepEqual(await completeScan(db as never, 2000, 1, [], knownUpTo), { missing: 2, hidden: 0 });
+  assert.equal((await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM songs'))?.n, 3);
   db.close();
 });
 
