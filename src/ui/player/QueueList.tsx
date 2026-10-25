@@ -19,6 +19,9 @@ const THUMB = 40;
 const FADE_MS = 150;
 /** How quickly the other songs step aside for the one being dragged. */
 const SHIFT_MS = 120;
+/** Dragged this near the list's top or bottom, it scrolls, faster the nearer, up to this many px a frame. */
+const EDGE = ROW;
+const MAX_SCROLL_STEP = 14;
 
 type Item =
   | { kind: 'heading'; key: string; label: string }
@@ -30,6 +33,8 @@ interface Drag {
   target: number;
   lo: number;
   hi: number;
+  /** Where the list was scrolled to when the drag began; it may scroll on during it. */
+  scrollStart: number;
 }
 
 /**
@@ -102,26 +107,71 @@ export function QueueList({ queue }: { queue: QueueState }) {
   const scrollY = useRef(0);
   const at = (i: number) => (items[i] as Extract<Item, { kind: 'song' }>).at;
 
+  // Auto-scroll reads these from a frame loop, outside any render.
+  const list = useRef<FlatList<Item>>(null);
+  const listHeight = useRef(0);
+  const finger = useRef(0);
+  const frame = useRef<number | null>(null);
+  const layout = useRef({ offsets, length: offsets[offsets.length - 1] });
+  layout.current = { offsets, length: offsets[offsets.length - 1] };
+
+  /** Where the dragged song would land: how far the finger moved, plus how far the list scrolled under it. */
+  const retarget = () => {
+    const current = dragRef.current;
+    if (!current) return;
+    const moved = finger.current + scrollY.current - current.scrollStart;
+    const target = Math.min(current.hi, Math.max(current.lo, current.from + Math.round(moved / ROW)));
+    if (target !== current.target) setDrag({ ...current, target });
+  };
+
+  /** Each frame while dragging: near an edge, scroll that way. */
+  const autoScroll = () => {
+    const current = dragRef.current;
+    if (!current) {
+      frame.current = null;
+      return;
+    }
+    const top = layout.current.offsets[current.from] - current.scrollStart + finger.current;
+    const bottom = top + ROW;
+    const into = top < EDGE ? top - EDGE : bottom > listHeight.current - EDGE ? bottom - (listHeight.current - EDGE) : 0;
+    const step = Math.max(-MAX_SCROLL_STEP, Math.min(MAX_SCROLL_STEP, (into / EDGE) * MAX_SCROLL_STEP));
+    const end = Math.max(0, layout.current.length - listHeight.current);
+    const next = Math.max(0, Math.min(end, scrollY.current + step));
+    if (Math.abs(next - scrollY.current) >= 0.5) {
+      scrollY.current = next;
+      list.current?.scrollToOffset({ offset: next, animated: false });
+      retarget();
+    }
+    frame.current = requestAnimationFrame(autoScroll);
+  };
+
   const dragging = {
     begin(i: number) {
       feelHold();
       dy.setValue(0);
-      setDrag({ from: i, target: i, ...sectionOf(i) });
+      finger.current = 0;
+      setDrag({ from: i, target: i, ...sectionOf(i), scrollStart: scrollY.current });
+      frame.current ??= requestAnimationFrame(autoScroll);
     },
     move(distance: number) {
       dy.setValue(distance);
-      const current = dragRef.current;
-      if (!current) return;
-      const target = Math.min(current.hi, Math.max(current.lo, current.from + Math.round(distance / ROW)));
-      if (target !== current.target) setDrag({ ...current, target });
+      finger.current = distance;
+      retarget();
     },
-    end() {
+    /** `drop`: false when the list took the touch over (a flick faster than the drag could start): nothing moves. */
+    end(drop = true) {
       const current = dragRef.current;
-      if (current && current.target !== current.from) moveUpcoming(at(current.from), at(current.target));
+      if (drop && current && current.target !== current.from) moveUpcoming(at(current.from), at(current.target));
       setDrag(null);
       dy.setValue(0);
     },
   };
+  useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    },
+    []
+  );
   /** TalkBack: a song moves one place at a time. */
   const nudge = (i: number, step: 1 | -1) => {
     const { lo, hi } = sectionOf(i);
@@ -145,6 +195,8 @@ export function QueueList({ queue }: { queue: QueueState }) {
   return (
     <Animated.View style={[styles.box, { opacity: fade }]}>
       <FlatList
+        ref={list}
+        onLayout={(e) => (listHeight.current = e.nativeEvent.layout.height)}
         data={items}
         extraData={[drag, songs]}
         keyExtractor={(item) => item.key}
@@ -177,7 +229,7 @@ export function QueueList({ queue }: { queue: QueueState }) {
       {drag && dragged && (
         <Animated.View
           pointerEvents="none"
-          style={[styles.floating, { top: offsets[drag.from] - scrollY.current, transform: [{ translateY: dy }] }]}
+          style={[styles.floating, { top: offsets[drag.from] - drag.scrollStart, transform: [{ translateY: dy }] }]}
         >
           <RowContent song={songs.get(dragged.id)} />
           {/* Where the × was, then the handle, still under the finger. */}
@@ -203,7 +255,7 @@ interface QueueRowProps {
   onRemove: () => void;
   onDragStart: () => void;
   onDragMove: (distance: number) => void;
-  onDragEnd: () => void;
+  onDragEnd: (drop?: boolean) => void;
   onNudge: (step: 1 | -1) => void;
 }
 
@@ -228,8 +280,12 @@ function QueueRow(props: QueueRowProps) {
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => latest.current.onDragStart(),
       onPanResponderMove: (_, g) => latest.current.onDragMove(g.dy),
-      onPanResponderRelease: () => latest.current.onDragEnd(),
-      onPanResponderTerminate: () => latest.current.onDragEnd(),
+      // A quick drag can lift before its last moves were handled: land where the finger left.
+      onPanResponderRelease: (_, g) => {
+        latest.current.onDragMove(g.dy);
+        latest.current.onDragEnd();
+      },
+      onPanResponderTerminate: () => latest.current.onDragEnd(false),
     })
   ).current;
 
