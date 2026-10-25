@@ -224,33 +224,37 @@ export function Pot({
               onScroll={shown.onScroll}
               scrollEventThrottle={32}
               scrollEnabled={active === null}
-              contentContainerStyle={styles.tiles}
+              contentContainerStyle={styles.grow}
             >
-              {draft.ingredients.map((tags, index) => (
-                <Glide key={ingredientKey(tags)} onLayout={shown.onTileLayout(ingredientKey(tags))}>
-                  <IngredientTile
-                    index={index}
-                    others={spoken.flatMap((other, i) => (i === index ? [] : [{ index: i, label: other }]))}
-                    tags={tags}
-                    look={look}
-                    count={ingredientCounts.get(ingredientKey(tags)) ?? null}
-                    width={fitsHalf(tags.map(look)) ? (rowWidth - GAP) / 2 : rowWidth}
-                    resting={!!onOpen}
-                    onTap={onOpen ?? (() => onTapIngredient(index))}
-                  />
-                </Glide>
-              ))}
-              {draft.exclude.map((ref) => (
-                <Glide key={excludedKey(ref)} onLayout={shown.onTileLayout(excludedKey(ref))}>
-                  <ExcludedTile
-                    refId={ref}
-                    look={look(ref)}
-                    width={(rowWidth - GAP) / 2}
-                    resting={!!onOpen}
-                    onTap={onOpen ?? (() => onTapExcluded(ref))}
-                  />
-                </Glide>
-              ))}
+              {/* At rest, a tap anywhere in the pot opens the tags, between and below the tiles too.
+                  Not one button for a screen reader: each tile says what it is. */}
+              <Pressable onPress={onOpen} disabled={!onOpen} accessible={false} style={styles.tiles}>
+                {draft.ingredients.map((tags, index) => (
+                  <Glide key={ingredientKey(tags)} onLayout={shown.onTileLayout(ingredientKey(tags))}>
+                    <IngredientTile
+                      index={index}
+                      others={spoken.flatMap((other, i) => (i === index ? [] : [{ index: i, label: other }]))}
+                      tags={tags}
+                      look={look}
+                      count={ingredientCounts.get(ingredientKey(tags)) ?? null}
+                      width={fitsHalf(tags.map(look)) ? (rowWidth - GAP) / 2 : rowWidth}
+                      resting={!!onOpen}
+                      onTap={onOpen ?? (() => onTapIngredient(index))}
+                    />
+                  </Glide>
+                ))}
+                {draft.exclude.map((ref) => (
+                  <Glide key={excludedKey(ref)} onLayout={shown.onTileLayout(excludedKey(ref))}>
+                    <ExcludedTile
+                      refId={ref}
+                      look={look(ref)}
+                      width={(rowWidth - GAP) / 2}
+                      resting={!!onOpen}
+                      onTap={onOpen ?? (() => onTapExcluded(ref))}
+                    />
+                  </Glide>
+                ))}
+              </Pressable>
             </ScrollView>
           </FadeIn>
         ) : (
@@ -781,7 +785,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  grow: {
+    flexGrow: 1,
+  },
   tiles: {
+    flexGrow: 1,
+    alignContent: 'flex-start',
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: GAP,
