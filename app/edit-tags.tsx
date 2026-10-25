@@ -17,12 +17,15 @@ import { useStagedSave } from '@/ui/hooks/useStagedSave';
 import { TAG_CHECK_ROW_HEIGHT, TagCheckRow } from '@/ui/library/TagCheckRow';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
+import { Icon } from '@/ui/Icon';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { SaveButton } from '@/ui/SaveButton';
 import { SearchField } from '@/ui/SearchField';
 import { colors, font, spacing } from '@/ui/theme';
 
 const RECENT_LIMIT = 12;
+/** As wide as a tag row's checkbox, so the + sits in the same column. */
+const CREATE_ICON = 22;
 
 const lower = (names: readonly string[]) => names.map((n) => n.toLowerCase()).join('/');
 
@@ -236,6 +239,7 @@ export default function EditTagsScreen() {
             </View>
             {!exists && (
               <Pressable onPress={create} accessibilityRole="button" style={styles.createRow}>
+                <Icon name="add" size={CREATE_ICON} color={colors.accentFg} />
                 <Text style={styles.createText} numberOfLines={1}>
                   Create "{path.join('/')}"
                 </Text>
@@ -243,6 +247,7 @@ export default function EditTagsScreen() {
             )}
             {showGenre && (
               <Pressable onPress={() => addNew([genre])} accessibilityRole="button" style={styles.createRow}>
+                <Icon name="add" size={CREATE_ICON} color={colors.accentFg} />
                 <Text style={styles.createText} numberOfLines={1}>
                   Create "{genre}" <Text style={styles.createNote}>· from this song's genre</Text>
                 </Text>
@@ -289,12 +294,15 @@ const styles = StyleSheet.create({
   },
   createRow: {
     height: TAG_CHECK_ROW_HEIGHT,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     paddingHorizontal: spacing.lg,
   },
   createText: {
     ...font.name,
     color: colors.accentFg,
+    flex: 1,
   },
   createNote: {
     color: colors.textDim,
