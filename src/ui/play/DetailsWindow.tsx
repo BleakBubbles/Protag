@@ -183,6 +183,15 @@ export function DetailsWindow({ anchor, onClose, draft, title, upNext, onTune, o
               <Icon name={action.icon} size={iconSize.sm} color={colors.textDim} />
             </Pressable>
           ))}
+          {/* Always last, a little apart, so the mix's own buttons keep their places. */}
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            style={({ pressed }) => [styles.action, actions?.length ? styles.close : undefined, pressed && styles.pressed]}
+          >
+            <Icon name="close" size={iconSize.sm} color={colors.textDim} />
+          </Pressable>
         </View>
 
         <Text style={styles.label}>Up next</Text>
@@ -375,6 +384,9 @@ const styles = StyleSheet.create({
     borderRadius: touchTarget / 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  close: {
+    marginLeft: spacing.sm,
   },
   pressed: {
     opacity: 0.6,
