@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
@@ -47,6 +48,20 @@ class PlaybackService : MediaLibraryService() {
   }
 
   private class Library(private val context: Context) : MediaLibrarySession.Callback {
+    /**
+     * No ±10 s seek buttons anywhere outside the app: offered them, Android
+     * Auto (and some lock screens) show those instead of previous / next.
+     */
+    override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult =
+      MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+        .setAvailablePlayerCommands(
+          MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
+            .remove(Player.COMMAND_SEEK_BACK)
+            .remove(Player.COMMAND_SEEK_FORWARD)
+            .build()
+        )
+        .build()
+
     /**
      * Play pressed with nothing loaded: on headphones or in the car after the
      * app was gone, or on the media controls Android keeps after a restart.
