@@ -242,9 +242,11 @@ export function DetailsSheet({ anchor, onClose, draft, title, upNext, onTune, on
                       accessibilityRole="switch"
                       accessibilityState={{ checked: goesRound(t), disabled: raised }}
                       accessibilityLabel={`${name} repeats`}
-                      style={({ pressed }) => [styles.step, goesRound(t) && styles.repeatsOn, pressed && styles.pressed]}
+                      hitSlop={6}
+                      style={({ pressed }) => [styles.toggle, pressed && styles.pressed]}
                     >
-                      <Icon name="repeat" size={iconSize.sm - 4} color={goesRound(t) ? colors.accentFg : colors.textDim} />
+                      {/* A bare icon like the player's repeat toggle, so it doesn't read as part of the − / + stepper. */}
+                      <Icon name="repeat" size={iconSize.sm} color={goesRound(t) ? colors.accentFg : colors.textFaint} />
                     </Pressable>
                     <Pressable
                       onPress={() => tune(ing.refs, -1)}
@@ -462,8 +464,12 @@ const styles = StyleSheet.create({
   timesTuned: {
     color: colors.accentFg,
   },
-  repeatsOn: {
-    backgroundColor: colors.accentTint,
+  toggle: {
+    width: STEP,
+    height: STEP,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
   },
   filters: {
     gap: spacing.sm,
