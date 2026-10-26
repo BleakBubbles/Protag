@@ -157,125 +157,138 @@ export function DetailsSheet({ anchor, onClose, draft, title, upNext, onTune, on
     onTune(setTuning(draft, refs, { ...now, share }));
   };
 
+  // Three parts, set apart the way the Library sets its tags apart from its loose songs:
+  // the summary (what this is, what plays next), its tags (tuning), its songs.
   const header = (
     <View style={styles.headerBody}>
-      <View style={styles.titleRow}>
-        <View style={styles.titleText}>
-          <Text style={styles.title} numberOfLines={2}>
-            {title}
-          </Text>
-          <Text style={styles.count}>{songs ? plural(songs.length, 'song') : ' '}</Text>
+      <View style={styles.section}>
+        <View style={styles.titleRow}>
+          <View style={styles.titleText}>
+            <Text style={styles.title} numberOfLines={2}>
+              {title}
+            </Text>
+            <Text style={styles.count}>{songs ? plural(songs.length, 'song') : ' '}</Text>
+          </View>
+          {actions?.map((action) => (
+            <Pressable
+              key={action.label}
+              onPress={() => {
+                onClose();
+                action.onPress();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={action.label}
+              style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+            >
+              <Icon name={action.icon} size={iconSize.sm} color={colors.textDim} />
+            </Pressable>
+          ))}
         </View>
-        {actions?.map((action) => (
-          <Pressable
-            key={action.label}
-            onPress={() => {
-              onClose();
-              action.onPress();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={action.label}
-            style={({ pressed }) => [styles.action, pressed && styles.pressed]}
-          >
-            <Icon name={action.icon} size={iconSize.sm} color={colors.textDim} />
-          </Pressable>
-        ))}
+
+        <Text style={styles.label}>Up next</Text>
+        <View style={styles.strip} accessibilityLabel="The next songs, coloured by ingredient">
+          {[0, STRIP_COLUMNS].map((from) => (
+            <View key={from} style={styles.stripRow}>
+              {Array.from({ length: STRIP_COLUMNS }, (_, i) => {
+                const id = strip[from + i];
+                const k = id === undefined ? undefined : ingredientOf.get(id);
+                const color = id === undefined ? 'transparent' : k === undefined ? colors.raised : hueOf(draft.ingredients[k] ?? []);
+                return <View key={i} style={[styles.block, { backgroundColor: color }]} />;
+              })}
+            </View>
+          ))}
+        </View>
+        {several && ingredients && (
+          <View style={styles.shareLine}>
+            {ingredients.map((ing, k) => (
+              <View key={k} style={{ flex: weights[k], backgroundColor: hueOf(ing.refs) }} />
+            ))}
+          </View>
+        )}
       </View>
 
-      <Text style={styles.label}>Up next</Text>
-      <View style={styles.strip} accessibilityLabel="The next songs, coloured by ingredient">
-        {[0, STRIP_COLUMNS].map((from) => (
-          <View key={from} style={styles.stripRow}>
-            {Array.from({ length: STRIP_COLUMNS }, (_, i) => {
-              const id = strip[from + i];
-              const k = id === undefined ? undefined : ingredientOf.get(id);
-              const color = id === undefined ? 'transparent' : k === undefined ? colors.raised : hueOf(draft.ingredients[k] ?? []);
-              return <View key={i} style={[styles.block, { backgroundColor: color }]} />;
+      {several && (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.section}>
+            {/* Tuned or not sits with the controls, always there so tuning never moves the rows. */}
+            <View style={styles.sectionHead}>
+              <Text style={styles.label}>Tags</Text>
+              {isTuned(draft) ? (
+                <Pressable onPress={() => onTune(untuned(draft))} accessibilityRole="button" hitSlop={8} style={styles.tuned}>
+                  <Text style={styles.tunedText}>Tuned</Text>
+                  <Text style={styles.plainLink}>Back to a plain shuffle</Text>
+                </Pressable>
+              ) : (
+                <Text style={styles.plainText}>A plain shuffle</Text>
+              )}
+            </View>
+            {(ingredients ?? []).map((ing, k) => {
+              const t = tuningOf(draft, ing.refs);
+              const k0 = SHARES.indexOf(t.share as (typeof SHARES)[number]);
+              const raised = t.share > 1;
+              const name = label(ing.refs);
+              return (
+                <View key={ing.refs.join()} style={styles.card}>
+                  <View style={styles.cardRow}>
+                    <View style={[styles.swatch, { backgroundColor: hueOf(ing.refs) }]} />
+                    <Text style={styles.cardName} numberOfLines={1}>
+                      {name} <Text style={styles.cardCount}>{plural(ing.ids.length, 'song')}</Text>
+                    </Text>
+                    <Pressable
+                      onPress={() => onTune(setTuning(draft, ing.refs, { ...t, repeats: !t.repeats }))}
+                      disabled={raised}
+                      accessibilityRole="switch"
+                      accessibilityState={{ checked: goesRound(t), disabled: raised }}
+                      accessibilityLabel={`${name} repeats`}
+                      style={({ pressed }) => [styles.step, goesRound(t) && styles.repeatsOn, pressed && styles.pressed]}
+                    >
+                      <Icon name="repeat" size={iconSize.sm - 4} color={goesRound(t) ? colors.accentFg : colors.textDim} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => tune(ing.refs, -1)}
+                      disabled={k0 === 0}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Less ${name}`}
+                      style={({ pressed }) => [styles.step, k0 === 0 && styles.stepOff, pressed && styles.pressed]}
+                    >
+                      <Icon name="remove" size={iconSize.sm - 2} color={colors.text} />
+                    </Pressable>
+                    <View style={styles.shareValue}>
+                      <Text style={styles.percent}>{percent(k)}</Text>
+                      <Text style={styles.times}>×{t.share === 0.25 ? '¼' : t.share === 0.5 ? '½' : t.share}</Text>
+                    </View>
+                    <Pressable
+                      onPress={() => tune(ing.refs, 1)}
+                      disabled={k0 === SHARES.length - 1}
+                      accessibilityRole="button"
+                      accessibilityLabel={`More ${name}`}
+                      style={({ pressed }) => [styles.step, k0 === SHARES.length - 1 && styles.stepOff, pressed && styles.pressed]}
+                    >
+                      <Icon name="add" size={iconSize.sm - 2} color={colors.text} />
+                    </Pressable>
+                  </View>
+                </View>
+              );
             })}
           </View>
-        ))}
+        </>
+      )}
+
+      <View style={styles.divider} />
+      <View style={styles.section}>
+        <View style={styles.sectionHead}>
+          <Text style={styles.label}>Songs</Text>
+        </View>
+        {several && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+            <FilterChip label="All" selected={filter === -1} onToggle={() => setFilter(-1)} />
+            {draft.ingredients.map((refs, i) => (
+              <FilterChip key={refs.join()} label={label(refs)} selected={filter === i} onToggle={() => setFilter(i)} />
+            ))}
+          </ScrollView>
+        )}
       </View>
-      {several && ingredients && (
-        <View style={styles.shareLine}>
-          {ingredients.map((ing, k) => (
-            <View key={k} style={{ flex: weights[k], backgroundColor: hueOf(ing.refs) }} />
-          ))}
-        </View>
-      )}
-      {/* Always there, so tuning never moves the rows under a finger. */}
-      {several && (
-        <View style={styles.tuned}>
-          {isTuned(draft) ? (
-            <>
-              <Text style={styles.tunedText}>Tuned</Text>
-              <Pressable onPress={() => onTune(untuned(draft))} accessibilityRole="button" hitSlop={8}>
-                <Text style={styles.plainLink}>Back to a plain shuffle</Text>
-              </Pressable>
-            </>
-          ) : (
-            <Text style={styles.plainText}>A plain shuffle</Text>
-          )}
-        </View>
-      )}
-
-      {several &&
-        (ingredients ?? []).map((ing, k) => {
-          const t = tuningOf(draft, ing.refs);
-          const k0 = SHARES.indexOf(t.share as (typeof SHARES)[number]);
-          const raised = t.share > 1;
-          const name = label(ing.refs);
-          return (
-            <View key={ing.refs.join()} style={styles.card}>
-              <View style={styles.cardRow}>
-                <View style={[styles.swatch, { backgroundColor: hueOf(ing.refs) }]} />
-                <Text style={styles.cardName} numberOfLines={1}>
-                  {name} <Text style={styles.cardCount}>{plural(ing.ids.length, 'song')}</Text>
-                </Text>
-                <Pressable
-                  onPress={() => onTune(setTuning(draft, ing.refs, { ...t, repeats: !t.repeats }))}
-                  disabled={raised}
-                  accessibilityRole="switch"
-                  accessibilityState={{ checked: goesRound(t), disabled: raised }}
-                  accessibilityLabel={`${name} repeats`}
-                  style={({ pressed }) => [styles.step, goesRound(t) && styles.repeatsOn, pressed && styles.pressed]}
-                >
-                  <Icon name="repeat" size={iconSize.sm - 4} color={goesRound(t) ? colors.accentFg : colors.textDim} />
-                </Pressable>
-                <Pressable
-                  onPress={() => tune(ing.refs, -1)}
-                  disabled={k0 === 0}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Less ${name}`}
-                  style={({ pressed }) => [styles.step, k0 === 0 && styles.stepOff, pressed && styles.pressed]}
-                >
-                  <Icon name="remove" size={iconSize.sm - 2} color={colors.text} />
-                </Pressable>
-                <View style={styles.shareValue}>
-                  <Text style={styles.percent}>{percent(k)}</Text>
-                  <Text style={styles.times}>×{t.share === 0.25 ? '¼' : t.share === 0.5 ? '½' : t.share}</Text>
-                </View>
-                <Pressable
-                  onPress={() => tune(ing.refs, 1)}
-                  disabled={k0 === SHARES.length - 1}
-                  accessibilityRole="button"
-                  accessibilityLabel={`More ${name}`}
-                  style={({ pressed }) => [styles.step, k0 === SHARES.length - 1 && styles.stepOff, pressed && styles.pressed]}
-                >
-                  <Icon name="add" size={iconSize.sm - 2} color={colors.text} />
-                </Pressable>
-              </View>
-            </View>
-          );
-        })}
-
-      {several && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-          <FilterChip label="All" selected={filter === -1} onToggle={() => setFilter(-1)} />
-          {draft.ingredients.map((refs, i) => (
-            <FilterChip key={refs.join()} label={label(refs)} selected={filter === i} onToggle={() => setFilter(i)} />
-          ))}
-        </ScrollView>
-      )}
     </View>
   );
 
@@ -327,7 +340,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
+    gap: spacing.lg,
+  },
+  section: {
     gap: spacing.md,
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  // The same thin line a tag page draws between its subtags and songs.
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
   },
   titleRow: {
     flexDirection: 'row',
@@ -361,7 +388,6 @@ const styles = StyleSheet.create({
     color: colors.textFaint,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: -spacing.xs,
   },
   strip: {
     gap: GAP,
