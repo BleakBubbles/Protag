@@ -1,0 +1,351 @@
+<title>Mix View Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Roboto:wght@400;500&display=swap">
+<style>
+/* PROTOTYPE — throwaway, round 2. The pot's "Preview ›" grown into a mix view. Each tag owns its
+   settings (share, repeats, run length); the shuffle only combines them. Three layouts of the same
+   model. Layout: a phone showing the open sheet on the left, the full result on the right. */
+:root {
+  --bg: #151413; --surface: #1E1D1B; --surface-alt: #272624; --border: #34322F; --raised: #3D3B38;
+  --text: #EFEDE9; --dim: #A3A09A; --faint: #75726C; --scrim: rgba(0, 0, 0, 0.55);
+  --accent: #0F5C54; --accent-fg: #2E9384; --accent-tint: #2E938429; --ink: #151413;
+  --pink: #DB7AA8; --blue: #5E8FDB; --green: #74B266; --orange: #E08A4F;
+  --display: 'Lora', Georgia, serif;
+  --sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.35; }
+.page { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; align-items: flex-start;
+  padding-block: 24px 110px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+button:focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
+
+/* Phone with the Play tab behind a sheet */
+.phone { width: 380px; max-width: 100%; height: 760px; border: 1px solid var(--border); border-radius: 28px; overflow: hidden; position: relative; background: var(--bg); }
+.behind { padding: 22px 16px; display: flex; flex-direction: column; gap: 12px; }
+.behind h1 { font-family: var(--display); font-size: 22px; margin: 0; }
+.pot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tile { height: 44px; border-radius: 10px; display: flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--ink); font-weight: 500; }
+.tile .n { margin-left: auto; font-size: 12px; opacity: .75; }
+.scrim { position: absolute; inset: 0; background: var(--scrim); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 64px; background: var(--surface); border-radius: 20px 20px 0 0;
+  display: flex; flex-direction: column; overflow: hidden; }
+.grab { width: 36px; height: 4px; border-radius: 2px; background: var(--raised); margin: 8px auto 4px; flex: none; }
+.sheet-head { padding: 6px 16px 10px; display: flex; align-items: baseline; gap: 8px; flex: none; }
+.sheet-head h2 { font-family: var(--display); font-size: 20px; font-weight: 600; margin: 0; flex: 1; min-width: 0; }
+.sheet-head .count { color: var(--dim); font-size: 13px; }
+.scroll { overflow-y: auto; flex: 1; padding: 0 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+.label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); font-weight: 500; }
+.tuned { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--accent-fg); }
+.tuned button { color: var(--dim); text-decoration: underline; font-size: 13px; }
+
+.shareline { display: flex; flex: none; height: 5px; border-radius: 3px; overflow: hidden; gap: 1px; }
+.shareline span { height: 100%; }
+.strip { display: grid; grid-template-columns: repeat(20, 1fr); gap: 2px; }
+.strip i { aspect-ratio: 1 / 1.7; border-radius: 2px; display: block; position: relative; max-width: 100%; }
+.strip i.again::after { content: ""; position: absolute; inset: 34% 22%; border-radius: 50%; border: 1.5px solid var(--ink); opacity: .55; }
+
+.ctl { display: flex; align-items: center; gap: 6px; }
+.round { width: 30px; height: 30px; border-radius: 50%; background: var(--raised); font-size: 17px; line-height: 30px; text-align: center; color: var(--text); }
+.round:disabled { opacity: .35; cursor: default; }
+.val { min-width: 44px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+.val small { display: block; color: var(--faint); font-size: 11px; }
+.pill { height: 30px; border-radius: 15px; padding: 0 11px; background: var(--raised); font-size: 13px; color: var(--dim); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.pill[aria-pressed="true"] { background: var(--accent-tint); color: var(--accent-fg); }
+.pill:disabled { cursor: default; }
+.runs { display: flex; gap: 4px; }
+.runs button { width: 30px; height: 30px; border-radius: 8px; background: var(--raised); font-size: 13px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.runs button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+/* D · Rows */
+.rows { display: flex; flex-direction: column; gap: 8px; }
+.trow { background: var(--surface-alt); border-radius: 14px; padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; gap: 8px 10px; align-items: center; }
+.tname { display: flex; align-items: center; gap: 8px; font-weight: 500; min-width: 0; }
+.sw { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.tname small { color: var(--faint); font-weight: 400; font-size: 12px; }
+.trow .more { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.sub { color: var(--faint); font-size: 12px; }
+
+/* E · Summary rows that open */
+.sharebar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; }
+.sharebar span { height: 100%; }
+.acc { display: flex; flex-direction: column; }
+.acc .line { display: flex; align-items: center; gap: 10px; padding: 12px 2px; border-bottom: 1px solid var(--border); text-align: left; width: 100%; }
+.acc .line .what { flex: 1; min-width: 0; color: var(--dim); font-size: 13px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc .line .chev { color: var(--faint); transition: transform .15s; }
+.acc .line[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.acc .open { padding: 10px 2px 14px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--border); }
+.acc .open .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--dim); }
+
+/* F · Lanes */
+.lanes { display: flex; flex-direction: column; gap: 10px; }
+.lane { display: flex; flex-direction: column; gap: 6px; }
+.lane-head { display: flex; align-items: center; gap: 8px; }
+.lane-head .tname { flex: 1; }
+.track { display: grid; grid-template-columns: repeat(30, 1fr); gap: 2px; background: var(--surface-alt); border-radius: 6px; padding: 4px; }
+.track i { height: 16px; border-radius: 2px; display: block; position: relative; }
+.track i.again::after { content: ""; position: absolute; inset: 3px 25%; border-radius: 50%; border: 1.5px solid var(--ink); opacity: .55; }
+.lane-ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.axis { display: flex; justify-content: space-between; color: var(--faint); font-size: 11px; padding: 0 4px; font-variant-numeric: tabular-nums; }
+
+.songs { display: flex; flex-direction: column; }
+.songs div { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 14px; }
+.songs .k { width: 18px; text-align: right; color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+.songs .c { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.songs .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.songs .tg { color: var(--faint); font-size: 12px; }
+
+/* Right: the result in full, and notes */
+.side { width: 500px; max-width: 100%; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.side h2 { font-family: var(--display); font-weight: 600; font-size: 20px; margin: 0; }
+.lede { color: var(--dim); margin: 0; max-width: 62ch; }
+.bigstrip { display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; }
+.bigstrip i { aspect-ratio: 1 / 1.6; border-radius: 3px; display: block; position: relative; max-width: 100%; }
+.bigstrip i.again::after { content: ""; position: absolute; inset: 35% 28%; border-radius: 50%; border: 2px solid var(--ink); opacity: .5; }
+.note { background: var(--surface); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--dim); display: flex; flex-direction: column; gap: 8px; }
+.note b { color: var(--text); font-weight: 500; }
+.note ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border); }
+th { color: var(--faint); font-weight: 500; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.num { text-align: right; }
+.tablewrap { overflow-x: auto; }
+.reshuffle { align-self: flex-start; height: 32px; border-radius: 16px; padding: 0 14px; background: var(--raised); font-size: 13px; }
+
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: 4px; background: #f5f2ea; color: #151413; border-radius: 999px; padding: 4px; box-shadow: 0 6px 24px #000a; z-index: 20; max-width: calc(100% - 32px); }
+.switcher button { width: 40px; height: 40px; border-radius: 50%; color: #151413; font-size: 20px; }
+.switcher button:hover { background: #0001; }
+.switcher .vl { font-size: 13px; font-weight: 500; padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) { .acc .line .chev { transition: none; } }
+</style>
+
+<div class="page">
+  <div class="phone" id="phone"></div>
+  <section class="side" id="side"></section>
+</div>
+<div class="switcher" role="group" aria-label="Prototype layout">
+  <button id="prev" aria-label="Previous layout">‹</button>
+  <span class="vl" id="vl"></span>
+  <button id="next" aria-label="Next layout">›</button>
+</div>
+
+<script>
+// ---------- Sample pot (made-up songs): four tags of very different sizes ----------
+const TAGS = [
+  { id: 'kpop', name: 'kpop', color: 'var(--pink)', size: 96 },
+  { id: 'chill', name: 'chill', color: 'var(--green)', size: 38 },
+  { id: 'citypop', name: 'city pop', color: 'var(--orange)', size: 21 },
+  { id: 'lofi', name: 'lofi', color: 'var(--blue)', size: 12 },
+];
+const WORDS = {
+  kpop: [['Neon','Sugar','Hyper','Silver','Crush','Velvet','Super','Lucky','Fever','Candy','Blue','Moon'],['Rush','Heart','Signal','Wave','Drive','Love','Bounce','Dream','Shot','Light','Code','Beat']],
+  chill: [['Slow','Golden','Quiet','Soft','Warm','Late','Open','Pale','Easy','Still'],['Hours','Shore','Rooms','Morning','Coast','Field','Window','Tide','Garden','Air']],
+  citypop: [['Midnight','Summer','Plastic','Highway','Marine','Sunset','Night'],['Love','Cruise','Avenue','Lights','Breeze','Drive','Talk']],
+  lofi: [['Rainy','Paper','Dusty','Sleepy','Tape','Cafe'],['Desk','Loop','Study','Notes','Lamp','Window']],
+};
+const songs = {};
+for (const t of TAGS) { const [a, b] = WORDS[t.id]; songs[t.id] = Array.from({ length: t.size }, (_, i) => `${a[i % a.length]} ${b[(i * 5 + Math.floor(i / a.length)) % b.length]}`); }
+const byId = Object.fromEntries(TAGS.map((t) => [t.id, t]));
+const TOTAL = TAGS.reduce((s, t) => s + t.size, 0);
+
+// ---------- The model: each tag owns { boost, repeats, run }; the shuffle only combines them ----------
+// boost multiplies the tag's natural share (its size), in doublings: ¼ ½ 1 2 4 8.
+// A plain shuffle is every tag at ×1, run 1, no repeats: picking songs in proportion to tag size.
+const BOOSTS = [0.25, 0.5, 1, 2, 4, 8];
+const RUNS = [1, 2, 3, 5];
+const plain = () => Object.fromEntries(TAGS.map((t) => [t.id, { boost: 1, repeats: false, run: 1 }]));
+/** A share above a tag's natural one is a share of the whole shuffle, which only holds if the tag goes round again: so it's locked on. */
+const raised = (id) => state.tags[id].boost > 1;
+const repeats = (id) => raised(id) || state.tags[id].repeats;
+const effective = () => Object.fromEntries(TAGS.map((t) => [t.id, { ...state.tags[t.id], repeats: repeats(t.id) }]));
+const state = { layout: 'd', seed: 7, open: 'lofi', tags: plain() };
+const LAYOUTS = [{ key: 'd', name: 'Tag rows' }, { key: 'e', name: 'Summary + open a tag' }, { key: 'f', name: 'Lanes' }];
+
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+function shuffled(n, r) { const a = [...Array(n).keys()]; for (let i = n - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+/** Pick a tag by share among those with songs left, play a run from it; until every non-repeating tag runs out. */
+function combine(tags, seed) {
+  const r = rng(seed);
+  const deck = {}, pos = {}, round = {};
+  for (const t of TAGS) { deck[t.id] = shuffled(t.size, r); pos[t.id] = 0; round[t.id] = 0; }
+  const left = (id) => pos[id] < byId[id].size;
+  const live = (id) => left(id) || tags[id].repeats;
+  const draw = (id) => {
+    if (!left(id)) { deck[id] = shuffled(byId[id].size, r); pos[id] = 0; round[id]++; }
+    return { tag: id, i: deck[id][pos[id]++], again: round[id] > 0 };
+  };
+  const allRepeat = TAGS.every((t) => tags[t.id].repeats);
+  const out = [];
+  while (out.length < 1500) {
+    if (TAGS.every((t) => tags[t.id].repeats || !left(t.id))) break;
+    if (allRepeat && out.length >= 300) break;
+    const open = TAGS.filter((t) => live(t.id));
+    const w = (t) => t.size * tags[t.id].boost;
+    let x = r() * open.reduce((s, t) => s + w(t), 0), pick = open[open.length - 1];
+    for (const t of open) { x -= w(t); if (x < 0) { pick = t; break; } }
+    for (let k = 0; k < tags[pick.id].run && live(pick.id); k++) out.push(draw(pick.id));
+  }
+  return out;
+}
+
+// ---------- Derived numbers ----------
+const share = (id) => { const w = (t) => t.size * state.tags[t.id].boost; return w(byId[id]) / TAGS.reduce((s, t) => s + w(t), 0); };
+const pct = (id) => `${Math.round(share(id) * 100)}%`;
+const boostLabel = (b) => (b === 1 ? '×1' : b < 1 ? `×${b === 0.5 ? '½' : '¼'}` : `×${b}`);
+const isPlain = () => TAGS.every((t) => { const s = state.tags[t.id]; return s.boost === 1 && !repeats(t.id) && s.run === 1; });
+function tagSummary(id) {
+  const s = state.tags[id], bits = [pct(id)];
+  if (s.boost !== 1) bits.push(boostLabel(s.boost));
+  if (repeats(id)) bits.push('repeats');
+  if (s.run > 1) bits.push(`${s.run} in a row`);
+  return bits.join(' · ');
+}
+function mixSummary() {
+  return TAGS.filter((t) => { const s = state.tags[t.id]; return s.boost !== 1 || repeats(t.id) || s.run > 1; })
+    .map((t) => `${t.name} ${tagSummary(t.id).split(' · ').slice(1).join(', ')}`).join(' · ');
+}
+
+// ---------- Shared bits ----------
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sw = (t) => `<span class="sw" style="background:${t.color}"></span>`;
+const stepper = (id) => {
+  const k = BOOSTS.indexOf(state.tags[id].boost);
+  return `<span class="ctl"><button class="round" data-boost="${id}" data-d="-1" aria-label="Less ${esc(byId[id].name)}" ${k === 0 ? 'disabled' : ''}>−</button>
+    <span class="val">${pct(id)}<small>${boostLabel(state.tags[id].boost)}</small></span>
+    <button class="round" data-boost="${id}" data-d="1" aria-label="More ${esc(byId[id].name)}" ${k === BOOSTS.length - 1 ? 'disabled' : ''}>+</button></span>`;
+};
+const repeatPill = (id) => `<button class="pill" data-repeat="${id}" aria-pressed="${repeats(id)}" ${raised(id) ? 'disabled' : ''}>↻ Repeats</button>`;
+const runPicker = (id) => `<span class="runs" role="group" aria-label="In a row">${RUNS.map((n) => `<button data-run="${id}" data-n="${n}" aria-pressed="${state.tags[id].run === n}">${n}</button>`).join('')}</span>`;
+function stripHTML(plays, n, cls = 'strip') {
+  return `<div class="${cls}">${plays.slice(0, n).map((p) => `<i class="${p.again ? 'again' : ''}" style="background:${byId[p.tag].color}" title="${esc(songs[p.tag][p.i])}"></i>`).join('')}</div>`;
+}
+function songsHTML(plays) {
+  return `<div class="label">Up first</div><div class="songs">${plays.slice(0, 12).map((p, k) => `<div><span class="k">${k + 1}</span><span class="c" style="background:${byId[p.tag].color}"></span><span class="t">${esc(songs[p.tag][p.i])}</span><span class="tg">${esc(byId[p.tag].name)}${p.again ? ' · again' : ''}</span></div>`).join('')}</div>`;
+}
+/** Each tag's share of the mix as one thin line; the strip above already shows the real spread. */
+const shareLine = () => `<div class="shareline" aria-label="Each tag's share">${TAGS.map((t) => `<span style="width:${share(t.id) * 100}%;background:${t.color}"></span>`).join('')}</div>`;
+const tunedLine = () => isPlain()
+  ? `<div class="sub">A plain shuffle: tags come up in proportion to their size.</div>`
+  : `<div class="tuned"><span>⚙ Tuned</span><button data-act="reset">Back to a plain shuffle</button></div>`;
+
+// ---------- D · Tag rows: every tag's settings out in the open ----------
+function layoutD(plays) {
+  return `<div class="label">Up next</div>${stripHTML(plays, 40)}${shareLine()}${tunedLine()}
+  <div class="rows">${TAGS.map((t) => `<div class="trow">
+      <span class="tname">${sw(t)}${esc(t.name)} <small>${t.size} songs</small></span>${stepper(t.id)}
+      <div class="more">${repeatPill(t.id)}</div>
+    </div>`).join('')}</div>
+  ${songsHTML(plays)}`;
+}
+
+// ---------- E · Summary rows; open one tag at a time ----------
+function layoutE(plays) {
+  return `<div class="label">Up next</div>${stripHTML(plays, 40)}${shareLine()}
+  ${tunedLine()}
+  <div class="acc">${TAGS.map((t) => {
+    const open = state.open === t.id;
+    return `<button class="line" data-open="${t.id}" aria-expanded="${open}">${sw(t)}<span>${esc(t.name)}</span><span class="what">${tagSummary(t.id)}</span><span class="chev">›</span></button>
+      ${open ? `<div class="open">
+        <div class="row"><span>Share</span>${stepper(t.id)}</div>
+        <div class="row"><span>When its ${t.size} songs run out</span>${raised(t.id) ? repeatPill(t.id) : `<span class="ctl"><button class="pill" data-repeatset="${t.id}" data-v="0" aria-pressed="${!state.tags[t.id].repeats}">Stop</button><button class="pill" data-repeatset="${t.id}" data-v="1" aria-pressed="${state.tags[t.id].repeats}">↻ Go round again</button></span>`}</div>
+      </div>` : ''}`;
+  }).join('')}</div>
+  ${songsHTML(plays)}`;
+}
+
+// ---------- F · Lanes: each tag's own track across the next 30 songs ----------
+function layoutF(plays) {
+  const first = plays.slice(0, 30);
+  return `${tunedLine()}
+  <div class="lanes">${TAGS.map((t) => `<div class="lane">
+      <div class="lane-head"><span class="tname">${sw(t)}${esc(t.name)} <small>${t.size}</small></span>${stepper(t.id)}</div>
+      <div class="track">${first.map((p) => `<i class="${p.tag === t.id && p.again ? 'again' : ''}" style="background:${p.tag === t.id ? t.color : 'transparent'}"></i>`).join('')}</div>
+      <div class="lane-ctl">${repeatPill(t.id)}</div>
+    </div>`).join('')}
+    <div class="axis"><span>next song</span><span>10</span><span>20</span><span>30</span></div>
+  </div>
+  ${songsHTML(plays)}`;
+}
+
+// ---------- Render ----------
+function render() {
+  const plays = combine(effective(), state.seed);
+  const L = LAYOUTS.find((l) => l.key === state.layout);
+  const body = { d: layoutD, e: layoutE, f: layoutF }[state.layout](plays);
+  const scroller = document.querySelector('.scroll');
+  const keep = scroller ? scroller.scrollTop : 0;
+  document.getElementById('phone').innerHTML = `
+    <div class="behind"><h1>Play</h1><div class="pot">${TAGS.map((t) => `<div class="tile" style="background:${t.color}">${esc(t.name)}<span class="n">${t.size}</span></div>`).join('')}</div></div>
+    <div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-label="This mix">
+      <div class="grab"></div>
+      <div class="sheet-head"><h2>kpop, chill, city pop, lofi</h2><span class="count">${TOTAL} songs</span></div>
+      <div class="scroll">${body}</div>
+    </div>`;
+  const s2 = document.querySelector('.scroll'); if (s2) s2.scrollTop = keep;
+  document.getElementById('vl').textContent = `${L.key.toUpperCase()} · ${L.name}`;
+
+  const rows = TAGS.map((t) => {
+    const mine = plays.filter((p) => p.tag === t.id);
+    const in50 = plays.slice(0, 50).filter((p) => p.tag === t.id).length;
+    const again = plays.findIndex((p) => p.tag === t.id && p.again);
+    let heard = null; const seen = new Set();
+    for (let k = 0; k < plays.length; k++) if (plays[k].tag === t.id) { seen.add(plays[k].i); if (seen.size === t.size) { heard = k + 1; break; } }
+    return `<tr><td>${esc(t.name)}</td><td class="num">${t.size}</td><td class="num">${pct(t.id)}</td><td class="num">${in50}</td><td class="num">${heard ?? '—'}</td><td class="num">${again >= 0 ? again + 1 : '—'}</td><td class="num">${mine.length}</td></tr>`;
+  }).join('');
+  document.getElementById('side').innerHTML = `
+    <h2>What you'd hear</h2>
+    <p class="lede">The first 80 songs, coloured by tag; a ring marks a song coming round again. Each tag sets its own share and whether it repeats. The shuffle just combines them. Every share is of the whole shuffle, so a tag raised above its natural share has Repeats locked on.</p>
+    ${stripHTML(plays, 80, 'bigstrip')}
+    <button class="reshuffle" data-act="reseed">Shuffle again</button>
+    <div class="note"><b>${isPlain() ? 'Plain shuffle' : esc(mixSummary())}</b><span>${plays.length} songs before it ends${TAGS.some((t) => repeats(t.id)) ? ' (repeating tags go round until the rest run out)' : ''}.</span></div>
+    <div class="tablewrap"><table><thead><tr><th>Tag</th><th class="num">Songs</th><th class="num">Share</th><th class="num">In first 50</th><th class="num">All heard by</th><th class="num">First repeat</th><th class="num">Plays</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="note"><b>Try</b><ul>
+      <li>lofi: + three times (×8). Repeats turns itself on; the big strip here shows lofi all the way along.</li>
+      <li>Raised, lofi's Repeats is locked on: its share is of the whole shuffle, which only holds if it goes round. Bring it back to ×1 and Repeats is yours again.</li>
+      <li>kpop: − twice. Still all of kpop, just spread thinner, so it runs longest.</li>
+    </ul></div>
+    <div class="note"><b>About this layout</b><span>${{
+      d: 'Every setting out in the open, one card per tag. Up next shows the first 40 songs as they’ll play; the thin line under it is each tag’s share of the mix. Raising a tag past ×1 locks its Repeats on, without a word: its share is a share of the whole shuffle, and only holds if it goes round again.',
+      e: 'Calm by default: each tag is one line saying what it does, and the share bar gives the overview. Open a tag to change it. More taps, but scales to a big pot.',
+      f: 'Each tag gets its own lane across the next 30 songs, so you see its rhythm: how often, in runs, coming round again. The nerdiest, and the most honest about what a setting does.',
+    }[state.layout]}</span></div>`;
+}
+
+function go(step) {
+  const k = LAYOUTS.findIndex((l) => l.key === state.layout);
+  state.layout = LAYOUTS[(k + step + LAYOUTS.length) % LAYOUTS.length].key;
+  try { history.replaceState(null, '', '#' + state.layout); } catch {}
+  render();
+}
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+});
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-boost],[data-repeat],[data-repeatset],[data-run],[data-open],[data-act]');
+  if (!el || el.disabled) return;
+  const d = el.dataset;
+  if (d.boost) {
+    const s = state.tags[d.boost];
+    s.boost = BOOSTS[Math.min(BOOSTS.length - 1, Math.max(0, BOOSTS.indexOf(s.boost) + Number(d.d)))];
+  }
+  else if (d.repeat) state.tags[d.repeat].repeats = !state.tags[d.repeat].repeats;
+  else if (d.repeatset) state.tags[d.repeatset].repeats = d.v === '1';
+  else if (d.run) state.tags[d.run].run = Number(d.n);
+  else if (d.open) state.open = state.open === d.open ? null : d.open;
+  else if (d.act === 'reset') state.tags = plain();
+  else if (d.act === 'reseed') state.seed = (state.seed * 31 + 11) % 100000;
+  render();
+});
+const start = (location.hash || '').slice(1);
+if (LAYOUTS.some((l) => l.key === start)) state.layout = start;
+render();
+</script>

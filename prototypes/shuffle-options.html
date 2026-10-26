@@ -1,0 +1,428 @@
+<title>Shuffle Options Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Roboto:wght@400;500&display=swap">
+<style>
+/* PROTOTYPE — throwaway. Three ways a keen listener could tune how a mix of several tags shuffles,
+   in ProTag's own look (warm dark, teal accent, Notion-style tag colours). Layout: a phone on the
+   left, what you'd hear on the right; a pill at the bottom switches variant (also ← →). */
+:root {
+  --bg: #151413; --surface: #1E1D1B; --surface-alt: #272624; --border: #34322F; --raised: #3D3B38;
+  --text: #EFEDE9; --dim: #A3A09A; --faint: #75726C;
+  --accent: #0F5C54; --accent-fg: #2E9384; --accent-tint: #2E938429;
+  --pink: #DB7AA8; --blue: #5E8FDB; --green: #74B266;
+  --display: 'Lora', Georgia, serif;
+  --sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.35; }
+.page { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; align-items: flex-start;
+  padding-block: 24px 110px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
+
+/* Phone */
+.phone { width: 380px; max-width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 28px;
+  padding: 18px 16px 20px; position: relative; min-height: 640px; display: flex; flex-direction: column; gap: 14px; }
+.phone h1 { font-family: var(--display); font-weight: 700; font-size: 22px; margin: 6px 0 0; }
+.sub { color: var(--dim); font-size: 13px; }
+.pot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tile { position: relative; height: 44px; border-radius: 10px; display: flex; align-items: center; gap: 6px; padding: 0 10px;
+  font-weight: 500; color: #151413; user-select: none; -webkit-user-select: none; touch-action: manipulation; text-align: left; }
+.tile .n { margin-left: auto; font-size: 12px; opacity: .75; font-variant-numeric: tabular-nums; }
+.tile.wide { grid-column: span 2; }
+.pips { display: flex; gap: 3px; }
+.pip { width: 6px; height: 6px; border-radius: 50%; background: #151413; opacity: .25; }
+.pip.on { opacity: .85; }
+.loopmark { font-size: 14px; line-height: 1; }
+.tile.held { outline: 2px solid var(--text); outline-offset: 2px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn { height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 500; }
+.btn.save { background: #1a1f1e; color: #2E93847a; }
+.btn.shuffle { background: var(--accent); color: #fff; }
+.split { display: flex; background: var(--accent); border-radius: 12px; overflow: hidden; }
+.split .btn { border-radius: 0; flex: 1; }
+.split .more { width: 44px; flex: none; border-left: 1px solid #ffffff2e; color: #fff; }
+.tuned { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--accent-fg); min-height: 20px; }
+.tuned button { color: var(--dim); font-size: 13px; text-decoration: underline; }
+.preview { display: flex; align-items: center; gap: 8px; color: var(--dim); font-size: 13px; }
+.mini { display: flex; gap: 2px; }
+.mini i { width: 8px; height: 14px; border-radius: 2px; display: block; }
+.hint { margin-top: auto; font-size: 12px; color: var(--faint); border-top: 1px dashed var(--border); padding-top: 10px; }
+
+/* Popovers and sheets */
+.pop { position: absolute; left: 16px; right: 16px; background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: 16px; padding: 14px; z-index: 5; box-shadow: 0 12px 30px #0008; display: flex; flex-direction: column; gap: 12px; }
+.pop h3 { margin: 0; font-size: 13px; color: var(--dim); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { height: 34px; border-radius: 8px; font-size: 13px; color: var(--dim); }
+.seg button[aria-pressed="true"] { background: var(--raised); color: var(--text); }
+.row { display: flex; align-items: center; gap: 10px; }
+.switch { width: 40px; height: 24px; border-radius: 12px; background: var(--raised); position: relative; flex: none; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--dim); transition: left .15s; }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { left: 19px; background: #fff; }
+.styles { display: flex; flex-direction: column; gap: 8px; }
+.style { text-align: left; border-radius: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid transparent; display: flex; flex-direction: column; gap: 6px; }
+.style[aria-pressed="true"] { border-color: var(--accent-fg); background: #1c2523; }
+.style b { font-weight: 500; }
+.style span { color: var(--dim); font-size: 13px; }
+.style .extra { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--dim); }
+.stepper { display: flex; gap: 4px; }
+.stepper button { min-width: 34px; height: 28px; border-radius: 8px; background: var(--raised); font-size: 12px; color: var(--dim); padding: 0 8px; }
+.stepper button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+/* Mixing desk */
+.desk { background: var(--surface); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.desk .head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--dim); }
+.bar { position: relative; display: flex; height: 44px; border-radius: 10px; overflow: hidden; touch-action: none; }
+.bar .s { height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 0 8px; color: #151413; font-size: 12px; font-weight: 500; min-width: 0; overflow: hidden; white-space: nowrap; }
+.bar .s small { opacity: .7; font-variant-numeric: tabular-nums; }
+.bar .grip { position: absolute; top: 0; bottom: 0; width: 22px; margin-left: -11px; cursor: ew-resize; display: flex; justify-content: center; }
+.bar .grip::after { content: ""; width: 4px; border-radius: 2px; background: var(--bg); margin: 8px 0; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { height: 30px; border-radius: 15px; padding: 0 12px; background: var(--raised); font-size: 13px; color: var(--dim); display: inline-flex; align-items: center; gap: 6px; }
+.chip[aria-pressed="true"] { background: var(--accent-tint); color: var(--accent-fg); }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* What you'd hear */
+.hear { width: 520px; max-width: 100%; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.hear h2 { font-family: var(--display); font-weight: 600; font-size: 20px; margin: 0; text-wrap: balance; }
+.lede { color: var(--dim); margin: 0; max-width: 60ch; }
+.strip { display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; }
+.strip i { aspect-ratio: 1 / 1.6; border-radius: 3px; display: block; position: relative; max-width: 100%; }
+.strip i.again::after { content: ""; position: absolute; inset: 35% 30%; border-radius: 50%; border: 2px solid #151413; opacity: .5; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--dim); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+th { color: var(--faint); font-weight: 500; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+td.num, th.num { text-align: right; }
+.tablewrap { overflow-x: auto; }
+.list { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.list div { display: flex; gap: 10px; align-items: center; padding: 5px 0; }
+.list .k { width: 22px; color: var(--faint); text-align: right; font-variant-numeric: tabular-nums; }
+.list .c { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.list .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list .tg { color: var(--faint); font-size: 12px; }
+.note { background: var(--surface); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--dim); display: flex; flex-direction: column; gap: 6px; }
+.note b { color: var(--text); font-weight: 500; }
+.reshuffle { align-self: flex-start; height: 32px; border-radius: 16px; padding: 0 14px; background: var(--raised); font-size: 13px; }
+
+/* Variant switcher: obviously not part of the design */
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: 4px; background: #f5f2ea; color: #151413; border-radius: 999px; padding: 4px; box-shadow: 0 6px 24px #000a; z-index: 20; max-width: calc(100% - 32px); }
+.switcher button { width: 40px; height: 40px; border-radius: 50%; color: #151413; font-size: 20px; }
+.switcher button:hover { background: #0001; }
+.switcher .label { font-size: 13px; font-weight: 500; padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) { .switch::after { transition: none; } }
+</style>
+
+<div class="page">
+  <div class="phone" id="phone"></div>
+  <section class="hear" id="hear"></section>
+</div>
+<div class="switcher" role="group" aria-label="Prototype variant">
+  <button id="prev" aria-label="Previous variant">‹</button>
+  <span class="label" id="vlabel"></span>
+  <button id="next" aria-label="Next variant">›</button>
+</div>
+
+<script>
+// ---------- Sample library: a pot of three tags of very different sizes (made-up songs) ----------
+const TAGS = [
+  { id: 'kpop', name: 'kpop', color: 'var(--pink)', hex: '#DB7AA8', size: 96 },
+  { id: 'chill', name: 'chill', color: 'var(--green)', hex: '#74B266', size: 38 },
+  { id: 'lofi', name: 'lofi', color: 'var(--blue)', hex: '#5E8FDB', size: 12 },
+];
+const WORDS = {
+  kpop: [['Neon','Sugar','Hyper','Silver','Crush','Velvet','Super','Lucky','Fever','Candy','Blue','Moon'],['Rush','Heart','Signal','Wave','Drive','Love','Bounce','Dream','Shot','Light','Code','Beat']],
+  chill: [['Slow','Golden','Quiet','Soft','Warm','Late','Open','Pale','Easy','Still'],['Hours','Shore','Rooms','Morning','Coast','Field','Window','Tide','Garden','Air']],
+  lofi: [['Rainy','Paper','Dusty','Sleepy','Tape','Cafe'],['Desk','Loop','Study','Notes','Lamp','Window']],
+};
+const songs = {};
+for (const t of TAGS) {
+  const [a, b] = WORDS[t.id];
+  songs[t.id] = Array.from({ length: t.size }, (_, i) => `${a[i % a.length]} ${b[(i * 7 + Math.floor(i / a.length)) % b.length]}`);
+}
+const byId = Object.fromEntries(TAGS.map((t) => [t.id, t]));
+
+// ---------- The shuffle itself: each tag is a stream, an option is a rule for weaving them ----------
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+function shuffled(n, r) { const a = [...Array(n).keys()]; for (let i = n - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+/** opts: { style: 'blend'|'share'|'turns', weights: {tag: n}, loop: {tag: bool}, block: n|'all' }. Returns plays [{tag, i, again}]. */
+function weave(opts, seed) {
+  const r = rng(seed);
+  if (opts.style === 'blend') {
+    const pool = TAGS.flatMap((t) => songs[t.id].map((_, i) => ({ tag: t.id, i })));
+    return shuffled(pool.length, r).map((k) => pool[k]);
+  }
+  const deck = {}, pos = {}, rounds = {};
+  for (const t of TAGS) { deck[t.id] = shuffled(t.size, r); pos[t.id] = 0; rounds[t.id] = 0; }
+  const live = (id) => pos[id] < deck[id].length || opts.loop[id];
+  const draw = (id) => {
+    if (pos[id] >= deck[id].length) { deck[id] = shuffled(byId[id].size, r); pos[id] = 0; rounds[id]++; }
+    return { tag: id, i: deck[id][pos[id]++], again: rounds[id] > 0 };
+  };
+  // It ends when every tag that doesn't repeat has run out (or, if they all repeat, at a sensible length).
+  const done = () => TAGS.every((t) => opts.loop[t.id] || pos[t.id] >= deck[t.id].length && rounds[t.id] >= 0 && !live(t.id))
+    || TAGS.every((t) => opts.loop[t.id]) && out.length >= 400;
+  const out = [];
+  if (opts.style === 'share') {
+    // Each next song comes from a tag picked in proportion to its share, among tags with songs left.
+    while (!done() && out.length < 2000) {
+      const open = TAGS.filter((t) => live(t.id));
+      const total = open.reduce((s, t) => s + opts.weights[t.id], 0);
+      let x = r() * total, pick = open[open.length - 1];
+      for (const t of open) { x -= opts.weights[t.id]; if (x < 0) { pick = t; break; } }
+      out.push(draw(pick.id));
+    }
+  } else {
+    // In turns: a block from each tag in pot order, round and round.
+    while (!done() && out.length < 2000) {
+      for (const t of TAGS) {
+        if (!live(t.id)) continue;
+        const n = opts.block === 'all' ? byId[t.id].size - (pos[t.id] % byId[t.id].size || 0) : opts.block;
+        for (let k = 0; k < n && live(t.id); k++) out.push(draw(t.id));
+        if (opts.block === 'all' && opts.loop[t.id] && pos[t.id] >= deck[t.id].length) { /* one full pass per turn */ }
+      }
+    }
+  }
+  return out;
+}
+
+// ---------- State ----------
+const state = {
+  variant: 'a', seed: 7, held: null, sheet: false,
+  opts: { style: 'blend', weights: { kpop: 1, chill: 1, lofi: 1 }, loop: { kpop: false, chill: false, lofi: false }, block: 3 },
+};
+const VARIANTS = [
+  { key: 'a', name: 'Hold a tag' },
+  { key: 'b', name: 'Shuffle styles' },
+  { key: 'c', name: 'Mixing desk' },
+];
+const SHARE_STEPS = [{ v: 0.5, label: 'Less' }, { v: 1, label: 'Equal' }, { v: 2, label: 'More' }, { v: 3, label: 'Most' }];
+const isDefault = () => state.opts.style === 'blend';
+const reset = () => { state.opts = { style: 'blend', weights: { kpop: 1, chill: 1, lofi: 1 }, loop: { kpop: false, chill: false, lofi: false }, block: 3 }; };
+
+function summary() {
+  const o = state.opts;
+  if (o.style === 'blend') return '';
+  const loops = TAGS.filter((t) => o.loop[t.id]).map((t) => `${t.name} repeats`);
+  if (o.style === 'turns') return ['In turns', o.block === 'all' ? 'whole tags' : `${o.block} at a time`, ...loops].join(' · ');
+  const even = TAGS.every((t) => o.weights[t.id] === 1);
+  const stepped = TAGS.every((t) => SHARE_STEPS.some((s) => s.v === o.weights[t.id]));
+  const sum = TAGS.reduce((s, t) => s + o.weights[t.id], 0);
+  const shares = even ? ['Even shares']
+    : stepped ? TAGS.filter((t) => o.weights[t.id] !== 1).map((t) => `${t.name} ${SHARE_STEPS.find((s) => s.v === o.weights[t.id]).label.toLowerCase()}`)
+    : [TAGS.map((t) => `${t.name} ${Math.round((o.weights[t.id] / sum) * 100)}%`).join(' / ')];
+  return [...shares, ...loops].join(' · ');
+}
+
+// ---------- Phone: shared pieces ----------
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function tileHTML(t, extra = '') {
+  const o = state.opts;
+  const shareOn = o.style === 'share' && o.weights[t.id] !== 1;
+  const step = SHARE_STEPS.findIndex((s) => s.v === o.weights[t.id]);
+  const pips = state.variant === 'a' && shareOn ? `<span class="pips" aria-hidden="true">${SHARE_STEPS.map((_, k) => `<span class="pip ${k <= step ? 'on' : ''}"></span>`).join('')}</span>` : '';
+  const loop = o.loop[t.id] && o.style !== 'blend' ? `<span class="loopmark" title="Repeats when it runs out">↻</span>` : '';
+  return `<button class="tile ${state.held === t.id ? 'held' : ''}" data-tile="${t.id}" style="background:${t.color}" ${extra}>
+    ${esc(t.name)} ${loop} ${pips}<span class="n">${t.size}</span></button>`;
+}
+function miniStrip(opts, n = 16) {
+  return `<span class="mini" aria-hidden="true">${weave(opts, state.seed).slice(0, n).map((p) => `<i style="background:${byId[p.tag].color}"></i>`).join('')}</span>`;
+}
+const header = `<h1>Play</h1><div class="sub">Mix your tags into a shuffle</div>`;
+const total = TAGS.reduce((s, t) => s + t.size, 0);
+
+// ---------- Variant A: Hold a tag ----------
+function variantA() {
+  const held = state.held && byId[state.held];
+  const o = state.opts;
+  return `${header}
+  <div class="pot">${TAGS.map((t, k) => tileHTML(t, k === 2 ? '' : '')).join('')}</div>
+  <div class="tuned">${isDefault() ? '' : `<span>⚙ ${esc(summary())}</span><button data-act="reset">Reset</button>`}</div>
+  <div class="actions"><div class="btn save">Save as mix</div><div class="btn shuffle">⤮ Shuffle</div></div>
+  <div class="preview">${miniStrip(o, 12)} ${total} songs · Preview ›</div>
+  ${held ? `<div class="pop" style="top:200px" role="dialog" aria-label="${esc(held.name)} in this shuffle">
+    <h3>${esc(held.name)} in this shuffle</h3>
+    <div class="seg" role="group" aria-label="Share">${SHARE_STEPS.map((s) => `<button data-share="${s.v}" aria-pressed="${o.style === 'share' && o.weights[held.id] === s.v}">${s.label}</button>`).join('')}</div>
+    <div class="row"><button class="switch" role="switch" data-loop="${held.id}" aria-checked="${o.loop[held.id]}" aria-label="Repeat when it runs out"></button>
+      <span>Repeat when it runs out</span></div>
+    <div class="row" style="justify-content:space-between"><span class="sub">${held.size} songs · ${o.style === 'blend' ? 'blended by size' : 'its own share'}</span>
+      <button class="chip" data-act="close">Done</button></div>
+  </div>` : ''}
+  <div class="hint">Press and hold a tag in the pot (here: press and hold, or right-click). No settings screen: the pot itself is the control, and a tuned tag wears pips (its share) and ↻ (repeats). "In turns" has no home in this one.</div>`;
+}
+
+// ---------- Variant B: Shuffle styles ----------
+function variantB() {
+  const o = state.opts;
+  const label = o.style === 'blend' ? 'Shuffle' : o.style === 'turns' ? 'Shuffle · in turns' : 'Shuffle · even';
+  const evenOpts = { ...o, style: 'share', weights: { kpop: 1, chill: 1, lofi: 1 } };
+  const turnsOpts = { ...o, style: 'turns' };
+  return `${header}
+  <div class="pot">${TAGS.map((t) => tileHTML(t)).join('')}</div>
+  <div class="actions"><div class="btn save">Save as mix</div>
+    <div class="split"><button class="btn" data-act="noop">⤮ ${esc(label)}</button><button class="btn more" data-act="sheet" aria-label="Shuffle styles" aria-expanded="${state.sheet}">⌄</button></div></div>
+  <div class="preview">${miniStrip(o, 12)} ${total} songs · Preview ›</div>
+  ${state.sheet ? `<div class="pop" style="top:178px" role="dialog" aria-label="How to shuffle these tags">
+    <h3>How to shuffle these tags</h3>
+    <div class="styles">
+      <button class="style" data-style="blend" aria-pressed="${o.style === 'blend'}"><b>Blend</b><span>Every song in one pile. Big tags come up most.</span>${miniStrip({ ...o, style: 'blend' })}</button>
+      <div class="style" role="button" tabindex="0" data-style="share" aria-pressed="${o.style === 'share'}"><b>Even</b><span>Each tag gets the same share, however big.</span>${miniStrip(evenOpts)}
+        <span class="extra"><button class="switch" role="switch" data-loopsmall aria-checked="${o.loop.lofi}" aria-label="Small tags repeat"></button> Small tags repeat till the big ones run out</span></div>
+      <div class="style" role="button" tabindex="0" data-style="turns" aria-pressed="${o.style === 'turns'}"><b>In turns</b><span>A few from each tag, in the pot's order.</span>${miniStrip(turnsOpts)}
+        <span class="extra">At a time <span class="stepper">${[1, 3, 5, 'all'].map((b) => `<button data-block="${b}" aria-pressed="${o.block == b}">${b === 'all' ? 'Whole tag' : b}</button>`).join('')}</span></span></div>
+    </div>
+  </div>` : ''}
+  <div class="hint">The arrow on the Shuffle button opens styles (it only appears with 2+ tags in the pot). The button's label says which style is on. Three named styles, no numbers.</div>`;
+}
+
+// ---------- Variant C: Mixing desk ----------
+function variantC() {
+  const o = state.opts;
+  const weights = o.style === 'share' ? o.weights : Object.fromEntries(TAGS.map((t) => [t.id, t.size]));
+  const sum = TAGS.reduce((s, t) => s + weights[t.id], 0);
+  const pct = TAGS.map((t) => (weights[t.id] / sum) * 100);
+  let acc = 0;
+  const grips = pct.slice(0, -1).map((p, k) => { acc += p; return `<span class="grip" data-grip="${k}" style="left:${acc}%" role="slider" tabindex="0" aria-label="Between ${TAGS[k].name} and ${TAGS[k + 1].name}" aria-valuenow="${Math.round(acc)}"></span>`; }).join('');
+  return `${header}
+  <div class="pot">${TAGS.map((t) => tileHTML(t)).join('')}</div>
+  <div class="actions"><div class="btn save">Save as mix</div><div class="btn shuffle">⤮ Shuffle</div></div>
+  <div class="desk">
+    <div class="head"><span>What you'll hear</span><span>${o.style === 'blend' ? 'by size' : o.style === 'turns' ? 'in turns' : 'your mix'}</span></div>
+    <span class="mini" aria-hidden="true">${weave(o, state.seed).slice(0, 24).map((p) => `<i style="background:${byId[p.tag].color}"></i>`).join('')}</span>
+    <div class="bar" id="bar">${TAGS.map((t, k) => `<div class="s" style="width:${pct[k]}%;background:${t.color}">${esc(t.name)}${o.loop[t.id] && o.style !== 'blend' ? ' ↻' : ''}<small>${Math.round(pct[k])}%</small></div>`).join('')}${o.style === 'turns' ? '' : grips}</div>
+    <div class="chips">
+      <button class="chip" data-act="bysize" aria-pressed="${o.style === 'blend'}">By size</button>
+      <button class="chip" data-act="even" aria-pressed="${o.style === 'share' && TAGS.every((t) => o.weights[t.id] === 1)}">Even</button>
+      <button class="chip" data-act="turns" aria-pressed="${o.style === 'turns'}">Take turns</button>
+    </div>
+    <div class="chips">${TAGS.map((t) => `<button class="chip" data-loop="${t.id}" aria-pressed="${o.loop[t.id]}"><span class="dot" style="background:${t.color}"></span>${esc(t.name)} repeats</button>`).join('')}</div>
+  </div>
+  <div class="hint">Opens from the pot's "Preview ›". The bar is the mix: drag between colours to change each tag's share; it starts by size (that's a plain shuffle). The strip above shows the next 24 songs as you drag.</div>`;
+}
+
+// ---------- What you'd hear (state, always visible) ----------
+function renderHear() {
+  const plays = weave(state.opts, state.seed);
+  const first = plays.slice(0, 60);
+  const rows = TAGS.map((t) => {
+    const mine = plays.filter((p) => p.tag === t.id);
+    const in50 = plays.slice(0, 50).filter((p) => p.tag === t.id).length;
+    const firstAgain = plays.findIndex((p) => p.tag === t.id && p.again);
+    const allHeard = (() => { const seen = new Set(); for (let k = 0; k < plays.length; k++) if (plays[k].tag === t.id) { seen.add(plays[k].i); if (seen.size === t.size) return k + 1; } return null; })();
+    return `<tr><td><span class="legend"><span><i style="background:${t.color}"></i>${t.name}</span></span></td><td class="num">${t.size}</td><td class="num">${in50}</td>
+      <td class="num">${allHeard ?? '—'}</td><td class="num">${firstAgain >= 0 ? firstAgain + 1 : '—'}</td><td class="num">${mine.length}</td></tr>`;
+  }).join('');
+  document.getElementById('hear').innerHTML = `
+    <h2>What you'd hear</h2>
+    <p class="lede">The first 60 songs of this shuffle, coloured by tag. A ring marks a song coming round again. Same made-up pot in every variant: kpop 96, chill 38, lofi 12.</p>
+    <div class="strip">${first.map((p) => `<i class="${p.again ? 'again' : ''}" style="background:${byId[p.tag].color}" title="${esc(songs[p.tag][p.i])} · ${p.tag}"></i>`).join('')}</div>
+    <div class="legend">${TAGS.map((t) => `<span><i style="background:${t.color}"></i>${t.name}</span>`).join('')}<span>○ again</span></div>
+    <button class="reshuffle" data-act="reseed">Shuffle again</button>
+    <div class="note"><b>${isDefault() ? 'Plain shuffle (Blend)' : esc(summary())}</b>
+      <span>${plays.length} songs before it ends${TAGS.some((t) => state.opts.loop[t.id] && state.opts.style !== 'blend') ? ' (repeating tags go round until the others run out)' : ''}.</span></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Tag</th><th class="num">Songs</th><th class="num">In first 50</th><th class="num">All heard by</th><th class="num">First repeat</th><th class="num">Plays</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <div class="list">${plays.slice(0, 10).map((p, k) => `<div><span class="k">${k + 1}</span><span class="c" style="background:${byId[p.tag].color}"></span><span class="t">${esc(songs[p.tag][p.i])}</span><span class="tg">${p.tag}${p.again ? ' · again' : ''}</span></div>`).join('')}</div>`;
+}
+
+// ---------- Render + events ----------
+function render() {
+  const v = VARIANTS.find((x) => x.key === state.variant);
+  document.getElementById('phone').innerHTML = { a: variantA, b: variantB, c: variantC }[state.variant]();
+  document.getElementById('vlabel').textContent = `${v.key.toUpperCase()} · ${v.name}`;
+  renderHear();
+}
+function go(step) {
+  const k = VARIANTS.findIndex((x) => x.key === state.variant);
+  state.variant = VARIANTS[(k + step + VARIANTS.length) % VARIANTS.length].key;
+  state.held = null; state.sheet = false;
+  try { history.replaceState(null, '', '#' + state.variant); } catch {}
+  render();
+}
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft' && !e.target.closest('[role=slider]')) go(-1);
+  if (e.key === 'ArrowRight' && !e.target.closest('[role=slider]')) go(1);
+  if (e.key === 'Escape') { state.held = null; state.sheet = false; render(); }
+});
+
+// Variant A's hold: 450 ms on a tile, or right-click.
+let holdTimer = null;
+document.addEventListener('pointerdown', (e) => {
+  const tile = e.target.closest('[data-tile]');
+  if (!tile || state.variant !== 'a') return;
+  holdTimer = setTimeout(() => { state.held = tile.dataset.tile; holdTimer = null; render(); }, 450);
+});
+['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => document.addEventListener(ev, () => { clearTimeout(holdTimer); holdTimer = null; }));
+document.addEventListener('contextmenu', (e) => {
+  const tile = e.target.closest('[data-tile]');
+  if (!tile || state.variant !== 'a') return;
+  e.preventDefault(); state.held = tile.dataset.tile; render();
+});
+
+document.addEventListener('click', (e) => {
+  const o = state.opts;
+  const el = e.target.closest('[data-act],[data-share],[data-loop],[data-style],[data-block],[data-loopsmall]');
+  if (!el) return;
+  if (el.dataset.share) { o.style = 'share'; o.weights[state.held] = Number(el.dataset.share);
+    if (TAGS.every((t) => o.weights[t.id] === 1) && !TAGS.some((t) => o.loop[t.id])) o.style = 'share'; }
+  else if (el.dataset.loopsmall !== undefined) { e.stopPropagation(); o.style = 'share'; o.weights = { kpop: 1, chill: 1, lofi: 1 }; const on = !o.loop.lofi; o.loop.lofi = on; o.loop.chill = on; }
+  else if (el.dataset.loop) { if (o.style === 'blend') { o.style = 'share'; o.weights = Object.fromEntries(TAGS.map((t) => [t.id, 1])); } o.loop[el.dataset.loop] = !o.loop[el.dataset.loop]; }
+  else if (el.dataset.block) { e.stopPropagation(); o.style = 'turns'; o.block = el.dataset.block === 'all' ? 'all' : Number(el.dataset.block); }
+  else if (el.dataset.style) { o.style = el.dataset.style; if (o.style === 'share') o.weights = { kpop: 1, chill: 1, lofi: 1 }; if (o.style === 'blend') o.loop = { kpop: false, chill: false, lofi: false }; }
+  else switch (el.dataset.act) {
+    case 'reset': reset(); break;
+    case 'close': state.held = null; break;
+    case 'sheet': state.sheet = !state.sheet; break;
+    case 'reseed': state.seed = (state.seed * 31 + 11) % 100000; break;
+    case 'bysize': reset(); break;
+    case 'even': o.style = 'share'; o.weights = { kpop: 1, chill: 1, lofi: 1 }; break;
+    case 'turns': o.style = 'turns'; break;
+    default: return;
+  }
+  render();
+});
+
+// Variant C: drag the bar's dividers to set shares (converted to whole-number weights out of 100).
+let dragging = null;
+document.addEventListener('pointerdown', (e) => {
+  const grip = e.target.closest('[data-grip]');
+  if (!grip) return;
+  e.preventDefault();
+  const o = state.opts;
+  if (o.style !== 'share') { o.style = 'share'; o.weights = Object.fromEntries(TAGS.map((t) => [t.id, t.size])); }
+  dragging = Number(grip.dataset.grip);
+});
+document.addEventListener('pointermove', (e) => {
+  if (dragging === null) return;
+  const bar = document.getElementById('bar');
+  if (!bar) return;
+  const box = bar.getBoundingClientRect();
+  const x = Math.min(1, Math.max(0, (e.clientX - box.left) / box.width)) * 100;
+  const o = state.opts;
+  const sum = TAGS.reduce((s, t) => s + o.weights[t.id], 0);
+  const pct = TAGS.map((t) => (o.weights[t.id] / sum) * 100);
+  const before = pct.slice(0, dragging).reduce((s, p) => s + p, 0);
+  const pair = pct[dragging] + pct[dragging + 1];
+  const left = Math.min(pair - 4, Math.max(4, x - before));
+  pct[dragging] = left; pct[dragging + 1] = pair - left;
+  TAGS.forEach((t, k) => (o.weights[t.id] = pct[k]));
+  render();
+});
+document.addEventListener('pointerup', () => (dragging = null));
+
+const start = (location.hash || '').slice(1);
+if (VARIANTS.some((v) => v.key === start)) state.variant = start;
+render();
+</script>

@@ -11,15 +11,18 @@ import {
   View,
   type LayoutChangeEvent,
   type ScrollViewInstance,
+  type ViewInstance,
 } from 'react-native';
 
 import { albumArtUri } from '../../library/assets';
 import type { PotItem } from '../../query/pot';
 import type { Ref } from '../../query/refs';
+import { isTuned } from '../../query/tuning';
 import type { QueryDraft } from '../../query/types';
 import { formatCount, plural } from '../format';
 import { Icon } from '../Icon';
 import { IconButton } from '../IconButton';
+import type { Rect } from '../Popover';
 import { Artwork } from '../player/Artwork';
 import { colors, font, iconSize, radius, spacing, touchTarget } from '../theme';
 import { Join, useDraggable, useDropTarget, usePotDragState, usePotDrop, type Look } from './PotDrag';
@@ -94,7 +97,8 @@ export interface PotProps {
   counted: ShuffleCount | null;
   /** A few of the matching songs' albums (ids), for the cover stack; updated with `counted`. */
   covers: readonly string[];
-  onPreview: () => void;
+  /** Open the mix's Details, growing from the line that opened it. */
+  onDetails: (from: Rect) => void;
   /** The name of the mix opened for editing, if any. */
   editing: string | null;
   onSave: () => void;
@@ -136,7 +140,7 @@ export function Pot({
   ingredientCounts,
   counted,
   covers,
-  onPreview,
+  onDetails,
   editing,
   onSave,
   onShuffle,
@@ -196,7 +200,7 @@ export function Pot({
               style={[styles.layer, { opacity: hintShown.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}
               pointerEvents={hinting ? 'none' : 'auto'}
             >
-              <PreviewLine covers={covers} counted={counted} editing={editing} onPress={onPreview} />
+              <DetailsLine covers={covers} counted={counted} editing={editing} tuned={isTuned(draft)} onPress={onDetails} />
             </Animated.View>
           )}
           <Animated.View style={[styles.layer, { opacity: hintShown }]} pointerEvents="none">
@@ -358,28 +362,33 @@ function hintFor(active: PotItem | null, hover: string, resting: boolean): strin
 
 /**
  * A glance at what the pot would play: a few of its albums' covers, the song
- * count (and the mix's name when editing one), and the way into the full list.
+ * count (and the mix's name when editing one), and the way into its Details,
+ * which says "tuned" when it shuffles other than plainly.
  */
-function PreviewLine({
+function DetailsLine({
   covers,
   counted,
   editing,
+  tuned,
   onPress,
 }: {
   covers: readonly string[];
   counted: ShuffleCount | null;
   editing: string | null;
-  onPress: () => void;
+  tuned: boolean;
+  onPress: (from: Rect) => void;
 }) {
+  const ref = useRef<ViewInstance>(null);
   const none = counted?.count === 0;
   const count = counted === null ? null : plural(counted.count, 'song');
   const text = [editing, none ? 'No songs match' : count].filter(Boolean).join(' · ');
   return (
     <Pressable
-      onPress={onPress}
+      ref={ref}
+      onPress={() => ref.current?.measureInWindow((x, y, width, height) => onPress({ x, y, width, height }))}
       disabled={none}
       accessibilityRole="button"
-      accessibilityLabel={`${text}. Preview the songs`}
+      accessibilityLabel={`${text}${tuned ? ', tuned' : ''}. Details`}
       style={({ pressed }) => [styles.preview, pressed && styles.previewPressed]}
     >
       {covers.length > 0 && (
@@ -393,7 +402,8 @@ function PreviewLine({
       )}
       <Text style={styles.previewText} numberOfLines={1}>
         {text}
-        {!none && <Text style={styles.previewLink}>{text ? ' · ' : ''}Preview</Text>}
+        {!none && <Text style={styles.previewLink}>{text ? ' · ' : ''}Details</Text>}
+        {!none && tuned && <Text style={styles.previewLink}> · tuned</Text>}
       </Text>
       {!none && <Icon name="chevron-forward" size={iconSize.sm - 6} color={colors.accentFg} />}
     </Pressable>
