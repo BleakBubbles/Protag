@@ -13,7 +13,7 @@ import { readRef, type Ref } from '../../query/refs';
 import { findSongs } from '../../query/run';
 import { goesRound, isTuned, setTuning, SHARES, tuningOf, untuned } from '../../query/tuning';
 import { buildQuery, type QueryDraft } from '../../query/types';
-import { ExpandSheet } from '../ExpandSheet';
+import { ExpandWindow } from '../ExpandWindow';
 import { FilterChip } from '../FilterChip';
 import { plural } from '../format';
 import { Icon, type IconName } from '../Icon';
@@ -35,7 +35,7 @@ export interface DetailsAction {
   onPress: () => void;
 }
 
-export interface DetailsSheetProps {
+export interface DetailsWindowProps {
   /** What opened it (the pot's Details line, the player's source pill); null while closed. */
   anchor: Rect | null;
   onClose: () => void;
@@ -65,7 +65,7 @@ function seeded(seed: number): () => number {
  * so a raised ingredient repeats, locked on, without a word. Below, every
  * song, filterable by ingredient; tap one to shuffle from it.
  */
-export function DetailsSheet({ anchor, onClose, draft, title, upNext, onTune, onPlay, actions }: DetailsSheetProps) {
+export function DetailsWindow({ anchor, onClose, draft, title, upNext, onTune, onPlay, actions }: DetailsWindowProps) {
   const db = useSQLiteContext();
   const open = anchor !== null;
 
@@ -298,8 +298,7 @@ export function DetailsSheet({ anchor, onClose, draft, title, upNext, onTune, on
   );
 
   return (
-    <ExpandSheet anchor={anchor} onClose={onClose}>
-      <View style={styles.grab} />
+    <ExpandWindow anchor={anchor} onClose={onClose}>
       <FlatList
         data={songs ?? []}
         keyExtractor={(song) => String(song.id)}
@@ -328,22 +327,14 @@ export function DetailsSheet({ anchor, onClose, draft, title, upNext, onTune, on
           </Pressable>
         )}
       />
-    </ExpandSheet>
+    </ExpandWindow>
   );
 }
 
 const styles = StyleSheet.create({
-  grab: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.raised,
-    alignSelf: 'center',
-    marginTop: spacing.sm,
-  },
   headerBody: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
     gap: spacing.lg,
   },

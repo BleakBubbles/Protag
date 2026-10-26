@@ -13,7 +13,7 @@ import { isEmptyDraft, sameDraft } from '@/query/types';
 import { formatCount } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { Marquee } from '@/ui/Marquee';
-import { DetailsSheet, type DetailsAction } from '@/ui/play/DetailsSheet';
+import { DetailsWindow, type DetailsAction } from '@/ui/play/DetailsWindow';
 import { useAnchor } from '@/ui/Popover';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { colors, font, radius, spacing } from '@/ui/theme';
@@ -87,7 +87,7 @@ export function SourceLine({ queue, onClose }: SourceLineProps) {
 
       {tappable && (
         <>
-          <DetailsSheet
+          <DetailsWindow
             anchor={details.rect}
             onClose={details.close}
             draft={draft!}

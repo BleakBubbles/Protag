@@ -8,7 +8,7 @@ import { colors, radius, spacing } from './theme';
 const OPEN_MS = 220;
 const CLOSE_MS = 170;
 
-export interface ExpandSheetProps {
+export interface ExpandWindowProps {
   /** What opened it (measured with `useAnchor` or `measureInWindow`); null while closed. */
   anchor: Rect | null;
   onClose: () => void;
@@ -16,12 +16,12 @@ export interface ExpandSheetProps {
 }
 
 /**
- * A tall panel that grows out of what opened it, and shrinks back into it,
- * rather than sliding up from the bottom: its frame stretches from the
- * anchor's rect to the panel's while its contents fade in late, the way the
- * folded pot opens. Tap outside or press back to close.
+ * A window floating over the app that grows out of what opened it, and
+ * shrinks back into it, rather than sliding up from the bottom: its frame
+ * stretches from the anchor's rect to the window's while its contents fade in
+ * late, the way the folded pot opens. Tap outside or press back to close.
  */
-export function ExpandSheet({ anchor, onClose, children }: ExpandSheetProps) {
+export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
   const screen = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const grow = useRef(new Animated.Value(0)).current;
@@ -42,8 +42,10 @@ export function ExpandSheet({ anchor, onClose, children }: ExpandSheetProps) {
   }, [anchor, grow]);
 
   if (!shown) return null;
-  const top = insets.top + spacing.xl;
-  const to = { x: 0, y: top, width: screen.width, height: screen.height - top };
+  // Inset on every side, clear of the status and navigation bars.
+  const top = insets.top + spacing.lg;
+  const bottom = insets.bottom + spacing.lg;
+  const to = { x: spacing.md, y: top, width: screen.width - spacing.md * 2, height: screen.height - top - bottom };
   const between = (from: number, end: number) => grow.interpolate({ inputRange: [0, 1], outputRange: [from, end] });
 
   return (
@@ -65,7 +67,7 @@ export function ExpandSheet({ anchor, onClose, children }: ExpandSheetProps) {
       >
         <Animated.View
           style={[
-            { width: to.width, height: to.height, paddingBottom: insets.bottom },
+            { width: to.width, height: to.height },
             { opacity: grow.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] }) },
           ]}
         >
@@ -84,7 +86,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     overflow: 'hidden',
     backgroundColor: colors.surface,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
   },
 });

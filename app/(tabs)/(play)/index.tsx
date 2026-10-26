@@ -60,7 +60,7 @@ import { ingredientKey, Pot, POT_ROW, trayHeight, type Look, type ShuffleCount }
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
 import { Divider, DIVIDER_HEIGHT } from '@/ui/play/Divider';
 import { MixShelf } from '@/ui/play/MixShelf';
-import { DetailsSheet } from '@/ui/play/DetailsSheet';
+import { DetailsWindow } from '@/ui/play/DetailsWindow';
 import { SearchButton, SearchRow, SectionHead, Trail } from '@/ui/play/SectionHead';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
@@ -718,7 +718,7 @@ function Builder({
           }}
           onClose={() => setSaving(false)}
         />
-        <DetailsSheet
+        <DetailsWindow
           anchor={detailsFrom}
           onClose={() => setDetailsFrom(null)}
           draft={current}
