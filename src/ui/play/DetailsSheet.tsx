@@ -211,17 +211,18 @@ export function DetailsSheet({ anchor, onClose, draft, title, upNext, onTune, on
         <>
           <View style={styles.divider} />
           <View style={styles.section}>
-            {/* Tuned or not sits with the controls, always there so tuning never moves the rows. */}
+            {/* What's tuned shows in teal in the rows; this puts it all back, live only when there's something to undo. */}
             <View style={styles.sectionHead}>
               <Text style={styles.label}>Tags</Text>
-              {isTuned(draft) ? (
-                <Pressable onPress={() => onTune(untuned(draft))} accessibilityRole="button" hitSlop={8} style={styles.tuned}>
-                  <Text style={styles.tunedText}>Tuned</Text>
-                  <Text style={styles.plainLink}>Back to a plain shuffle</Text>
-                </Pressable>
-              ) : (
-                <Text style={styles.plainText}>A plain shuffle</Text>
-              )}
+              <Pressable
+                onPress={() => onTune(untuned(draft))}
+                disabled={!isTuned(draft)}
+                accessibilityRole="button"
+                accessibilityLabel="Back to a plain shuffle"
+                style={({ pressed }) => [styles.step, !isTuned(draft) && styles.stepOff, pressed && styles.pressed]}
+              >
+                <Icon name="restore" size={iconSize.sm - 4} color={isTuned(draft) ? colors.text : colors.textDim} />
+              </Pressable>
             </View>
             {(ingredients ?? []).map((ing, k) => {
               const t = tuningOf(draft, ing.refs);
@@ -256,7 +257,9 @@ export function DetailsSheet({ anchor, onClose, draft, title, upNext, onTune, on
                     </Pressable>
                     <View style={styles.shareValue}>
                       <Text style={styles.percent}>{percent(k)}</Text>
-                      <Text style={styles.times}>×{t.share === 0.25 ? '¼' : t.share === 0.5 ? '½' : t.share}</Text>
+                      <Text style={[styles.times, t.share !== 1 && styles.timesTuned]}>
+                        ×{t.share === 0.25 ? '¼' : t.share === 0.5 ? '½' : t.share}
+                      </Text>
                     </View>
                     <Pressable
                       onPress={() => tune(ing.refs, 1)}
@@ -347,7 +350,7 @@ const styles = StyleSheet.create({
   },
   sectionHead: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.md,
   },
@@ -408,24 +411,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     gap: 1,
   },
-  tuned: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  tunedText: {
-    ...font.label,
-    color: colors.accentFg,
-  },
-  plainText: {
-    ...font.label,
-    color: colors.textFaint,
-  },
-  plainLink: {
-    ...font.label,
-    color: colors.textDim,
-    textDecorationLine: 'underline',
-  },
   card: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.lg,
@@ -473,6 +458,9 @@ const styles = StyleSheet.create({
   times: {
     ...font.caption,
     color: colors.textFaint,
+  },
+  timesTuned: {
+    color: colors.accentFg,
   },
   repeatsOn: {
     backgroundColor: colors.accentTint,
