@@ -2,7 +2,6 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Animated, Dimensions, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { albumArtUri } from '../../library/assets';
-import { openSongTags } from '../../navigation';
 import { useNowPlaying, usePlaybackStatus, usePlayerActions } from '../../player/PlayerProvider';
 import { IconButton } from '../IconButton';
 import { Marquee } from '../Marquee';
@@ -21,8 +20,8 @@ const HIDE_VELOCITY = 0.5;
 const SLIDE_OUT = Dimensions.get('window').width;
 
 /**
- * What's playing, from anywhere in the app: tap for the full player, play/pause,
- * skip, or tag the song in place. Swipe it down, left or right to put it away
+ * What's playing, from anywhere in the app: tap for the full player (where
+ * the song is tagged), or go back, play/pause and skip. Swipe it down, left or right to put it away
  * while tagging (the music keeps playing); swipe up for the full player.
  */
 export function MiniPlayer() {
@@ -61,10 +60,9 @@ export function MiniPlayer() {
             {song.artist ?? ' '}
           </Marquee>
         </View>
+        <PreviousTrack />
         <PlayPause />
         <NextTrack />
-        {/* Tagging what's playing, from any screen, is the point of ProTag. */}
-        <IconButton icon="tag" label="Edit tags for this song" onPress={() => openSongTags(song.id)} />
       </Pressable>
       <Progress fallbackDurationSec={song.duration_ms / 1000} />
     </SwipeGestures>
@@ -83,6 +81,13 @@ function PlayPause() {
       color={colors.text}
       onPress={togglePlay}
     />
+  );
+}
+
+function PreviousTrack() {
+  const { previous } = usePlayerActions();
+  return (
+    <IconButton icon="play-skip-back" label="Previous track" size={iconSize.md} color={colors.text} onPress={previous} />
   );
 }
 
