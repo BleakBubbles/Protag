@@ -35,11 +35,12 @@ import {
   type ShuffleSorts,
 } from '@/library/sorts';
 import { usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
-import { queueForQuery } from '@/player/sources';
+import { queueForQuery, tunedOrder } from '@/player/sources';
 import { describeQuery } from '@/query/describe';
 import { dropInPot, tapExcluded, tapIngredient, tapTag, type PotItem, type PotSpot } from '@/query/pot';
 import { albumRef, artistRef, isTagRef, readRef, type Ref } from '@/query/refs';
 import { countMatching, findSongs } from '@/query/run';
+import { isTuned } from '@/query/tuning';
 import {
   buildQuery,
   EMPTY_DRAFT,
@@ -59,10 +60,11 @@ import { ingredientKey, Pot, POT_ROW, trayHeight, type Look, type ShuffleCount }
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
 import { Divider, DIVIDER_HEIGHT } from '@/ui/play/Divider';
 import { MixShelf } from '@/ui/play/MixShelf';
-import { PreviewSheet } from '@/ui/play/PreviewSheet';
+import { DetailsSheet } from '@/ui/play/DetailsSheet';
 import { SearchButton, SearchRow, SectionHead, Trail } from '@/ui/play/SectionHead';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
+import type { Rect } from '@/ui/Popover';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { colors, font, spacing, tagColor } from '@/ui/theme';
 
@@ -203,7 +205,8 @@ function Builder({
   const [editingId, setEditingId] = useState<number | null>(initialPot.editing);
   const editingMix = mixes.find((m) => m.id === editingId) ?? null;
   const [saving, setSaving] = useState(false);
-  const [previewing, setPreviewing] = useState(false);
+  /** Where the mix's Details opened from; null while closed. */
+  const [detailsFrom, setDetailsFrom] = useState<Rect | null>(null);
   const { playQueue } = usePlayerActions();
 
   const [picking, setPicking] = useState<'artists' | 'albums' | null>(null);
@@ -494,7 +497,7 @@ function Builder({
             ingredientCounts={ingredientCounts}
             counted={counted}
             covers={covers}
-            onPreview={() => setPreviewing(true)}
+            onDetails={setDetailsFrom}
             editing={editingMix?.name ?? null}
             onSave={() => setSaving(true)}
             onShuffle={() => {
@@ -715,15 +718,17 @@ function Builder({
           }}
           onClose={() => setSaving(false)}
         />
-        <PreviewSheet
-          visible={previewing}
+        <DetailsSheet
+          anchor={detailsFrom}
+          onClose={() => setDetailsFrom(null)}
           draft={current}
-          description={describeQuery(query, names)}
-          names={names}
-          onClose={() => setPreviewing(false)}
+          title={editingMix?.name ?? describeQuery(query, names)}
+          onTune={setDraft}
           onPlay={async (songId) => {
             const request = await queueForQuery(db, query);
-            playQueue(request.ids, { startId: songId, shuffle: true, label: playLabel ?? request.label, draft: current });
+            // A tuned mix weaves its order, led by the song tapped.
+            const order = isTuned(current) ? await tunedOrder(db, current, { first: songId }) : undefined;
+            playQueue(request.ids, { startId: songId, shuffle: true, label: playLabel ?? request.label, draft: current, order });
           }}
         />
         <DragGhost />

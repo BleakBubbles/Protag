@@ -100,3 +100,19 @@ test('nothing but repeating ingredients still ends', () => {
 test('an empty ingredient is skipped', () => {
   assert.deepEqual(weave([{ ids: [], share: 8, repeats: true }, { ids: [1], share: 1, repeats: false }]), [1]);
 });
+
+test('a share holds over a short stretch, not just on average', () => {
+  for (const seed of [1, 2, 3, 4, 5]) {
+    const order = weave(
+      [
+        { ids: range(1, 18), share: 1, repeats: false },
+        { ids: range(100, 4), share: 2, repeats: true },
+        { ids: range(200, 6), share: 1, repeats: false },
+      ],
+      { random: seeded(seed) }
+    );
+    // lofi is 8 / (18 + 8 + 6) = 25%: a quarter of the first 20, give or take one.
+    const lofi = order.slice(0, 20).filter((id) => id >= 100 && id < 200).length;
+    assert.ok(lofi >= 4 && lofi <= 6, `seed ${seed}: ${lofi} of 20`);
+  }
+});

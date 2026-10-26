@@ -12,12 +12,14 @@ export interface Stream {
 const ENDLESS_LIMIT = 2000;
 
 /**
- * Weave a tuned mix into one play order. Each next song comes from an
- * ingredient picked in proportion to its share (its size × its tuning, so an
- * untuned mix is a plain shuffle), among those with songs left. One that
- * repeats reshuffles and goes round again; the order ends once every
- * ingredient that doesn't repeat has played all its songs. With `first`, that
- * song leads, counted as its ingredient's first.
+ * Weave a tuned mix into one play order. Each ingredient keeps to its share
+ * (its size × its tuning) all the way through, not just on average: each is
+ * due again a share's width after its last song, give or take a random
+ * nudge, and the most overdue plays next. So a 25% ingredient is a quarter of
+ * any stretch, spaced unevenly enough not to feel regular. One that repeats
+ * reshuffles and goes round again; the order ends once every ingredient that
+ * doesn't repeat has played all its songs. With `first`, that song leads,
+ * counted as its ingredient's first.
  */
 export function weave(
   streams: readonly Stream[],
@@ -26,12 +28,18 @@ export function weave(
   const live = streams.filter((s) => s.ids.length > 0);
   const decks = live.map((s) => fisherYates(s.ids, random));
   const used = live.map(() => 0);
+  const played = live.map(() => 0);
+  const weight = (k: number) => live[k].ids.length * live[k].share;
+  // When each is next due: its plays so far, plus a nudge, over its weight.
+  const nudge = live.map(() => random());
+  const due = (k: number) => (played[k] + nudge[k]) / weight(k);
   const out: number[] = [];
   if (first !== null) {
     const k = live.findIndex((s) => s.ids.includes(first));
     if (k >= 0) {
       decks[k] = [first, ...decks[k].filter((id) => id !== first)];
       used[k] = 1;
+      played[k] = 1;
       out.push(first);
     }
   }
@@ -44,16 +52,9 @@ export function weave(
   while (out.length < limit) {
     if (!endless && live.every((s, k) => s.repeats || !left(k))) break;
     const open = live.map((_, k) => k).filter((k) => left(k) || live[k].repeats);
-    const weight = (k: number) => live[k].ids.length * live[k].share;
-    let x = random() * open.reduce((sum, k) => sum + weight(k), 0);
-    let pick = open[open.length - 1];
-    for (const k of open) {
-      x -= weight(k);
-      if (x < 0) {
-        pick = k;
-        break;
-      }
-    }
+    const pick = open.reduce((best, k) => (due(k) < due(best) ? k : best));
+    played[pick]++;
+    nudge[pick] = random();
     if (!left(pick)) {
       decks[pick] = fisherYates(live[pick].ids, random);
       used[pick] = 0;
