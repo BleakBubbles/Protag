@@ -226,11 +226,21 @@ export function DetailsSheet({ anchor, onClose, draft, title, upNext, onTune, on
           const name = label(ing.refs);
           return (
             <View key={ing.refs.join()} style={styles.card}>
-              <View style={styles.cardTop}>
+              <View style={styles.cardRow}>
                 <View style={[styles.swatch, { backgroundColor: hueOf(ing.refs) }]} />
                 <Text style={styles.cardName} numberOfLines={1}>
                   {name} <Text style={styles.cardCount}>{plural(ing.ids.length, 'song')}</Text>
                 </Text>
+                <Pressable
+                  onPress={() => onTune(setTuning(draft, ing.refs, { ...t, repeats: !t.repeats }))}
+                  disabled={raised}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: goesRound(t), disabled: raised }}
+                  accessibilityLabel={`${name} repeats`}
+                  style={({ pressed }) => [styles.step, goesRound(t) && styles.repeatsOn, pressed && styles.pressed]}
+                >
+                  <Icon name="repeat" size={iconSize.sm - 4} color={goesRound(t) ? colors.accentFg : colors.textDim} />
+                </Pressable>
                 <Pressable
                   onPress={() => tune(ing.refs, -1)}
                   disabled={k0 === 0}
@@ -254,17 +264,6 @@ export function DetailsSheet({ anchor, onClose, draft, title, upNext, onTune, on
                   <Icon name="add" size={iconSize.sm - 2} color={colors.text} />
                 </Pressable>
               </View>
-              <Pressable
-                onPress={() => onTune(setTuning(draft, ing.refs, { ...t, repeats: !t.repeats }))}
-                disabled={raised}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: goesRound(t), disabled: raised }}
-                accessibilityLabel={`${name} repeats`}
-                style={[styles.repeats, goesRound(t) && styles.repeatsOn]}
-              >
-                <Icon name="repeat" size={iconSize.sm - 4} color={goesRound(t) ? colors.accentFg : colors.textDim} />
-                <Text style={[styles.repeatsText, goesRound(t) && styles.repeatsTextOn]}>Repeats</Text>
-              </Pressable>
             </View>
           );
         })}
@@ -404,10 +403,10 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
-  cardTop: {
+  cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -449,25 +448,8 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.textFaint,
   },
-  repeats: {
-    alignSelf: 'flex-start',
-    height: STEP,
-    borderRadius: STEP / 2,
-    paddingHorizontal: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.raised,
-  },
   repeatsOn: {
     backgroundColor: colors.accentTint,
-  },
-  repeatsText: {
-    ...font.label,
-    color: colors.textDim,
-  },
-  repeatsTextOn: {
-    color: colors.accentFg,
   },
   filters: {
     gap: spacing.sm,
