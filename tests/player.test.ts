@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { freshDatabase, insertSong } from './helpers/db.ts';
 import { getPlayableSongs } from '../src/db/songs.ts';
 import { addTagToSong, createTag } from '../src/db/tags.ts';
-import { albumGroups, queueForQuery } from '../src/player/sources.ts';
+import { albumGroups, ingredientSongs, queueForQuery } from '../src/player/sources.ts';
 import { MATCH_ALL } from '../src/query/types.ts';
 import { formatCount, formatDaysAgo, formatTime, plural } from '../src/ui/format.ts';
 
@@ -83,5 +83,19 @@ test('album shuffle groups a queue by album, in track order; songs without one s
   const c = await insertSong(db, 'C', { albumId: '2', trackNo: 1 });
   await insertSong(db, 'Not queued', { albumId: '1', trackNo: 3 });
   assert.deepEqual(await albumGroups(db as never, [b, loose, a, c]), [[a, b], [c], [loose]]);
+  db.close();
+});
+
+test('a song in two ingredients counts once, for the smaller', async () => {
+  const db = await freshDatabase();
+  const big = await createTag(db as never, 'big', null);
+  const small = await createTag(db as never, 'small', null);
+  const songs = [];
+  for (const title of ['A', 'B', 'C', 'D']) songs.push(await insertSong(db, title));
+  for (const id of songs) await addTagToSong(db as never, id, big);
+  await addTagToSong(db as never, songs[0], small);
+  const found = await ingredientSongs(db as never, { ingredients: [[big], [small]], exclude: [], includeDescendants: true });
+  assert.deepEqual(found.map((i) => i.ids.length), [3, 1]);
+  assert.deepEqual(found[1].ids, [songs[0]]);
   db.close();
 });

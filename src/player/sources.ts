@@ -4,7 +4,10 @@ import { listAlbumTitles } from '../db/albums';
 import { buildDescendantMap, listTags } from '../db/tags';
 import { describeQuery } from '../query/describe';
 import { findSongIds } from '../query/run';
-import type { TagQuery } from '../query/types';
+import type { Ref } from '../query/refs';
+import { goesRound, tuningOf } from '../query/tuning';
+import { buildQuery, type QueryDraft, type TagQuery } from '../query/types';
+import { weave, type Stream } from './weave';
 
 /** Everything the player needs to start a queue: which songs, and how to describe them. */
 export interface QueueRequest {
@@ -22,6 +25,51 @@ export async function queueForQuery(db: SQLiteDatabase, query: TagQuery): Promis
   const ids = await findSongIds(db, query, { descendants, order: 'title' });
   const label = describeQuery(query, new Map([...tags.map((t) => [t.id, t.name] as const), ...albums]));
   return { ids, label };
+}
+
+/** A mix's ingredient and the songs it brings to the shuffle. */
+export interface Ingredient {
+  refs: Ref[];
+  ids: number[];
+}
+
+/**
+ * Each ingredient's songs, exclusions applied. A song several ingredients
+ * share counts once, for the smallest of them: it's the small ingredients a
+ * listener tunes up, so they keep what's theirs.
+ */
+export async function ingredientSongs(db: SQLiteDatabase, draft: QueryDraft): Promise<Ingredient[]> {
+  const descendants = await buildDescendantMap(db);
+  const found = await Promise.all(
+    draft.ingredients.map((refs) => findSongIds(db, buildQuery({ ...draft, ingredients: [refs] }), { descendants, order: 'title' }))
+  );
+  const bySize = found.map((ids, k) => k).sort((a, b) => found[a].length - found[b].length);
+  const taken = new Set<number>();
+  const ids: number[][] = found.map(() => []);
+  for (const k of bySize) {
+    for (const id of found[k]) {
+      if (taken.has(id)) continue;
+      taken.add(id);
+      ids[k].push(id);
+    }
+  }
+  return draft.ingredients.map((refs, k) => ({ refs, ids: ids[k] }));
+}
+
+/** The ingredients as the weave takes them, tuned as the draft says. */
+export const streamsOf = (draft: QueryDraft, ingredients: readonly Ingredient[]): Stream[] =>
+  ingredients.map(({ refs, ids }) => {
+    const tuning = tuningOf(draft, refs);
+    return { ids, share: tuning.share, repeats: goesRound(tuning) };
+  });
+
+/** A tuned mix's play order, optionally led by one song. */
+export async function tunedOrder(
+  db: SQLiteDatabase,
+  draft: QueryDraft,
+  options: { first?: number | null; random?: () => number } = {}
+): Promise<number[]> {
+  return weave(streamsOf(draft, await ingredientSongs(db, draft)), options);
 }
 
 /**

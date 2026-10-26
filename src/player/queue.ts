@@ -141,9 +141,23 @@ export function createQueue(
     groups?: readonly (readonly number[])[];
     source?: QueueSource | null;
     repeat?: RepeatMode;
+    /** A play order already made (a tuned mix's weave, led by its start): used as it is. */
+    order?: readonly number[];
   } & ShuffleOptions = {}
 ): QueueState {
   const original = [...ids];
+  if (options.order && options.order.length > 0) {
+    return {
+      order: [...options.order],
+      original,
+      index: 0,
+      shuffled: true,
+      byAlbum: false,
+      repeat: options.repeat ?? 'off',
+      source: options.source ?? null,
+      queuedEnd: 0,
+    };
+  }
   const start = options.startId !== undefined && original.includes(options.startId)
     ? options.startId
     : null;
@@ -317,6 +331,27 @@ export function moveUpcoming(queue: QueueState, from: number, to: number): Queue
     original = before < 0 ? [...rest, id] : [...rest.slice(0, before), id, ...rest.slice(before)];
   }
   return { ...queue, order, original };
+}
+
+/**
+ * A tuned mix retuned while it plays: the current song plays on, the songs
+ * queued after it stay next, and `rest` (the new weave, without the current
+ * song) follows. The source takes the new draft, so saving or reopening the
+ * mix keeps the tuning.
+ */
+export function retuneQueue(queue: QueueState, rest: readonly number[], source: QueueSource): QueueState {
+  const current = currentId(queue);
+  if (current === null) return queue;
+  const queued = queue.order.slice(queue.index + 1, Math.max(queue.index + 1, queue.queuedEnd));
+  return {
+    ...queue,
+    order: [current, ...queued, ...rest],
+    index: 0,
+    queuedEnd: 1 + queued.length,
+    shuffled: true,
+    byAlbum: false,
+    source,
+  };
 }
 
 /** Shuffle on (songs) or off: what shuffling meant before albums. */

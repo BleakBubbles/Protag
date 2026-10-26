@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { isRef, type Ref } from '../query/refs';
+import { parseTuning } from '../query/tuning';
 import { EMPTY_DRAFT, type QueryDraft } from '../query/types';
 
 /**
@@ -34,7 +35,13 @@ export function parseDraft(json: string): QueryDraft {
     const ingredients = Array.isArray(data.ingredients)
       ? data.ingredients.map(ids).filter((tags) => tags.length > 0)
       : legacyIngredients(ids(data.include), data.mode);
-    return { ingredients, exclude: ids(data.exclude), includeDescendants: data.includeDescendants !== false };
+    const tuning = parseTuning(data.tuning, isRef);
+    return {
+      ingredients,
+      exclude: ids(data.exclude),
+      includeDescendants: data.includeDescendants !== false,
+      ...(tuning.length > 0 && { tuning }),
+    };
   } catch {
     return EMPTY_DRAFT;
   }

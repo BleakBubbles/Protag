@@ -13,6 +13,7 @@ import {
 import { getPlayableSongs, getSong, recordPlay } from '../db/songs';
 import type { SongRow } from '../db/types';
 import { albumArtUri } from '../library/assets';
+import { isTuned } from '../query/tuning';
 import type { QueryDraft, TagQuery } from '../query/types';
 import type { EngineStatus, Track, UseAudioEngine } from './engine';
 import { useNativeEngine } from './nativeEngine';
@@ -25,6 +26,7 @@ import {
   jumpTo as jumpToIndex,
   nextShuffleMode,
   queueSongs as queueSongsInto,
+  retuneQueue,
   removeUpcoming as removeUpcomingAt,
   moveUpcoming as moveUpcomingTo,
   retreat,
@@ -35,7 +37,7 @@ import {
   type QueueState,
   type ShuffleMode,
 } from './queue';
-import { albumGroups, queueForQuery } from './sources';
+import { albumGroups, queueForQuery, tunedOrder } from './sources';
 
 /** The one line to change to swap audio engines. */
 const useEngine: UseAudioEngine = useNativeEngine;
@@ -59,6 +61,8 @@ export interface PlayerActions {
       draft?: QueryDraft;
       /** The ways it may shuffle, if not all (see `shuffleModesOf`). */
       modes?: readonly ShuffleMode[];
+      /** A play order already woven (a tuned mix), led by `startId` if there is one. */
+      order?: readonly number[];
     }
   ): boolean;
   togglePlay(): void;
@@ -77,6 +81,11 @@ export interface PlayerActions {
   removeUpcoming(at: number): void;
   /** Move an upcoming song within its part of the queue (see `moveUpcoming` in queue.ts). */
   moveUpcoming(from: number, to: number): void;
+  /**
+   * Retune the mix that's playing (its Details, from the player): the song
+   * playing plays on, queued songs stay next, the rest is woven afresh.
+   */
+  retune(draft: QueryDraft): void;
 }
 
 export interface NowPlayingState {
@@ -113,8 +122,10 @@ export function usePlayQuery() {
       { shuffle = true, label, draft }: { shuffle?: boolean; label?: string; draft?: QueryDraft } = {}
     ) => {
       const request = await queueForQuery(db, query);
+      // A tuned mix plays its own weave rather than a plain shuffle of its songs.
+      const order = draft && isTuned(draft) ? await tunedOrder(db, draft) : undefined;
       // A mix plays under its own name; anything else is described from the query.
-      return playQueue(request.ids, { shuffle, label: label ?? request.label, draft });
+      return playQueue(request.ids, { shuffle, label: label ?? request.label, draft, order });
     },
     [db, playQueue]
   );
@@ -243,7 +254,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const actions = useMemo<PlayerActions>(
     () => ({
-      playQueue(ids, { startId, shuffle = false, byAlbum, label, draft, modes } = {}) {
+      playQueue(ids, { startId, shuffle = false, byAlbum, label, draft, modes, order } = {}) {
         const source = label ? { label, draft, modes } : null;
         // Like repeat, how to shuffle is a preference that carries over to new queues, where allowed.
         const modesHere = shuffleModesOf(source);
@@ -257,6 +268,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             groups,
             source,
             repeat: queueRef.current.repeat, // repeat is a preference, not per-queue
+            order,
           });
         if (ids.length === 0) return false;
         // Shuffling by album needs to know the albums first.
@@ -314,6 +326,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         const added = await tracksOf(ids);
         if (token !== orderToken.current) return; // A new order was loaded meanwhile.
         engineRef.current.insert(added, at, memoOf(next));
+      },
+      retune: async (draft) => {
+        const queue = queueRef.current;
+        const current = currentId(queue);
+        if (!queue.source?.draft || current === null) return;
+        const woven = await tunedOrder(db, draft, { first: current });
+        if (queueRef.current !== queue) return; // Something else changed the queue meanwhile.
+        const rest = woven[0] === current ? woven.slice(1) : woven;
+        const next = retuneQueue(queue, rest, { ...queue.source, draft });
+        setQueue(next);
+        loadOrder(next, { autoplay: engineRef.current.status.playing, keepPlaying: true });
       },
       moveUpcoming(from, to) {
         const next = moveUpcomingTo(queueRef.current, from, to);

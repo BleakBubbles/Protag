@@ -1,4 +1,5 @@
 import { readRef, type Ref } from './refs';
+import type { Tuning } from './tuning';
 
 /**
  * The shape of a ProTag query.
@@ -35,6 +36,8 @@ export interface QueryDraft {
   exclude: Ref[];
   /** Whether tags also match their subtags. */
   includeDescendants: boolean;
+  /** How ingredients weigh against each other in the shuffle; absent when it's a plain one (see tuning.ts). */
+  tuning?: Tuning[];
 }
 
 export const EMPTY_DRAFT: QueryDraft = {
@@ -89,7 +92,12 @@ export function isEmptyDraft(draft: QueryDraft): boolean {
 export function sameDraft(a: QueryDraft, b: QueryDraft): boolean {
   const sorted = (refs: readonly Ref[]) => refs.map(String).sort();
   const key = (d: QueryDraft) =>
-    JSON.stringify([d.ingredients.map((tags) => sorted(tags).join()).sort(), sorted(d.exclude), d.includeDescendants]);
+    JSON.stringify([
+      d.ingredients.map((tags) => sorted(tags).join()).sort(),
+      sorted(d.exclude),
+      d.includeDescendants,
+      (d.tuning ?? []).map((t) => `${sorted(t.refs).join()}:${t.share}:${t.repeats}`).sort(),
+    ]);
   return key(a) === key(b);
 }
 
@@ -109,9 +117,15 @@ export function mapDraftTags(draft: QueryDraft, map: (tagId: number) => number |
 /** Rewrite every ingredient in a draft; `null` drops it, and an ingredient left empty goes too. */
 export function mapDraftRefs(draft: QueryDraft, map: (ref: Ref) => Ref | null): QueryDraft {
   const all = (refs: Ref[]) => refs.map(map).filter((ref): ref is Ref => ref !== null);
+  // Tuning follows its ingredient; one that lost any of its refs is a different ingredient now, and plays plain.
+  const tuning = draft.tuning
+    ?.map((t) => ({ ...t, refs: all(t.refs) }))
+    .filter((t, i) => t.refs.length === draft.tuning![i].refs.length);
+  const { tuning: _old, ...rest } = draft;
   return {
-    ...draft,
+    ...rest,
     ingredients: draft.ingredients.map(all).filter((tags) => tags.length > 0),
     exclude: all(draft.exclude),
+    ...(tuning && tuning.length > 0 && { tuning }),
   };
 }

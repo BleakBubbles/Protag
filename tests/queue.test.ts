@@ -21,6 +21,7 @@ import {
   queueSongs,
   removeUpcoming,
   moveUpcoming,
+  retuneQueue,
 } from '../src/player/queue.ts';
 import { EMPTY_DRAFT } from '../src/query/types.ts';
 
@@ -283,4 +284,20 @@ test('unshuffled, a move survives shuffle going on and off', () => {
   const back = setShuffleMode(setShuffleMode(moved, 'songs', { random: seeded() }), 'off');
   assert.deepEqual(back.order, [1, 5, 2, 3, 4]);
   assert.deepEqual(moveUpcoming(q, 1, 4).original, [1, 3, 4, 5, 2], 'to the end');
+});
+
+test('a woven order is played as it is, from its first song', () => {
+  const q = createQueue([1, 2, 3], { order: [3, 1, 3, 2], source: { label: 'mix', draft: EMPTY_DRAFT } });
+  assert.deepEqual(q.order, [3, 1, 3, 2]);
+  assert.equal(currentId(q), 3);
+  assert.deepEqual(q.original, [1, 2, 3]);
+});
+
+test('retuning keeps the current song playing and queued songs next', () => {
+  const q = queueSongs(jumpTo(createQueue([1, 2, 3, 4], { startId: 1 }), 1), [9], 'next').queue; // playing 2, then 9
+  const r = retuneQueue(q, [4, 3, 4, 1], { label: 'mix', draft: EMPTY_DRAFT });
+  assert.deepEqual(r.order, [2, 9, 4, 3, 4, 1]);
+  assert.equal(r.index, 0);
+  assert.equal(r.queuedEnd, 2);
+  assert.equal(retuneQueue(EMPTY_QUEUE, [1], { label: 'x' }), EMPTY_QUEUE);
 });
