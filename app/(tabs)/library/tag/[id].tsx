@@ -22,7 +22,7 @@ import {
 import type { TagRow as Tag } from '@/db/types';
 import { albumArtUri } from '@/library/assets';
 import { buildTagIndex } from '@/library/tagTree';
-import { openAddSongs, openTag } from '@/navigation';
+import { openAddSongs, openTag, useFromPlayer } from '@/navigation';
 import { useNowPlaying, usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
 import { buildQuery, EMPTY_DRAFT } from '@/query/types';
 import { Button } from '@/ui/Button';
@@ -37,14 +37,14 @@ import { useSongSelection } from '@/ui/hooks/useSongSelection';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { IconButton } from '@/ui/IconButton';
 import { useAnchor } from '@/ui/Popover';
-import { useBackToPlayer } from '@/ui/player/BackToPlayer';
 import { PopupMenu, type MenuAction } from '@/ui/PopupMenu';
 import { SelectionBar } from '@/ui/library/SelectionBar';
 import { SONG_ROW_HEIGHT, SongRow } from '@/ui/library/SongRow';
 import { TagRow } from '@/ui/library/TagRow';
 import { LogoMark } from '@/ui/LogoMark';
 import { PromptDialog } from '@/ui/PromptDialog';
-import { colors, font, headerTitleStyle, iconSize, spacing, tagColor } from '@/ui/theme';
+import { headerTitleText } from '@/ui/stackOptions';
+import { colors, font, iconSize, spacing, tagColor } from '@/ui/theme';
 
 const NO_TAGS: readonly Tag[] = [];
 const SHUFFLE_SIZE = 52;
@@ -62,7 +62,7 @@ export default function TagScreen() {
   const [dialog, setDialog] = useState<Dialog>(null);
   /** The ⋯ menu and the colour picker, each floating from what opened it. */
   const menuAnchor = useAnchor();
-  const backToPlayer = useBackToPlayer();
+  const fromPlayer = useFromPlayer();
   const colorAnchor = useAnchor();
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
 
@@ -193,7 +193,6 @@ export default function TagScreen() {
 
   const tagHeader = {
     headerLeft: undefined,
-    ...backToPlayer,
     title: tag?.name ?? '',
     // The colour follows the name, so the two read as one, and tapping it
     // is the way to change it. After the name rather than before it, which
@@ -259,7 +258,7 @@ export default function TagScreen() {
                 <View style={styles.breadcrumb}>
                   <Text style={styles.crumbText}>in </Text>
                   {ancestors.map((ancestor, i) => (
-                    <Pressable key={ancestor.id} onPress={() => openTag(ancestor.id)} hitSlop={8}>
+                    <Pressable key={ancestor.id} onPress={() => openTag(ancestor.id, fromPlayer)} hitSlop={8}>
                       <Text style={styles.crumbLink}>
                         {ancestor.name}
                         {i < ancestors.length - 1 ? ' › ' : ''}
@@ -301,7 +300,7 @@ export default function TagScreen() {
                 color={child.color}
                 songCount={child.song_count}
                 childCount={child.child_count}
-                onPress={() => openTag(child.id)}
+                onPress={() => openTag(child.id, fromPlayer)}
               />
             ))}
             {/* Folders first, then songs, like any file browser. */}
@@ -414,12 +413,9 @@ const styles = StyleSheet.create({
   titleDotPressed: {
     opacity: 0.6,
   },
-  // Matches the navigator's own titles on the other screens: display face, at
-  // the header's default Android size rather than `font.heading`'s 17.
+  // Matches the other screens' titles.
   titleText: {
-    ...headerTitleStyle,
-    fontSize: 20,
-    lineHeight: 26,
+    ...headerTitleText,
     color: colors.text,
     flexShrink: 1,
   },

@@ -3,7 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { getArtist, listArtistAlbums, listArtistSongs } from '@/db/albums';
 import { listAllSongTags } from '@/db/tags';
-import { openAlbum } from '@/navigation';
+import { openAlbum, useFromPlayer } from '@/navigation';
 import { CollectionSection, SongCollection } from '@/screens/library/SongCollection';
 import { EmptyState } from '@/ui/EmptyState';
 import { plural } from '@/ui/format';
@@ -16,6 +16,7 @@ const ALBUM_SIZE = 128;
 /** An artist: their albums as covers to dive into, then all their songs. */
 export default function ArtistScreen() {
   const { name } = useLocalSearchParams<{ name: string }>();
+  const fromPlayer = useFromPlayer();
   const { data } = useLibraryQuery(
     async (db) => {
       const [artist, albums, songs, tags] = await Promise.all([
@@ -64,7 +65,7 @@ export default function ArtistScreen() {
         <CollectionSection title="Albums">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.albumRow}>
             {albums.map((album) => (
-              <AlbumTile key={album.albumId} albumId={album.albumId} title={album.title} size={ALBUM_SIZE} onPress={openAlbum} />
+              <AlbumTile key={album.albumId} albumId={album.albumId} title={album.title} size={ALBUM_SIZE} onPress={(id) => openAlbum(id, fromPlayer)} />
             ))}
           </ScrollView>
         </CollectionSection>

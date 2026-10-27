@@ -14,6 +14,7 @@ import { useSongSelection } from '@/ui/hooks/useSongSelection';
 import { IconButton } from '@/ui/IconButton';
 import { Welcome } from '@/ui/library/Welcome';
 import { PagerTabs } from '@/ui/PagerTabs';
+import { HeaderTitle } from '@/ui/stackOptions';
 import { colors } from '@/ui/theme';
 
 type LibraryView = 'tags' | 'songs' | 'artists' | 'albums';
@@ -21,7 +22,7 @@ type LibraryView = 'tags' | 'songs' | 'artists' | 'albums';
 /** Set in full (not just the parts that differ), so it replaces the selection header cleanly. */
 const libraryHeader = {
   title: 'Library',
-  headerTitle: undefined,
+  headerTitle: HeaderTitle,
   headerLeft: undefined,
   headerRight: () => <IconButton icon="settings-outline" label="Manage library" onPress={openManageLibrary} />,
 };

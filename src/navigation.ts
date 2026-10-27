@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useSegments } from 'expo-router';
 
 
 /**
@@ -7,22 +7,25 @@ import { router } from 'expo-router';
  * this file, not hunting for string paths across the app.
  */
 /**
- * `fromPlayer` is the path of the screen the full player was open over, when
- * a page is opened from the player: its Back returns there, player open
- * (see useBackToPlayer).
+ * `fromPlayer`: a page opened from the full player opens over it (the
+ * `from-player` routes, above the tabs and the player), sliding in like any
+ * page, so Back slides it away to the player just as it was. Its own links
+ * stay over the player too (`useFromPlayer`); otherwise they'd open in the
+ * Library, hidden behind it.
  */
-const via = (fromPlayer?: string) => (fromPlayer ? { player: fromPlayer } : {});
-
-export const openTag = (id: number, fromPlayer?: string) =>
-  router.push({ pathname: '/library/tag/[id]', params: { id: String(id), ...via(fromPlayer) } });
+export const openTag = (id: number, fromPlayer = false) =>
+  router.push({ pathname: fromPlayer ? '/from-player/tag/[id]' : '/library/tag/[id]', params: { id: String(id) } });
 
 /** An album's page: its tracklist, in order. `albumId` is Android's. */
-export const openAlbum = (albumId: string, fromPlayer?: string) =>
-  router.push({ pathname: '/library/album/[id]', params: { id: albumId, ...via(fromPlayer) } });
+export const openAlbum = (albumId: string, fromPlayer = false) =>
+  router.push({ pathname: fromPlayer ? '/from-player/album/[id]' : '/library/album/[id]', params: { id: albumId } });
 
 /** An artist's page: their albums and songs. */
-export const openArtist = (name: string, fromPlayer?: string) =>
-  router.push({ pathname: '/library/artist/[name]', params: { name, ...via(fromPlayer) } });
+export const openArtist = (name: string, fromPlayer = false) =>
+  router.push({ pathname: fromPlayer ? '/from-player/artist/[name]' : '/library/artist/[name]', params: { name } });
+
+/** Whether this page was opened over the player, for its links to open there too. */
+export const useFromPlayer = () => useSegments()[0] === 'from-player';
 
 /** One song's tags: the same editor as for several songs. */
 export const openSongTags = (id: number) => openEditTags([id]);

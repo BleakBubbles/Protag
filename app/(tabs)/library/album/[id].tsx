@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { getAlbum, listAlbumSongs } from '@/db/albums';
 import { listAllSongTags } from '@/db/tags';
-import { openArtist } from '@/navigation';
+import { openArtist, useFromPlayer } from '@/navigation';
 import { SongCollection } from '@/screens/library/SongCollection';
 import { EmptyState } from '@/ui/EmptyState';
 import { plural } from '@/ui/format';
@@ -13,6 +13,7 @@ import { colors } from '@/ui/theme';
 /** An album: its cover, its artist (a link), and its tracklist in order. */
 export default function AlbumScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const fromPlayer = useFromPlayer();
   const { data } = useLibraryQuery(
     async (db) => {
       const [album, songs, tags] = await Promise.all([getAlbum(db, id), listAlbumSongs(db, id), listAllSongTags(db)]);
@@ -44,7 +45,7 @@ export default function AlbumScreen() {
     <SongCollection
       picture={{ albumId: album.albumId }}
       title={album.title}
-      subtitle={artist ? { label: artist, onPress: () => openArtist(artist) } : undefined}
+      subtitle={artist ? { label: artist, onPress: () => openArtist(artist, fromPlayer) } : undefined}
       meta={plural(songs.length, 'song')}
       songs={songs}
       tags={tags}

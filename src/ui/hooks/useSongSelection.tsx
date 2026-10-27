@@ -8,6 +8,7 @@ import { usePlayerActions } from '../../player/PlayerProvider';
 import { plural } from '../format';
 import { IconButton } from '../IconButton';
 import type { SelectionAction } from '../library/SelectionBar';
+import { HeaderTitle } from '../stackOptions';
 import { colors } from '../theme';
 
 /**
@@ -93,7 +94,7 @@ export function useSongSelection(songIds: readonly number[] | undefined) {
   /** Header options while selecting: a count, close on the left, select-all on the right. */
   const header = {
     title: selected.length > 0 ? `${plural(selected.length, 'song')} selected` : 'Select songs',
-    headerTitle: undefined,
+    headerTitle: HeaderTitle,
     headerLeft: () => <IconButton icon="close" label="Stop selecting" onPress={clear} />,
     // A circle like the rows' own: empty while anything is unselected, filled
     // once everything is.

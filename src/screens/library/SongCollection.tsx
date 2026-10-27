@@ -4,7 +4,7 @@ import { FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions,
 
 import type { SongRow as Song, TagRow } from '../../db/types';
 import { albumArtUri } from '../../library/assets';
-import { openEditTags, openTag } from '../../navigation';
+import { openEditTags, openTag, useFromPlayer } from '../../navigation';
 import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
 import { ARTIST_MODES } from '../../player/queue';
 import { Button } from '../../ui/Button';
@@ -14,7 +14,6 @@ import { useSongSelection } from '../../ui/hooks/useSongSelection';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '../../ui/library/SelectionBar';
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { Artwork } from '../../ui/player/Artwork';
-import { useBackToPlayer } from '../../ui/player/BackToPlayer';
 import { NoTags, TagButton } from '../../ui/TagButton';
 import { TagChip } from '../../ui/TagChip';
 import { colors, font, spacing } from '../../ui/theme';
@@ -71,7 +70,7 @@ export function SongCollection({
 }: SongCollectionProps) {
   const screen = useWindowDimensions();
   const { playQueue } = usePlayerActions();
-  const backToPlayer = useBackToPlayer();
+  const fromPlayer = useFromPlayer();
   const { song: current } = useNowPlaying();
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
   const ids = useMemo(() => songs.map((s) => s.id), [songs]);
@@ -101,7 +100,7 @@ export function SongCollection({
 
   return (
     <>
-      <Stack.Screen options={selecting ? selection.header : { title: '', ...backToPlayer }} />
+      <Stack.Screen options={selecting ? selection.header : { title: '' }} />
       <FlatList
         style={styles.screen}
         data={songs}
@@ -172,7 +171,7 @@ export function SongCollection({
                 ) : (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
                     {makeup.map(({ tag, count }) => (
-                      <TagChip key={tag.id} name={tag.name} color={tag.color} count={count} onPress={() => openTag(tag.id)} />
+                      <TagChip key={tag.id} name={tag.name} color={tag.color} count={count} onPress={() => openTag(tag.id, fromPlayer)} />
                     ))}
                     <TagButton onPress={() => openEditTags(ids)} label={tagPrompt} />
                   </ScrollView>
