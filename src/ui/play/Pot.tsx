@@ -363,7 +363,7 @@ function hintFor(active: PotItem | null, hover: string, resting: boolean): strin
 /**
  * A glance at what the pot would play: a few of its albums' covers, the song
  * count (and the mix's name when editing one), and the way into its Details,
- * which says "tuned" when it shuffles other than plainly.
+ * which wears a sliders icon when it shuffles other than plainly.
  */
 function DetailsLine({
   covers,
@@ -403,8 +403,9 @@ function DetailsLine({
       <Text style={styles.previewText} numberOfLines={1}>
         {text}
         {!none && <Text style={styles.previewLink}>{text ? ' · ' : ''}Details</Text>}
-        {!none && tuned && <Text style={styles.previewLink}> · tuned</Text>}
       </Text>
+      {/* Tuned: the sliders say it shuffles its own way, without a word. */}
+      {!none && tuned && <Icon name="options-outline" size={iconSize.sm - 4} color={colors.accentFg} />}
       {!none && <Icon name="chevron-forward" size={iconSize.sm - 6} color={colors.accentFg} />}
     </Pressable>
   );
