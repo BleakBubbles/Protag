@@ -5,8 +5,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Rect } from './Popover';
 import { colors, radius, spacing } from './theme';
 
-const OPEN_MS = 220;
-const CLOSE_MS = 170;
+// Android's own app-launch motion (Material's emphasized curves): out fast and a
+// long settle on the way in, a quicker fall back into what opened it.
+const OPEN_MS = 400;
+const CLOSE_MS = 300;
+const OPEN_EASING = Easing.bezier(0.05, 0.7, 0.1, 1);
+const CLOSE_EASING = Easing.bezier(0.3, 0, 0.8, 0.15);
 
 export interface ExpandWindowProps {
   /** What opened it (measured with `useAnchor` or `measureInWindow`); null while closed. */
@@ -17,9 +21,10 @@ export interface ExpandWindowProps {
 
 /**
  * A window floating over the app that grows out of what opened it, and
- * shrinks back into it, rather than sliding up from the bottom: its frame
- * stretches from the anchor's rect to the window's while its contents fade in
- * late, the way the folded pot opens. Tap outside or press back to close.
+ * shrinks back into it, rather than sliding up from the bottom, the way an app
+ * opens from its icon: the frame stretches from the anchor's rect to the
+ * window's, and the contents, laid out at full size, are scaled down to its
+ * width and grow with it, there from the start. Tap outside or press back to close.
  */
 export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
   const screen = useWindowDimensions();
@@ -32,9 +37,9 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
     if (anchor) {
       setShown(anchor);
       grow.setValue(0);
-      Animated.timing(grow, { toValue: 1, duration: OPEN_MS, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+      Animated.timing(grow, { toValue: 1, duration: OPEN_MS, easing: OPEN_EASING, useNativeDriver: false }).start();
     } else if (shown) {
-      Animated.timing(grow, { toValue: 0, duration: CLOSE_MS, easing: Easing.in(Easing.cubic), useNativeDriver: false }).start(
+      Animated.timing(grow, { toValue: 0, duration: CLOSE_MS, easing: CLOSE_EASING, useNativeDriver: false }).start(
         ({ finished }) => finished && setShown(null)
       );
     }
@@ -65,11 +70,15 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
           },
         ]}
       >
+        {/* Scaled with the frame's width from its corner, so it shrinks whole rather than being cut off. */}
         <Animated.View
-          style={[
-            { width: to.width, height: to.height },
-            { opacity: grow.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] }) },
-          ]}
+          style={{
+            width: to.width,
+            height: to.height,
+            transformOrigin: 'top left',
+            transform: [{ scale: between(shown.width / to.width, 1) }],
+            opacity: grow.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 1, 1] }),
+          }}
         >
           {children}
         </Animated.View>
