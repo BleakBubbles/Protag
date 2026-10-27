@@ -7,14 +7,14 @@ import { colors, radius, spacing } from './theme';
 
 // Snappy enough that you barely see it grow: out fast and done, no long settle
 // to catch the end of; back in quicker still.
-const OPEN_MS = 150;
-const CLOSE_MS = 150;
+const OPEN_MS = 200;
+const CLOSE_MS = 200;
 const OPEN_EASING = Easing.out(Easing.poly(4));
 // Closing starts at once, heading back to the anchor, but only part of the way:
 // it fades out as it goes and is gone by then, rather than dwindling all the way in.
-const CLOSE_EASING = Easing.out(Easing.cubic);
+const CLOSE_EASING = Easing.out(Easing.quad);
 /** How far back towards the anchor it shrinks before it's gone (0 is all the way in). */
-const CLOSE_TO = 0.5;
+const CLOSE_TO = 0.75;
 
 export interface ExpandWindowProps {
   /** What opened it (measured with `useAnchor` or `measureInWindow`); null while closed. */
