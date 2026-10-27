@@ -10,8 +10,6 @@ import { colors, radius, spacing } from './theme';
 const OPEN_MS = 100;
 const CLOSE_MS = 100;
 const OPEN_EASING = Easing.out(Easing.poly(4));
-/** How big the window starts, centred on what opened it, whatever its shape. */
-const FROM_SCALE = 0.3;
 // Shrinking starts at once and settles into the anchor, so you see it go back in
 // rather than hang at full size and vanish.
 const CLOSE_EASING = Easing.out(Easing.cubic);
@@ -26,8 +24,9 @@ export interface ExpandWindowProps {
 /**
  * A window floating over the app that grows out of what opened it, and
  * shrinks back into it, rather than sliding up from the bottom, the way an app
- * opens from its icon: the whole window, contents and all, starts small and
- * centred on the anchor, and grows outwards from there to its place. Only transforms and opacity move, on the
+ * opens from its icon: the whole window, contents and all, starts shrunk to fit
+ * inside the anchor, centred on it, and grows outwards from there to its place.
+ * Shrinking back, it goes into the anchor rather than past it. Only transforms and opacity move, on the
  * native side, so a busy JS thread can't stall it. It starts at once: the empty
  * window is laid out and growing before its contents are built, which happens
  * as it grows, so building them neither delays the start nor eats its first frames.
@@ -73,6 +72,8 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
   const bottom = insets.bottom + spacing.lg;
   const to = { x: spacing.md, y: top, width: screen.width - spacing.md * 2, height: screen.height - top - bottom };
   const between = (from: number, end: number) => grow.interpolate({ inputRange: [0, 1], outputRange: [from, end] });
+  // Small enough to fit inside the anchor both ways, like an app in its icon.
+  const fit = Math.min(shown.width / to.width, shown.height / to.height, 1);
 
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
@@ -87,11 +88,11 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
             top: to.y,
             width: to.width,
             height: to.height,
-            // From small on the anchor's centre to full size in its place, scaled about its own centre.
+            // From inside the anchor, on its centre, to full size in its place, scaled about its own centre.
             transform: [
               { translateX: between(shown.x + shown.width / 2 - (to.x + to.width / 2), 0) },
               { translateY: between(shown.y + shown.height / 2 - (to.y + to.height / 2), 0) },
-              { scale: between(FROM_SCALE, 1) },
+              { scale: between(fit, 1) },
             ],
             // Faded only at the very small end, so it's on the anchor when it appears and goes.
             opacity: grow.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 1, 1] }),
