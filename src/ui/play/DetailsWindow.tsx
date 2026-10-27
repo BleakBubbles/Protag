@@ -11,6 +11,7 @@ import { readRef, type Ref } from '../../query/refs';
 import { findSongs } from '../../query/run';
 import { isTuned, repeatsIn, setTuning, SHARES, tuningOf, untuned } from '../../query/tuning';
 import { buildQuery, type QueryDraft } from '../../query/types';
+import { Button } from '../Button';
 import { ExpandWindow } from '../ExpandWindow';
 import { plural } from '../format';
 import { Icon, type IconName } from '../Icon';
@@ -150,30 +151,33 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
             </Text>
             <Text style={styles.count}>{songs ? plural(songs.length, 'song') : ' '}</Text>
           </View>
-          {actions?.map((action) => (
-            <Pressable
-              key={action.label}
-              onPress={() => {
-                onClose();
-                action.onPress();
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={action.label}
-              style={({ pressed }) => [styles.action, pressed && styles.pressed]}
-            >
-              <Icon name={action.icon} size={iconSize.sm} color={colors.textDim} />
-            </Pressable>
-          ))}
-          {/* Always last, a little apart, so the mix's own buttons keep their places. */}
           <Pressable
             onPress={onClose}
             accessibilityRole="button"
             accessibilityLabel="Close"
-            style={({ pressed }) => [styles.action, actions?.length ? styles.close : undefined, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.action, pressed && styles.pressed]}
           >
             <Icon name="close" size={iconSize.sm} color={colors.textDim} />
           </Pressable>
         </View>
+        {/* The mix's own actions, named, under what they act on; the corner is only for closing. */}
+        {actions?.length ? (
+          <View style={styles.actions}>
+            {actions.map((action) => (
+              <Button
+                key={action.label}
+                label={action.label}
+                icon={action.icon}
+                variant="secondary"
+                size="small"
+                onPress={() => {
+                  onClose();
+                  action.onPress();
+                }}
+              />
+            ))}
+          </View>
+        ) : null}
       </View>
 
       {several && (
@@ -360,8 +364,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  close: {
-    marginLeft: spacing.sm,
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
   pressed: {
     opacity: 0.6,
