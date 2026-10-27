@@ -363,7 +363,7 @@ function hintFor(active: PotItem | null, hover: string, resting: boolean): strin
 /**
  * A glance at what the pot would play: a few of its albums' covers, the song
  * count (and the mix's name when editing one), and the way into its Details,
- * which wears a sliders icon when it shuffles other than plainly.
+ * which wears a dot when it shuffles other than plainly.
  */
 function DetailsLine({
   covers,
@@ -404,8 +404,8 @@ function DetailsLine({
         {text}
         {!none && <Text style={styles.previewLink}>{text ? ' · ' : ''}Details</Text>}
       </Text>
-      {/* Tuned: the sliders say it shuffles its own way, without a word. */}
-      {!none && tuned && <Icon name="options-outline" size={iconSize.sm - 4} color={colors.accentFg} />}
+      {/* Tuned: a dot, like an editor's unsaved-changes mark — it shuffles its own way. */}
+      {!none && tuned && <View style={styles.tunedDot} />}
       {!none && <Icon name="chevron-forward" size={iconSize.sm - 6} color={colors.accentFg} />}
     </Pressable>
   );
@@ -738,6 +738,12 @@ const styles = StyleSheet.create({
   },
   coverTucked: {
     marginLeft: -COVER_OVERLAP,
+  },
+  tunedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accentFg,
   },
   previewText: {
     ...font.label,
