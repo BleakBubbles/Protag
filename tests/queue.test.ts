@@ -209,30 +209,22 @@ test('every transition on an empty queue is safe', () => {
   assert.deepEqual(upNext(EMPTY_QUEUE, 5), []);
 });
 
-test('play next goes straight after the current song, ahead of anything queued before', () => {
-  const q = createQueue([1, 2, 3, 4], { startId: 2 });
-  const a = queueSongs(q, [10], 'next');
-  assert.equal(a.at, 2);
-  const b = queueSongs(a.queue, [11, 12], 'next');
-  assert.deepEqual(b.queue.order, [1, 2, 11, 12, 10, 3, 4]);
-  assert.equal(b.queue.queuedEnd, 5);
-  assert.deepEqual(b.queue.original, [1, 2, 3, 4], 'queued songs are extra, not part of the source');
-});
-
 test('add to queue goes after what is queued, but before the rest of the order', () => {
   const q = createQueue([1, 2, 3, 4], { startId: 1 });
-  const a = queueSongs(q, [10], 'last');
-  const b = queueSongs(a.queue, [11], 'last');
+  const a = queueSongs(q, [10]);
+  const b = queueSongs(a.queue, [11]);
   assert.deepEqual(b.queue.order, [1, 10, 11, 2, 3, 4]);
   assert.equal(b.at, 2);
+  assert.equal(b.queue.queuedEnd, 3);
+  assert.deepEqual(b.queue.original, [1, 2, 3, 4], 'queued songs are extra, not part of the source');
   // Once the queued songs have played, the next one queued goes after the current song again.
   const played = jumpTo(b.queue, 3);
-  assert.deepEqual(queueSongs(played, [12], 'last').queue.order, [1, 10, 11, 2, 12, 3, 4]);
+  assert.deepEqual(queueSongs(played, [12]).queue.order, [1, 10, 11, 2, 12, 3, 4]);
 });
 
 test('queued songs stay next when shuffle changes', () => {
   const ids = Array.from({ length: 20 }, (_, i) => i + 1);
-  const q = queueSongs(createQueue(ids, { startId: 5 }), [100, 101], 'last').queue;
+  const q = queueSongs(createQueue(ids, { startId: 5 }), [100, 101]).queue;
   for (const mode of ['songs', 'off'] as const) {
     const s = setShuffleMode(mode === 'off' ? setShuffleMode(q, 'songs', { random: seeded() }) : q, mode, { random: seeded() });
     assert.equal(currentId(s), 5);
@@ -243,7 +235,7 @@ test('queued songs stay next when shuffle changes', () => {
 });
 
 test('shuffling while a queued song plays leads with it', () => {
-  const q = queueSongs(createQueue([1, 2, 3], { startId: 1 }), [100, 101], 'last').queue;
+  const q = queueSongs(createQueue([1, 2, 3], { startId: 1 }), [100, 101]).queue;
   const playing = jumpTo(q, 1); // 100, with 101 still queued
   const s = setShuffleMode(playing, 'songs', { random: seeded() });
   assert.deepEqual(s.order.slice(0, 2), [100, 101]);
@@ -252,11 +244,11 @@ test('shuffling while a queued song plays leads with it', () => {
 });
 
 test('nothing is queued onto an empty queue', () => {
-  assert.equal(queueSongs(EMPTY_QUEUE, [1], 'next').at, -1);
+  assert.equal(queueSongs(EMPTY_QUEUE, [1]).at, -1);
 });
 
 test('removing an upcoming song: a queued one just goes, one from the source leaves it for good', () => {
-  const q = queueSongs(createQueue([1, 2, 3, 4], { startId: 1 }), [10, 11], 'last').queue; // 1 10 11 2 3 4
+  const q = queueSongs(createQueue([1, 2, 3, 4], { startId: 1 }), [10, 11]).queue; // 1 10 11 2 3 4
   const a = removeUpcoming(q, 1);
   assert.deepEqual(a.order, [1, 11, 2, 3, 4]);
   assert.equal(a.queuedEnd, 2);
@@ -269,7 +261,7 @@ test('removing an upcoming song: a queued one just goes, one from the source lea
 });
 
 test('upcoming songs move within their own part of the queue', () => {
-  const q = queueSongs(createQueue([1, 2, 3, 4, 5], { startId: 1 }), [10, 11], 'last').queue; // 1 10 11 2 3 4 5
+  const q = queueSongs(createQueue([1, 2, 3, 4, 5], { startId: 1 }), [10, 11]).queue; // 1 10 11 2 3 4 5
   assert.deepEqual(moveUpcoming(q, 2, 1).order, [1, 11, 10, 2, 3, 4, 5]);
   assert.deepEqual(moveUpcoming(q, 6, 3).order, [1, 10, 11, 5, 2, 3, 4]);
   assert.equal(moveUpcoming(q, 3, 1), q, 'not from the rest into the queued songs');
@@ -294,7 +286,7 @@ test('a woven order is played as it is, from its first song', () => {
 });
 
 test('retuning keeps the current song playing and queued songs next', () => {
-  const q = queueSongs(jumpTo(createQueue([1, 2, 3, 4], { startId: 1 }), 1), [9], 'next').queue; // playing 2, then 9
+  const q = queueSongs(jumpTo(createQueue([1, 2, 3, 4], { startId: 1 }), 1), [9]).queue; // playing 2, then 9
   const r = retuneQueue(q, [4, 3, 4, 1], { label: 'mix', draft: EMPTY_DRAFT });
   assert.deepEqual(r.order, [2, 9, 4, 3, 4, 1]);
   assert.equal(r.index, 0);

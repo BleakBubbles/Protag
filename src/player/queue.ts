@@ -44,7 +44,7 @@ export interface QueueState {
   repeat: RepeatMode;
   source: QueueSource | null;
   /**
-   * Songs the listener queued (Play next, Add to queue) sit right after the
+   * Songs the listener queued (Add to queue) sit right after the
    * current song, up to here (exclusive index into `order`). They aren't in
    * `original`: they're extra, and stay next whatever happens to shuffle.
    */
@@ -275,22 +275,16 @@ export function setShuffleMode(
 }
 
 /**
- * Queue songs to play straight after the current one, ahead of anything
- * queued before ("Play next"), or after what's already queued ("Add to
- * queue") — either way before the rest of the order, which in a long shuffle
- * may never come round. `at` is where they went in `order`. An empty queue
- * stays empty: there's nothing to play them after.
+ * Queue songs ("Add to queue") after what's already queued, before the rest
+ * of the order, which in a long shuffle may never come round. `at` is where
+ * they went in `order`. An empty queue stays empty: there's nothing to play
+ * them after.
  */
-export function queueSongs(
-  queue: QueueState,
-  ids: readonly number[],
-  where: 'next' | 'last'
-): { queue: QueueState; at: number } {
+export function queueSongs(queue: QueueState, ids: readonly number[]): { queue: QueueState; at: number } {
   if (queue.index < 0 || ids.length === 0) return { queue, at: -1 };
-  const end = Math.max(queue.index + 1, queue.queuedEnd);
-  const at = where === 'next' ? queue.index + 1 : end;
+  const at = Math.max(queue.index + 1, queue.queuedEnd);
   const order = [...queue.order.slice(0, at), ...ids, ...queue.order.slice(at)];
-  return { queue: { ...queue, order, queuedEnd: end + ids.length }, at };
+  return { queue: { ...queue, order, queuedEnd: at + ids.length }, at };
 }
 
 /**

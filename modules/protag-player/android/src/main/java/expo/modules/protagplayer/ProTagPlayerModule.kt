@@ -158,7 +158,7 @@ class ProTagPlayerModule : Module() {
       sendStatus()
     }.runOnQueue(Queues.MAIN)
 
-    /** Songs queued into the order at `at` (Play next, Add to queue); the song playing plays on. */
+    /** Songs queued into the order at `at` (Add to queue); the song playing plays on. */
     AsyncFunction("insert") { tracks: List<Track>, at: Int, memo: String ->
       val p = ready()
       Playback.memo = memo

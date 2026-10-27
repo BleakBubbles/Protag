@@ -19,7 +19,6 @@ const OWN = {
   'move-to': 'folder-move-outline',
   'save-mix': 'bookmark-outline',
   restore: 'restore',
-  'play-next': 'playlist-play',
   'add-to-queue': 'playlist-plus',
 } as const satisfies Record<string, ComponentProps<typeof MaterialCommunityIcons>['name']>;
 

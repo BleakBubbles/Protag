@@ -76,7 +76,7 @@ export interface PlayerActions {
    * Queue songs after the current one: `next` straight after it, `last`
    * after whatever's queued already. With nothing playing, they just play.
    */
-  queueSongs(ids: readonly number[], where: 'next' | 'last'): void;
+  queueSongs(ids: readonly number[]): void;
   /** Take an upcoming song (by its place in the order) out of the queue. */
   removeUpcoming(at: number): void;
   /** Move an upcoming song within its part of the queue (see `moveUpcoming` in queue.ts). */
@@ -311,9 +311,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setQueue(next);
         engineRef.current.setRepeat(next.repeat);
       },
-      queueSongs: async (ids, where) => {
+      queueSongs: async (ids) => {
         const queue = queueRef.current;
-        const { queue: next, at } = queueSongsInto(queue, ids, where);
+        const { queue: next, at } = queueSongsInto(queue, ids);
         if (at < 0) {
           const source = { label: 'Picked songs' };
           applyRef.current({ queue: createQueue(ids, { source, repeat: queue.repeat }), action: 'play' });
