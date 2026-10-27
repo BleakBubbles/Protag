@@ -346,8 +346,8 @@ export default function TagScreen() {
             icon="add"
             extended={fab.extended}
             items={[
-              { label: 'Add songs', icon: 'musical-notes-outline', onPress: () => openAddSongs(id) },
-              { label: 'New subtag', icon: 'folder-outline', onPress: () => setDialog('add-subtag') },
+              { label: 'Songs', icon: 'musical-notes-outline', onPress: () => openAddSongs(id) },
+              { label: 'Subtag', icon: 'folder-outline', onPress: () => setDialog('add-subtag') },
             ]}
           />
         )

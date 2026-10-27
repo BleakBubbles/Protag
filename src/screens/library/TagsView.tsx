@@ -1,6 +1,13 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 
 import { notifyLibraryChanged } from '../../db/changes';
 import { ensureTagPath, listTagsWithCounts, parseTagPath } from '../../db/tags';
@@ -10,7 +17,7 @@ import { usePlaylistImport } from '../../library/usePlaylistImport';
 import { openTag } from '../../navigation';
 import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
 import { findSongs } from '../../query/run';
-import { Fab, FAB_CLEARANCE, useFabFold } from '../../ui/Fab';
+import { Fab, FAB_CLEARANCE } from '../../ui/Fab';
 import { formatCount } from '../../ui/format';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
@@ -18,7 +25,7 @@ import type { SongSelection } from '../../ui/hooks/useSongSelection';
 import { ImportPrompt, ImportStatus } from '../../ui/library/ImportCards';
 import { SelectionBar } from '../../ui/library/SelectionBar';
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
-import { TagRow } from '../../ui/library/TagRow';
+import { NewTagRow, TagRow } from '../../ui/library/TagRow';
 import { PromptDialog } from '../../ui/PromptDialog';
 import { colors, font, spacing } from '../../ui/theme';
 
@@ -51,7 +58,14 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
   const imports = usePlaylistImport();
   const [creating, setCreating] = useState(false);
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
-  const fab = useFabFold();
+  // New tag is a row after the tags, and the floating button stands in for it
+  // whenever it isn't wholly in view (scrolled off the top, or not yet scrolled
+  // to): one New tag on screen at a time.
+  const [row, setRow] = useState<{ top: number; end: number } | null>(null);
+  const [scrolled, setScrolled] = useState(0);
+  const [viewHeight, setViewHeight] = useState(0);
+  const rowOutOfView = row !== null && viewHeight > 0 && (row.top < scrolled || row.end > scrolled + viewHeight);
+  const track = (e: NativeSyntheticEvent<NativeScrollEvent>) => setScrolled(e.nativeEvent.contentOffset.y);
   const { playQueue } = usePlayerActions();
   const { song: current, queue } = useNowPlaying();
 
@@ -81,11 +95,16 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
   return (
     <>
       <FlatList
+        onLayout={(e) => setViewHeight(e.nativeEvent.layout.height)}
         data={data?.loose ?? []}
         keyExtractor={(song) => String(song.id)}
         getItemLayout={getItemLayout}
         extraData={selection.selection}
-        {...fab.scrollProps}
+        onScroll={track}
+        scrollEventThrottle={32}
+        // Throttling can drop the event for where a short scroll stops; these always report it.
+        onScrollEndDrag={track}
+        onMomentumScrollEnd={track}
         contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}
         renderItem={({ item }) => (
           <SongRow
@@ -122,6 +141,14 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
                 onPress={() => openTag(tag.id)}
               />
             ))}
+            <NewTagRow
+              onPress={() => setCreating(true)}
+              disabled={selecting}
+              onLayout={(e) => {
+                const { y, height } = e.nativeEvent.layout;
+                setRow({ top: y, end: y + height });
+              }}
+            />
             {/* Folders first, then the loose songs, like any file browser. */}
             {looseCount > 0 && tags.length > 0 && <View style={styles.divider} />}
             {looseCount > 0 && (
@@ -141,7 +168,7 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
           actions={[{ label: 'Tag…', icon: 'tags', onPress: selection.editTags }, ...selection.queueActions]}
         />
       ) : (
-        <Fab label="New tag" icon="add" extended={fab.extended} onPress={() => setCreating(true)} />
+        <Fab label="New tag" icon="add" extended={false} shown={rowOutOfView} onPress={() => setCreating(true)} />
       )}
       <PromptDialog
         visible={creating}

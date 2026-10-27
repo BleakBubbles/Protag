@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
 import { plural } from '../format';
 import { artworkRadius } from '../player/Artwork';
@@ -51,6 +51,35 @@ export function TagRow({ name, color, songCount, childCount, onPress }: TagRowPr
   );
 }
 
+export interface NewTagRowProps {
+  onPress: () => void;
+  /** Dimmed and untappable, keeping its place (while selecting songs). */
+  disabled?: boolean;
+  onLayout?: (e: LayoutChangeEvent) => void;
+}
+
+/**
+ * "New tag" as the next folder in line: an empty slot after the tags, so making
+ * another sits right where it'll appear, even with only one tag above it.
+ */
+export function NewTagRow({ onPress, disabled = false, onLayout }: NewTagRowProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      onLayout={onLayout}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel="New tag"
+      style={({ pressed }) => [styles.row, pressed && styles.pressed, disabled && styles.disabled]}
+    >
+      <View style={[styles.tile, styles.slot]}>
+        <Ionicons name="add" size={iconSize.md} color={colors.textDim} />
+      </View>
+      <Text style={[styles.name, styles.newLabel]}>New tag</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   row: {
     height: TAG_ROW_HEIGHT,
@@ -69,12 +98,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // An empty folder's outline.
+  slot: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+  },
+  disabled: {
+    opacity: 0.4,
+  },
   text: {
     flex: 1,
   },
   name: {
     ...font.name,
     color: colors.text,
+  },
+  newLabel: {
+    color: colors.textDim,
   },
   meta: {
     ...font.caption,

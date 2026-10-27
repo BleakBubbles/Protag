@@ -55,6 +55,8 @@ export interface FabProps {
    * the movement draws the eye every time.
    */
   extended: boolean;
+  /** Fades out (and stops taking taps) while hidden: for a screen that sometimes offers the action elsewhere. */
+  shown?: boolean;
   onPress: () => void;
 }
 
@@ -63,8 +65,9 @@ export interface FabProps {
  * a long list. Bottom-right of the screen it's in; for a tab screen that's
  * already above the tab bar and mini-player, so no insets are added here.
  */
-export function Fab({ label, icon, extended, onPress }: FabProps) {
+export function Fab({ label, icon, extended, shown = true, onPress }: FabProps) {
   const progress = useRef(new Animated.Value(extended ? 1 : 0)).current;
+  const appear = useRef(new Animated.Value(shown ? 1 : 0)).current;
   const [labelWidth, setLabelWidth] = useState(0);
 
   useEffect(() => {
@@ -76,6 +79,15 @@ export function Fab({ label, icon, extended, onPress }: FabProps) {
       useNativeDriver: false,
     }).start();
   }, [extended, progress]);
+
+  useEffect(() => {
+    Animated.timing(appear, {
+      toValue: shown ? 1 : 0,
+      duration: 150,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [shown, appear]);
 
   return (
     <>
@@ -89,35 +101,42 @@ export function Fab({ label, icon, extended, onPress }: FabProps) {
       >
         {label}
       </Text>
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        android_ripple={{ color: colors.rippleOnAccent, foreground: true }}
-        style={styles.fab}
+      <Animated.View
+        pointerEvents={shown ? 'auto' : 'none'}
+        style={[styles.place, { opacity: appear, transform: [{ scale: appear.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }] }]}
       >
-        <Icon name={icon} size={ICON} color={colors.onAccent} />
-        <Animated.View
-          style={{
-            width: progress.interpolate({ inputRange: [0, 1], outputRange: [0, labelWidth] }),
-            opacity: progress,
-            overflow: 'hidden',
-          }}
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          android_ripple={{ color: colors.rippleOnAccent, foreground: true }}
+          style={styles.fab}
         >
-          <Text style={[styles.label, { width: labelWidth || undefined }]} numberOfLines={1}>
-            {label}
-          </Text>
-        </Animated.View>
-      </Pressable>
+          <Icon name={icon} size={ICON} color={colors.onAccent} />
+          <Animated.View
+            style={{
+              width: progress.interpolate({ inputRange: [0, 1], outputRange: [0, labelWidth] }),
+              opacity: progress,
+              overflow: 'hidden',
+            }}
+          >
+            <Text style={[styles.label, { width: labelWidth || undefined }]} numberOfLines={1}>
+              {label}
+            </Text>
+          </Animated.View>
+        </Pressable>
+      </Animated.View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  fab: {
+  place: {
     position: 'absolute',
     right: spacing.lg,
     bottom: spacing.lg,
+  },
+  fab: {
     height: FAB_SIZE,
     minWidth: FAB_SIZE,
     flexDirection: 'row',
