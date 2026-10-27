@@ -268,6 +268,11 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
         data={items}
         keyExtractor={(item) => item.key}
         ListHeaderComponent={header}
+        // Each group's heading stays at the top while its songs scroll under it. The
+        // indices count the list's header as 0, so the items' are one on. Android's
+        // clipping of off-screen rows crashes with sticky headers (inserting a view), so it's off.
+        stickyHeaderIndices={items.flatMap((item, i) => (item.kind === 'group' ? [i + 1] : []))}
+        removeClippedSubviews={false}
         initialNumToRender={12}
         renderItem={({ item: entry }) => {
           if (entry.kind === 'group') {
@@ -432,6 +437,7 @@ const styles = StyleSheet.create({
   },
   // A group's heading: its weight row's swatch and name, without the stepper.
   group: {
+    backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
