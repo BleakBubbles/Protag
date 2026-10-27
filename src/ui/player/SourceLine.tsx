@@ -92,7 +92,6 @@ export function SourceLine({ queue, onClose }: SourceLineProps) {
             onClose={details.close}
             draft={draft!}
             title={saved?.name ?? label}
-            upNext={queue.order.slice(queue.index + 1)}
             onTune={retune}
             onPlay={async (songId) => {
               const order = isTuned(draft!) ? await tunedOrder(db, draft!, { first: songId }) : undefined;

@@ -1,14 +1,12 @@
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { listAlbumTitles } from '../../db/albums';
 import { buildDescendantMap, listTags } from '../../db/tags';
 import type { SongRow } from '../../db/types';
 import { albumArtUri } from '../../library/assets';
-import { ingredientSongs, streamsOf, type Ingredient } from '../../player/sources';
-import { fisherYates } from '../../player/queue';
-import { weave } from '../../player/weave';
+import { ingredientSongs, type Ingredient } from '../../player/sources';
 import { readRef, type Ref } from '../../query/refs';
 import { findSongs } from '../../query/run';
 import { goesRound, isTuned, setTuning, SHARES, tuningOf, untuned } from '../../query/tuning';
@@ -23,11 +21,7 @@ import { colors, font, iconSize, radius, spacing, tagColor, touchTarget } from '
 
 const ROW_HEIGHT = 60;
 const THUMB = 44;
-/** The strip of what plays next: two rows of twenty. */
-const UP_NEXT = 40;
-const STRIP_COLUMNS = 20;
 const STEP = 30;
-const GAP = 2;
 
 export interface DetailsAction {
   label: string;
@@ -42,8 +36,6 @@ export interface DetailsWindowProps {
   draft: QueryDraft;
   /** The mix in words, or its name. */
   title: string;
-  /** What actually plays next, when it's playing; otherwise a sample shuffle of the mix is shown. */
-  upNext?: readonly number[];
   onTune: (draft: QueryDraft) => void;
   /** Shuffle the mix, starting with this song. */
   onPlay: (songId: number) => void;
@@ -51,21 +43,15 @@ export interface DetailsWindowProps {
   actions?: readonly DetailsAction[];
 }
 
-/** A small seeded random, so the sample doesn't jump about while it's being tuned. */
-function seeded(seed: number): () => number {
-  let s = seed >>> 0;
-  return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
-}
-
 /**
- * A mix's Details: what plays next as a strip coloured by ingredient, each
- * ingredient's share as one thin line, and, with two or more ingredients, a
+ * A mix's Details: its name and size, each ingredient's share as one line in
+ * its colours (the picture of the mix), and, with two or more ingredients, a
  * row each to tune it: its share (− / +, halving or doubling its natural,
  * size-based share) and whether it repeats. A share is of the whole shuffle,
  * so a raised ingredient repeats, locked on, without a word. Below, every
  * song, filterable by ingredient; tap one to shuffle from it.
  */
-export function DetailsWindow({ anchor, onClose, draft, title, upNext, onTune, onPlay, actions }: DetailsWindowProps) {
+export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, actions }: DetailsWindowProps) {
   const db = useSQLiteContext();
   const open = anchor !== null;
 
@@ -104,24 +90,6 @@ export function DetailsWindow({ anchor, onClose, draft, title, upNext, onTune, o
     // Keyed by `what`: tuning changes don't change any ingredient's songs.
   }, [db, open, what]);
 
-  // A new sample each time it opens, steady while it's open.
-  const seed = useRef(1);
-  useEffect(() => {
-    if (open) seed.current = Math.floor(Math.random() * 1e9);
-  }, [open]);
-  // A plain mix plays a plain shuffle, so that's what it shows.
-  const sample = useMemo(() => {
-    if (!ingredients) return [];
-    const random = seeded(seed.current);
-    return (isTuned(draft) ? weave(streamsOf(draft, ingredients), { random }) : fisherYates(ingredients.flatMap((i) => i.ids), random)).slice(0, UP_NEXT);
-  }, [draft, ingredients]);
-  const strip = (upNext ?? sample).slice(0, UP_NEXT);
-  const ingredientOf = useMemo(() => {
-    const map = new Map<number, number>();
-    ingredients?.forEach((ing, k) => ing.ids.forEach((id) => map.set(id, k)));
-    return map;
-  }, [ingredients]);
-
   const weights = (ingredients ?? []).map((ing) => ing.ids.length * tuningOf(draft, ing.refs).share);
   const totalWeight = weights.reduce((a, b) => a + b, 0) || 1;
   const percent = (k: number) => `${Math.round((weights[k] / totalWeight) * 100)}%`;
@@ -158,7 +126,7 @@ export function DetailsWindow({ anchor, onClose, draft, title, upNext, onTune, o
   };
 
   // Three parts, set apart the way the Library sets its tags apart from its loose songs:
-  // the summary (what this is, what plays next), its tags (tuning), its songs.
+  // the summary (what this is, how it's shared out), its tags (tuning), its songs.
   const header = (
     <View style={styles.headerBody}>
       <View style={styles.section}>
@@ -194,19 +162,6 @@ export function DetailsWindow({ anchor, onClose, draft, title, upNext, onTune, o
           </Pressable>
         </View>
 
-        <Text style={styles.label}>Up next</Text>
-        <View style={styles.strip} accessibilityLabel="The next songs, coloured by ingredient">
-          {[0, STRIP_COLUMNS].map((from) => (
-            <View key={from} style={styles.stripRow}>
-              {Array.from({ length: STRIP_COLUMNS }, (_, i) => {
-                const id = strip[from + i];
-                const k = id === undefined ? undefined : ingredientOf.get(id);
-                const color = id === undefined ? 'transparent' : k === undefined ? colors.raised : hueOf(draft.ingredients[k] ?? []);
-                return <View key={i} style={[styles.block, { backgroundColor: color }]} />;
-              })}
-            </View>
-          ))}
-        </View>
         {several && ingredients && (
           <View style={styles.shareLine}>
             {ingredients.map((ing, k) => (
@@ -397,22 +352,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  strip: {
-    gap: GAP,
-  },
-  stripRow: {
-    flexDirection: 'row',
-    gap: GAP,
-  },
-  block: {
-    flex: 1,
-    aspectRatio: 1 / 1.7,
-    borderRadius: 2,
-  },
   shareLine: {
     flexDirection: 'row',
-    height: 5,
-    borderRadius: 3,
+    height: 8,
+    borderRadius: 4,
     overflow: 'hidden',
     gap: 1,
   },
