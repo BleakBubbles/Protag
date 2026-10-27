@@ -22,8 +22,6 @@ import { colors, font, iconSize, radius, spacing, tagColor, touchTarget } from '
 const ROW_HEIGHT = 60;
 const THUMB = 44;
 const STEP = 30;
-/** The repeat mark beside a weight. */
-const REPEAT = 16;
 
 export interface DetailsAction {
   label: string;
@@ -195,13 +193,24 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
               const k0 = SHARES.indexOf(t.share as (typeof SHARES)[number]);
               const repeats = repeatsIn(draft, ing.refs);
               const name = label(ing.refs);
+              const times = `×${t.share === 0.25 ? '¼' : t.share === 0.5 ? '½' : t.share}`;
               return (
                 <View key={ing.refs.join()} style={styles.card}>
                   <View style={styles.cardRow}>
                     <View style={[styles.swatch, { backgroundColor: hueOf(ing.refs) }]} />
-                    <Text style={styles.cardName} numberOfLines={1}>
-                      {name} <Text style={styles.cardCount}>{plural(ing.ids.length, 'song')}</Text>
-                    </Text>
+                    {/* What the tag is and how it's weighed, read as a status: "6 songs · ×2",
+                        then ↻ when it goes round again to keep its share. */}
+                    <View style={styles.cardText}>
+                      <Text style={styles.cardName} numberOfLines={1}>
+                        {name}
+                      </Text>
+                      <View style={styles.cardMeta} accessible accessibilityLabel={`${plural(ing.ids.length, 'song')}, weight ${t.share}${repeats ? ', repeats' : ''}`}>
+                        <Text style={styles.cardCount}>
+                          {plural(ing.ids.length, 'song')} · <Text style={t.share !== 1 && styles.timesTuned}>{times}</Text>
+                        </Text>
+                        {repeats && <Icon name="repeat" size={14} color={t.share !== 1 ? colors.accentFg : colors.textFaint} />}
+                      </View>
+                    </View>
                     <Pressable
                       onPress={() => tune(ing.refs, -1)}
                       disabled={k0 === 0}
@@ -213,17 +222,6 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
                     </Pressable>
                     <View style={styles.shareValue}>
                       <Text style={styles.percent}>{percent(k)}</Text>
-                      {/* A tag that goes round again to keep its share says so beside its
-                          weight: ↻×2. Its slot is matched on the right, so the weight never moves. */}
-                      <View style={styles.timesLine} accessible accessibilityLabel={`weight ${t.share}${repeats ? ', repeats' : ''}`}>
-                        <View style={styles.repeatMark}>
-                          {repeats && <Icon name="repeat" size={REPEAT} color={t.share !== 1 ? colors.accentFg : colors.textFaint} />}
-                        </View>
-                        <Text style={[styles.times, t.share !== 1 && styles.timesTuned]}>
-                          ×{t.share === 0.25 ? '¼' : t.share === 0.5 ? '½' : t.share}
-                        </Text>
-                        <View style={styles.repeatMark} />
-                      </View>
                     </View>
                     <Pressable
                       onPress={() => tune(ing.refs, 1)}
@@ -373,10 +371,19 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 3,
   },
+  cardText: {
+    flex: 1,
+  },
   cardName: {
     ...font.name,
     color: colors.text,
-    flex: 1,
+  },
+  // The mark no taller than the caption, so a card is the same height with or without it.
+  cardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    height: font.caption.lineHeight,
   },
   cardCount: {
     ...font.caption,
@@ -401,23 +408,8 @@ const styles = StyleSheet.create({
     ...font.numeric,
     color: colors.text,
   },
-  times: {
-    ...font.caption,
-    color: colors.textFaint,
-  },
   timesTuned: {
     color: colors.accentFg,
-  },
-  timesLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  // The line's own height, the mark overhanging it a touch, so a card is the
-  // same height with or without it.
-  repeatMark: {
-    width: REPEAT + 1,
-    height: font.caption.lineHeight,
-    justifyContent: 'center',
   },
   filters: {
     gap: spacing.sm,
