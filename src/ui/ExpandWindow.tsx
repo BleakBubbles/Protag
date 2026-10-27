@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,7 +7,7 @@ import { colors, radius, spacing } from './theme';
 
 // Snappy enough that you barely see it grow: out fast and done, no long settle
 // to catch the end of; back in quicker still.
-const OPEN_MS = 200;
+const OPEN_MS = 150;
 const CLOSE_MS = 150;
 const OPEN_EASING = Easing.out(Easing.poly(4));
 const CLOSE_EASING = Easing.in(Easing.quad);
@@ -24,8 +24,9 @@ export interface ExpandWindowProps {
  * shrinks back into it, rather than sliding up from the bottom, the way an app
  * opens from its icon: the whole window, contents and all, scales up from the
  * anchor's corner to its place. Only transforms and opacity move, on the
- * native side, so a busy JS thread can't stall it; and the clock starts once
- * the window is laid out, so building its contents doesn't eat the first frames.
+ * native side, so a busy JS thread can't stall it. It starts at once: the empty
+ * window is laid out and growing before its contents are built, which happens
+ * as it grows, so building them neither delays the start nor eats its first frames.
  * Tap outside or press back to close.
  */
 export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
@@ -36,11 +37,14 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
   const [shown, setShown] = useState<Rect | null>(null);
   /** Opened, waiting for the first layout to start growing. */
   const pending = useRef(false);
+  /** The contents, built once it's growing. */
+  const [filled, setFilled] = useState(false);
 
   useEffect(() => {
     if (anchor) {
       grow.setValue(0);
       pending.current = true;
+      setFilled(false);
       setShown(anchor);
     } else if (shown) {
       pending.current = false;
@@ -51,11 +55,13 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
     // Not on `shown`: it's what's closing, and following it would reopen it.
   }, [anchor, grow]);
 
-  const start = () => {
-    if (!pending.current) return;
+  // Growing starts as soon as the window is in place, without waiting on a layout event.
+  useLayoutEffect(() => {
+    if (!shown || !pending.current) return;
     pending.current = false;
     Animated.timing(grow, { toValue: 1, duration: OPEN_MS, easing: OPEN_EASING, useNativeDriver: true }).start();
-  };
+    setFilled(true);
+  }, [shown]);
 
   if (!shown) return null;
   // Inset on every side, clear of the status and navigation bars.
@@ -70,7 +76,6 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
         <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={onClose} accessibilityLabel="Close" />
       </Animated.View>
       <Animated.View
-        onLayout={start}
         style={[
           styles.frame,
           {
@@ -89,7 +94,7 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
           },
         ]}
       >
-        {children}
+        {filled && children}
       </Animated.View>
     </Modal>
   );

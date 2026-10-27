@@ -1,5 +1,5 @@
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
+import { useEffect, useImperativeHandle, useState, type Ref as ReactRef } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { listAlbumTitles } from '../../db/albums';
@@ -55,6 +55,24 @@ export interface DetailsWindowProps {
  * song, grouped under its ingredient in the rows' order and colours, to look
  * through rather than change anything; tap one to shuffle from it.
  */
+export interface DetailsHandle {
+  open: (from: Rect) => void;
+}
+
+/**
+ * A DetailsWindow that keeps whether it's open to itself, opened through its
+ * ref: opening it then re-renders only the window, not whatever holds it (the
+ * whole Play tab, which would hold up the window's first frame).
+ */
+export function OwnDetailsWindow({
+  ref,
+  ...props
+}: Omit<DetailsWindowProps, 'anchor' | 'onClose'> & { ref: ReactRef<DetailsHandle> }) {
+  const [from, setFrom] = useState<Rect | null>(null);
+  useImperativeHandle(ref, () => ({ open: setFrom }), []);
+  return <DetailsWindow {...props} anchor={from} onClose={() => setFrom(null)} />;
+}
+
 export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, actions }: DetailsWindowProps) {
   const db = useSQLiteContext();
   const open = anchor !== null;

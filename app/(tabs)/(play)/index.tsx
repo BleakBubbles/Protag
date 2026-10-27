@@ -62,11 +62,10 @@ import { ingredientKey, Pot, POT_ROW, trayHeight, type Look, type ShuffleCount }
 import { DragGhost, PotDragContext, usePotDragRoot } from '@/ui/play/PotDrag';
 import { Divider, DIVIDER_HEIGHT } from '@/ui/play/Divider';
 import { MixShelf } from '@/ui/play/MixShelf';
-import { DetailsWindow } from '@/ui/play/DetailsWindow';
+import { OwnDetailsWindow, type DetailsHandle } from '@/ui/play/DetailsWindow';
 import { SearchButton, SearchRow, SectionHead, Trail } from '@/ui/play/SectionHead';
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
-import type { Rect } from '@/ui/Popover';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { colors, font, spacing, tagColor } from '@/ui/theme';
 
@@ -200,8 +199,8 @@ function Builder({
   /** What the pot held before the editing began, to put back when it's done. */
   const [before, setBefore] = useState<QueryDraft | null>(initialPot.before);
   const [saving, setSaving] = useState(false);
-  /** Where the mix's Details opened from; null while closed. */
-  const [detailsFrom, setDetailsFrom] = useState<Rect | null>(null);
+  /** The mix's Details, which keeps whether it's open to itself (see `OwnDetailsWindow`). */
+  const details = useRef<DetailsHandle>(null);
   const { playQueue } = usePlayerActions();
 
   const [picking, setPicking] = useState<'artists' | 'albums' | null>(null);
@@ -540,7 +539,7 @@ function Builder({
             ingredientCounts={ingredientCounts}
             counted={counted}
             covers={covers}
-            onDetails={setDetailsFrom}
+            onDetails={(from) => details.current?.open(from)}
             name={editingMix ? null : (named?.name ?? null)}
             editing={editingMix !== null}
             onSave={() => setSaving(true)}
@@ -760,9 +759,8 @@ function Builder({
           }}
           onClose={() => setSaving(false)}
         />
-        <DetailsWindow
-          anchor={detailsFrom}
-          onClose={() => setDetailsFrom(null)}
+        <OwnDetailsWindow
+          ref={details}
           draft={current}
           title={editingMix?.name ?? named?.name ?? describeQuery(query, names)}
           onTune={setDraft}
