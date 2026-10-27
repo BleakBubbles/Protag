@@ -177,7 +177,7 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
           <View style={styles.section}>
             {/* What's tuned shows in teal in the rows; this puts it all back, live only when there's something to undo. */}
             <View style={styles.sectionHead}>
-              <Text style={styles.label}>Tags</Text>
+              <Text style={styles.label}>Tag weights</Text>
               <Pressable
                 onPress={() => onTune(untuned(draft))}
                 disabled={!isTuned(draft)}
