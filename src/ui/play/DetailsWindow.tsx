@@ -1,6 +1,6 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { listAlbumTitles } from '../../db/albums';
 import { buildDescendantMap, listTags } from '../../db/tags';
@@ -12,7 +12,6 @@ import { findSongs } from '../../query/run';
 import { isTuned, repeatsIn, setTuning, SHARES, tuningOf, untuned } from '../../query/tuning';
 import { buildQuery, type QueryDraft } from '../../query/types';
 import { ExpandWindow } from '../ExpandWindow';
-import { FilterChip } from '../FilterChip';
 import { plural } from '../format';
 import { Icon, type IconName } from '../Icon';
 import { Artwork } from '../player/Artwork';
@@ -22,6 +21,8 @@ import { colors, font, iconSize, radius, spacing, tagColor, touchTarget } from '
 const ROW_HEIGHT = 60;
 const THUMB = 44;
 const STEP = 30;
+
+type Item = { kind: 'group'; key: string; k: number } | { kind: 'song'; key: string; song: SongRow };
 
 export interface DetailsAction {
   label: string;
@@ -49,7 +50,8 @@ export interface DetailsWindowProps {
  * row each to tune it: its share (− / +, halving or doubling its natural,
  * size-based share). A share holds for the whole shuffle, so the ingredients
  * that will run out first and go round again wear a quiet ↻. Below, every
- * song, filterable by ingredient; tap one to shuffle from it.
+ * song, grouped under its ingredient in the rows' order and colours, to look
+ * through rather than change anything; tap one to shuffle from it.
  */
 export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, actions }: DetailsWindowProps) {
   const db = useSQLiteContext();
@@ -95,29 +97,40 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
   const percent = (k: number) => `${Math.round((weights[k] / totalWeight) * 100)}%`;
   const label = (refs: readonly Ref[]) => refs.map(nameOf).join(' × ');
 
-  // The song list, as before: everything, or one ingredient's.
-  const [filter, setFilter] = useState(-1);
+  // Every song, by artist.
   const [songs, setSongs] = useState<SongRow[] | null>(null);
   useEffect(() => {
     if (!open) return;
-    setFilter(-1);
     setSongs(null);
   }, [open]);
   useEffect(() => {
     if (!open) return;
     let live = true;
-    const ingredient = draft.ingredients[filter];
-    const query = buildQuery(ingredient ? { ...draft, ingredients: [ingredient] } : draft);
     buildDescendantMap(db)
-      .then((descendants) => findSongs(db, query, { order: 'artist', descendants }))
+      .then((descendants) => findSongs(db, buildQuery(draft), { order: 'artist', descendants }))
       .then((found) => live && setSongs(found));
     return () => {
       live = false;
     };
-    // Keyed by `what` (not the tuning), and the filter.
-  }, [db, open, what, filter]);
+    // Keyed by `what`: tuning changes don't change the songs.
+  }, [db, open, what]);
 
   const several = draft.ingredients.length > 1;
+
+  // With several ingredients, each one's songs under a heading of its own, in the
+  // rows' order; a song in two is under the one it counts for, as in the shares.
+  const items: Item[] = [];
+  if (songs && several && ingredients) {
+    const groupOf = new Map<number, number>();
+    ingredients.forEach((ing, k) => ing.ids.forEach((id) => groupOf.set(id, k)));
+    ingredients.forEach((ing, k) => {
+      if (ing.ids.length === 0) return;
+      items.push({ kind: 'group', key: `g${k}`, k });
+      for (const song of songs) if (groupOf.get(song.id) === k) items.push({ kind: 'song', key: `s${song.id}`, song });
+    });
+  } else if (songs) {
+    for (const song of songs) items.push({ kind: 'song', key: `s${song.id}`, song });
+  }
   const tune = (refs: readonly Ref[], step: 1 | -1) => {
     const now = tuningOf(draft, refs);
     const k = SHARES.indexOf(now.share as (typeof SHARES)[number]);
@@ -245,14 +258,6 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
         <View style={styles.sectionHead}>
           <Text style={styles.label}>Songs</Text>
         </View>
-        {several && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-            <FilterChip label="All" selected={filter === -1} onToggle={() => setFilter(-1)} />
-            {draft.ingredients.map((refs, i) => (
-              <FilterChip key={refs.join()} label={label(refs)} selected={filter === i} onToggle={() => setFilter(i)} />
-            ))}
-          </ScrollView>
-        )}
       </View>
     </View>
   );
@@ -260,11 +265,24 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
   return (
     <ExpandWindow anchor={anchor} onClose={onClose}>
       <FlatList
-        data={songs ?? []}
-        keyExtractor={(song) => String(song.id)}
+        data={items}
+        keyExtractor={(item) => item.key}
         ListHeaderComponent={header}
         initialNumToRender={12}
-        renderItem={({ item }) => (
+        renderItem={({ item: entry }) => {
+          if (entry.kind === 'group') {
+            const ing = ingredients![entry.k];
+            return (
+              <View style={styles.group} accessibilityRole="header">
+                <View style={[styles.swatch, { backgroundColor: hueOf(ing.refs) }]} />
+                <Text style={styles.groupName} numberOfLines={1}>
+                  {label(ing.refs)} <Text style={styles.cardCount}>{plural(ing.ids.length, 'song')}</Text>
+                </Text>
+              </View>
+            );
+          }
+          const item = entry.song;
+          return (
           <Pressable
             onPress={() => {
               onClose();
@@ -285,7 +303,8 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
               </Text>
             </View>
           </Pressable>
-        )}
+          );
+        }}
       />
     </ExpandWindow>
   );
@@ -411,8 +430,19 @@ const styles = StyleSheet.create({
   timesTuned: {
     color: colors.accentFg,
   },
-  filters: {
-    gap: spacing.sm,
+  // A group's heading: its weight row's swatch and name, without the stepper.
+  group: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+  groupName: {
+    ...font.name,
+    color: colors.text,
+    flex: 1,
   },
   row: {
     height: ROW_HEIGHT,
