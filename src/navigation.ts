@@ -1,6 +1,5 @@
 import { router } from 'expo-router';
 
-import type { QueryDraft } from './query/types';
 
 /**
  * Every in-app navigation, in one place. Screens call these rather than
@@ -41,15 +40,5 @@ export const openManageLibrary = () => router.push('/library/manage');
 export const openLibraryFolders = () => router.push('/library/folders');
 
 export const openLibrary = () => router.navigate('/library');
-
-/** The Play tab, optionally with a saved mix or a tag combination loaded into the pot to change. */
-export const openPlay = (open?: { mixId: number } | { draft: QueryDraft }) =>
-  router.navigate(
-    !open
-      ? '/'
-      : 'mixId' in open
-        ? { pathname: '/', params: { edit: String(open.mixId) } }
-        : { pathname: '/', params: { draft: JSON.stringify(open.draft) } }
-  );
 
 // The full player isn't a route: it's a sheet over the tabs (usePlayerSheet).

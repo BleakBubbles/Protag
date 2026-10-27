@@ -99,8 +99,10 @@ export interface PotProps {
   covers: readonly string[];
   /** Open the mix's Details, growing from the line that opened it. */
   onDetails: (from: Rect) => void;
-  /** The name of the mix opened for editing, if any. */
-  editing: string | null;
+  /** The saved mix the pot holds, if it's one, to name it in the line. */
+  name: string | null;
+  /** A mix is open for editing (the header says so and saves it); saving here makes a new one. */
+  editing: boolean;
   onSave: () => void;
   onShuffle: () => void;
   onClear: () => void;
@@ -141,6 +143,7 @@ export function Pot({
   counted,
   covers,
   onDetails,
+  name,
   editing,
   onSave,
   onShuffle,
@@ -200,7 +203,7 @@ export function Pot({
               style={[styles.layer, { opacity: hintShown.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}
               pointerEvents={hinting ? 'none' : 'auto'}
             >
-              <DetailsLine covers={covers} counted={counted} editing={editing} tuned={isTuned(draft)} onPress={onDetails} />
+              <DetailsLine covers={covers} counted={counted} name={name} tuned={isTuned(draft)} onPress={onDetails} />
             </Animated.View>
           )}
           <Animated.View style={[styles.layer, { opacity: hintShown }]} pointerEvents="none">
@@ -291,7 +294,8 @@ export function Pot({
 
 export interface FinishButtonsProps {
   empty: boolean;
-  editing: string | null;
+  /** While a mix is open for editing, saving here is the other way out: as a new mix. */
+  editing: boolean;
   counted: ShuffleCount | null;
   onSave: () => void;
   onShuffle: () => void;
@@ -315,9 +319,9 @@ export function FinishButtons({ empty, editing, counted, onSave, onShuffle, chil
         accessibilityState={{ disabled: empty }}
         style={({ pressed }) => [styles.finish, styles.save, (pressed || empty) && styles.dimmed]}
       >
-        <Icon name={editing ? 'bookmark' : 'bookmark-outline'} size={iconSize.sm} color={colors.accentFg} />
+        <Icon name="bookmark-outline" size={iconSize.sm} color={colors.accentFg} />
         <Text style={styles.saveText} numberOfLines={1}>
-          {editing ? 'Save mix' : 'Save as mix'}
+          {editing ? 'Save as new mix' : 'Save as mix'}
         </Text>
       </Pressable>
       <Pressable
@@ -362,26 +366,26 @@ function hintFor(active: PotItem | null, hover: string, resting: boolean): strin
 
 /**
  * A glance at what the pot would play: a few of its albums' covers, the song
- * count (and the mix's name when editing one), and the way into its Details,
+ * count (and the mix's name when it's a saved one), and the way into its Details,
  * which wears a dot when it shuffles other than plainly.
  */
 function DetailsLine({
   covers,
   counted,
-  editing,
+  name,
   tuned,
   onPress,
 }: {
   covers: readonly string[];
   counted: ShuffleCount | null;
-  editing: string | null;
+  name: string | null;
   tuned: boolean;
   onPress: (from: Rect) => void;
 }) {
   const ref = useRef<ViewInstance>(null);
   const none = counted?.count === 0;
   const count = counted === null ? null : plural(counted.count, 'song');
-  const text = [editing, none ? 'No songs match' : count].filter(Boolean).join(' · ');
+  const text = [name, none ? 'No songs match' : count].filter(Boolean).join(' · ');
   return (
     <Pressable
       ref={ref}

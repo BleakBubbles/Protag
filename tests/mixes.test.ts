@@ -68,13 +68,15 @@ test('a damaged stored draft loads as an empty mix rather than crashing', () => 
 });
 
 test('the pot comes back as it was kept, and a damaged one comes back empty', () => {
-  const pot = { draft: { ...EMPTY_DRAFT, ingredients: [[1, 'artist:IU']], exclude: [3] } as QueryDraft, editing: 7 };
+  const before = { ...EMPTY_DRAFT, ingredients: [[4]] } as QueryDraft;
+  const pot = { draft: { ...EMPTY_DRAFT, ingredients: [[1, 'artist:IU']], exclude: [3] } as QueryDraft, editing: 7, before };
   assert.deepEqual(parseKeptPot(keepPot(pot)), pot);
-  assert.deepEqual(parseKeptPot(null), { draft: EMPTY_DRAFT, editing: null });
-  assert.deepEqual(parseKeptPot('{oops'), { draft: EMPTY_DRAFT, editing: null });
-  assert.deepEqual(parseKeptPot('{"draft":{"ingredients":[[2]]},"editing":"x"}'), {
+  assert.deepEqual(parseKeptPot(null), { draft: EMPTY_DRAFT, editing: null, before: null });
+  assert.deepEqual(parseKeptPot('{oops'), { draft: EMPTY_DRAFT, editing: null, before: null });
+  assert.deepEqual(parseKeptPot('{"draft":{"ingredients":[[2]]},"editing":"x","before":{"ingredients":[[4]]}}'), {
     draft: { ...EMPTY_DRAFT, ingredients: [[2]] },
     editing: null,
+    before: null,
   });
 });
 

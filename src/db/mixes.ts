@@ -47,8 +47,11 @@ export function parseDraft(json: string): QueryDraft {
   }
 }
 
-/** The pot as kept between launches: what's in it, and the mix it was opened from (if any). */
-export type KeptPot = { draft: QueryDraft; editing: number | null };
+/**
+ * The pot as kept between launches: what's in it, the mix open for editing (if
+ * any), and what the pot held before that, to put back when the editing's done.
+ */
+export type KeptPot = { draft: QueryDraft; editing: number | null; before: QueryDraft | null };
 
 export function keepPot(pot: KeptPot): string {
   return JSON.stringify(pot);
@@ -56,15 +59,17 @@ export function keepPot(pot: KeptPot): string {
 
 /** Read back a kept pot; anything damaged is an empty one. */
 export function parseKeptPot(json: string | null): KeptPot {
-  if (!json) return { draft: EMPTY_DRAFT, editing: null };
+  if (!json) return { draft: EMPTY_DRAFT, editing: null, before: null };
   try {
-    const data = JSON.parse(json) as { draft?: unknown; editing?: unknown };
+    const data = JSON.parse(json) as { draft?: unknown; editing?: unknown; before?: unknown };
+    const editing = typeof data.editing === 'number' ? data.editing : null;
     return {
       draft: parseDraft(JSON.stringify(data.draft ?? {})),
-      editing: typeof data.editing === 'number' ? data.editing : null,
+      editing,
+      before: editing !== null && data.before ? parseDraft(JSON.stringify(data.before)) : null,
     };
   } catch {
-    return { draft: EMPTY_DRAFT, editing: null };
+    return { draft: EMPTY_DRAFT, editing: null, before: null };
   }
 }
 

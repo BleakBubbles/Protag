@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { notifyLibraryChanged } from '@/db/changes';
 import { listMixes, saveMixAs } from '@/db/mixes';
-import { openPlay } from '@/navigation';
 import { usePlayerActions } from '@/player/PlayerProvider';
 import type { QueueState } from '@/player/queue';
 import { tunedOrder } from '@/player/sources';
@@ -23,18 +22,16 @@ const PILL_PADDING = spacing.md;
 
 export interface SourceLineProps {
   queue: QueueState;
-  /** Closes the player, before going to the Play tab. */
-  onClose: () => void;
 }
 
 /**
  * "Shuffling · kpop × chill  3 of 114": what's playing, the label scrolling sideways
  * when it's too long to fit. Often you only know a combination is good once
  * you've heard it, so when the queue came from tags, the line sits in a soft
- * pill that opens the mix's Details: tune it as it plays, save it as a mix,
- * or open it in Play to change what's in it.
+ * pill that opens the mix's Details: tune it as it plays, or save it as a mix.
+ * Changing what's in a mix is the Play tab's job, from the mix's own Edit.
  */
-export function SourceLine({ queue, onClose }: SourceLineProps) {
+export function SourceLine({ queue }: SourceLineProps) {
   const db = useSQLiteContext();
   const draft = queue.source?.draft;
   const { data: mixes } = useLibraryQuery((db) => listMixes(db), []);
@@ -97,21 +94,13 @@ export function SourceLine({ queue, onClose }: SourceLineProps) {
               const order = isTuned(draft!) ? await tunedOrder(db, draft!, { first: songId }) : undefined;
               playQueue(queue.original, { startId: songId, shuffle: true, label, draft, order });
             }}
-            actions={[
-              ...(saved
+            actions={
+              saved
                 ? retuned
                   ? [{ label: `Save tuning to ${saved.name}`, icon: 'save-mix', onPress: () => saveMixAs(db, saved.name, draft!, saved.id).then(notifyLibraryChanged, () => {}) } satisfies DetailsAction]
                   : []
-                : [{ label: 'Save as mix', icon: 'save-mix', onPress: () => setSaving(true) } satisfies DetailsAction]),
-              {
-                label: 'Edit in Play',
-                icon: 'edit',
-                onPress: () => {
-                  onClose();
-                  openPlay(saved && !retuned ? { mixId: saved.id } : { draft: draft! });
-                },
-              },
-            ]}
+                : [{ label: 'Save as mix', icon: 'save-mix', onPress: () => setSaving(true) } satisfies DetailsAction]
+            }
           />
           <PromptDialog
             visible={saving}

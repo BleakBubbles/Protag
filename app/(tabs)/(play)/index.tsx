@@ -1,8 +1,9 @@
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { AndroidHaptics, performAndroidHapticsAsync } from 'expo-haptics';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   BackHandler,
   Easing,
@@ -17,7 +18,7 @@ import {
 
 import { listAlbums, listArtists, type AlbumSummary, type ArtistSummary } from '@/db/albums';
 import { notifyLibraryChanged } from '@/db/changes';
-import { keepPot, listMixes, parseDraft, parseKeptPot, saveMixAs, type KeptPot, type Mix } from '@/db/mixes';
+import { keepPot, listMixes, parseKeptPot, saveMixAs, type KeptPot, type Mix } from '@/db/mixes';
 import { countSongs } from '@/db/songs';
 import { getSetting, setSetting, SettingKey } from '@/db/settings';
 import { buildDescendantMap, listAllTagsWithCounts, listTagPlays } from '@/db/tags';
@@ -52,6 +53,7 @@ import {
 } from '@/query/types';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
+import { IconButton } from '@/ui/IconButton';
 import { plural } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { MusicPicker } from '@/ui/play/MusicPicker';
@@ -96,18 +98,14 @@ const SLIDE_MS = 200;
  * area below swaps to your tags, artists and albums, which go into the pot by
  * tap or by drag, with a live count; the divider, Back or Shuffle swap back.
  * The divider also sets the pot's size, the same in both. "Edit" on a mix
- * loads it into the pot (here, or via the `edit` param, a mix id), and the
- * player's "Edit in Play" loads what's playing (the `draft` param, as JSON).
+ * opens it in the pot as a mode of its own: a teal header names it, with ×
+ * to leave (discarding changes, after asking) and ✓ to save; either way the
+ * pot gets back what it held before.
  */
 export default function PlayScreen() {
   const { show } = useMiniPlayerVisibility();
   // Opening Play is one way a hidden mini-player comes back.
   useFocusEffect(useCallback(() => show(), [show]));
-  const { edit, draft } = useLocalSearchParams<{ edit?: string; draft?: string }>();
-  const openRequest = useMemo<OpenRequest>(
-    () => (edit ? { mixId: Number(edit) } : draft ? { draft: parseDraft(draft) } : null),
-    [edit, draft]
-  );
 
   const { data } = useLibraryQuery(async (db) => {
     const [songs, allTags, descendants, mixes, artists, albums, tagPlays, sorts, potRows, pot, tagsAt] = await Promise.all([
@@ -152,11 +150,8 @@ export default function PlayScreen() {
     );
   }
 
-  return <Builder {...data} openRequest={openRequest} />;
+  return <Builder {...data} />;
 }
-
-/** Something to load into the pot, asked for by another screen. */
-type OpenRequest = { mixId: number } | { draft: QueryDraft } | null;
 
 /** Artists and albums, as ingredients. */
 type Music = {
@@ -181,7 +176,6 @@ type BuilderProps = {
   initialPot: KeptPot;
   /** The tag the tags were last gone in to. */
   initialAt: number | null;
-  openRequest: OpenRequest;
 };
 
 function Builder({
@@ -195,15 +189,16 @@ function Builder({
   initialRows,
   initialPot,
   initialAt,
-  openRequest,
 }: BuilderProps) {
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const playQuery = usePlayQuery();
   const [draft, setDraft] = useState<QueryDraft>(initialPot.draft);
-  /** The mix opened for editing, by id, so a rename elsewhere doesn't lose it. */
+  /** The mix open for editing, by id, so a rename elsewhere doesn't lose it. */
   const [editingId, setEditingId] = useState<number | null>(initialPot.editing);
   const editingMix = mixes.find((m) => m.id === editingId) ?? null;
+  /** What the pot held before the editing began, to put back when it's done. */
+  const [before, setBefore] = useState<QueryDraft | null>(initialPot.before);
   const [saving, setSaving] = useState(false);
   /** Where the mix's Details opened from; null while closed. */
   const [detailsFrom, setDetailsFrom] = useState<Rect | null>(null);
@@ -385,22 +380,6 @@ function Builder({
   const albumRow = useMemo(() => sortMusic(albums, sorts.albums, (a) => a.title).slice(0, ROW), [albums, sorts.albums]);
   const nothingFound = found !== null && found.tags.length + found.artists.length + found.albums.length === 0;
 
-  // Opening a mix, or what's playing: load it, then drop the request so it
-  // isn't loaded again over later changes. What's playing may be a saved mix
-  // already, and then saving updates that mix.
-  useEffect(() => {
-    if (openRequest === null) return;
-    const mix =
-      'mixId' in openRequest
-        ? mixes.find((m) => m.id === openRequest.mixId)
-        : mixes.find((m) => sameDraft(m.draft, openRequest.draft));
-    setDraft('draft' in openRequest ? openRequest.draft : (mix?.draft ?? EMPTY_DRAFT));
-    setEditingId(mix?.id ?? null);
-    // Opened to be changed, so what to change it with comes up too.
-    setBrowsing(true);
-    router.setParams({ edit: undefined, draft: undefined });
-  }, [openRequest, mixes]);
-
   // Tags can be deleted (or emptied) while chosen here; quietly drop them.
   const current = useMemo(() => pruneDraft(draft, tagIds), [draft, tagIds]);
   const query = useMemo(() => buildQuery(current), [current]);
@@ -439,19 +418,15 @@ function Builder({
     };
   }, [db, query, current, descendants]);
 
-  // An emptied pot is no longer the mix that was opened.
   const potEmpty = isEmptyDraft(current);
-  useEffect(() => {
-    if (potEmpty) setEditingId(null);
-  }, [potEmpty]);
 
   // Kept as it changes, so it's still there after Android closes the app.
   useEffect(() => {
-    setSetting(db, SettingKey.pot, keepPot({ draft: current, editing: editingId })).catch(() => {});
-  }, [db, current, editingId]);
+    setSetting(db, SettingKey.pot, keepPot({ draft: current, editing: editingId, before })).catch(() => {});
+  }, [db, current, editingId, before]);
 
   // The pot just emptied with ×, to bring back: until something new goes in (or the app closes).
-  const [cleared, setCleared] = useState<KeptPot | null>(null);
+  const [cleared, setCleared] = useState<QueryDraft | null>(null);
   useEffect(() => {
     if (!potEmpty) setCleared(null);
   }, [potEmpty]);
@@ -464,11 +439,77 @@ function Builder({
   // The mixes below: each described and coloured as in the pot, played under its own name.
   const mixDraft = (mix: Mix) => pruneDraft(mix.draft, tagIds);
   const playMix = (mix: Mix) => playQuery(buildQuery(mixDraft(mix)), { label: mix.name, draft: mixDraft(mix) });
+  // Editing a mix: the pot's own contents wait aside (only the first time, if
+  // one mix is opened over another) and come back when it's done.
   const editMix = (mix: Mix) => {
+    if (!editingMix) setBefore(current);
     setDraft(mix.draft);
     setEditingId(mix.id);
     setBrowsing(true);
   };
+  const finishEditing = () => {
+    setDraft(before ?? EMPTY_DRAFT);
+    setBefore(null);
+    setEditingId(null);
+    setBrowsing(false);
+  };
+  const changed = editingMix !== null && !sameDraft(current, editingMix.draft);
+  const saveEditing = async () => {
+    if (!editingMix) return;
+    await saveMixAs(db, editingMix.name, current, editingMix.id);
+    notifyLibraryChanged();
+    finishEditing();
+  };
+  const leaveEditing = () => {
+    if (!editingMix) return;
+    if (!changed) return finishEditing();
+    Alert.alert(`Discard changes to "${editingMix.name}"?`, 'The mix stays as it was.', [
+      { text: 'Keep editing', style: 'cancel' },
+      { text: 'Discard', style: 'destructive', onPress: finishEditing },
+    ]);
+  };
+  // A mix deleted while open: there's nothing left to save to, so the editing ends where it is.
+  useEffect(() => {
+    if (editingId !== null && !editingMix) {
+      setEditingId(null);
+      setBefore(null);
+    }
+  }, [editingId, editingMix]);
+  // Back leaves the editing the way × does, once the tags are folded away.
+  useFocusEffect(
+    useCallback(() => {
+      if (!editingMix || browsing) return;
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        leaveEditing();
+        return true;
+      });
+      return () => sub.remove();
+    }, [editingMix, browsing, changed, before])
+  );
+  // The header turns teal for the mode, naming the mix, with its ways out.
+  const header = editingMix
+    ? {
+        title: `Editing ${editingMix.name}`,
+        headerStyle: { backgroundColor: colors.accent },
+        headerTintColor: colors.onAccent,
+        headerLeft: () => <IconButton icon="close" label="Stop editing" color={colors.onAccent} onPress={leaveEditing} />,
+        headerRight: () => (
+          <IconButton
+            icon="checkmark"
+            label={`Save ${editingMix.name}`}
+            color={colors.onAccent}
+            disabled={!changed || potEmpty}
+            onPress={saveEditing}
+          />
+        ),
+      }
+    : {
+        title: 'Play',
+        headerStyle: { backgroundColor: colors.bg },
+        headerTintColor: colors.text,
+        headerLeft: undefined,
+        headerRight: undefined,
+      };
   const describeMix = (mix: Mix) => describeQuery(buildQuery(mixDraft(mix)), names);
   // Its ingredients as chips for its menu: names joined like the pot's (×), on the first tag's colour.
   const mixChips = (mix: Mix) =>
@@ -478,12 +519,14 @@ function Builder({
     }));
   // A mix wears the colour of its first tag (artists and albums have none).
   const mixColor = (mix: Mix) => hues.get(mix.draft.ingredients.flat().find(isTagRef) ?? -1) ?? tagColor(null);
-  // An unchanged mix plays under its own name.
-  const playLabel = editingMix && sameDraft(current, editingMix.draft) ? editingMix.name : undefined;
+  // A pot that's a saved mix, unchanged, plays under the mix's name.
+  const named = mixes.find((m) => sameDraft(m.draft, current)) ?? null;
+  const playLabel = named?.name;
 
   return (
     <PotDragContext.Provider value={drag}>
       <View ref={drag.rootRef} style={styles.screen} onLayout={(e) => setRoom(e.nativeEvent.layout.height)}>
+        <Stack.Screen options={header} />
         <View
           onLayout={(e) => {
             // Only the part that never changes is kept, so dragging the tray doesn't re-render.
@@ -498,22 +541,20 @@ function Builder({
             counted={counted}
             covers={covers}
             onDetails={setDetailsFrom}
-            editing={editingMix?.name ?? null}
+            name={editingMix ? null : (named?.name ?? null)}
+            editing={editingMix !== null}
             onSave={() => setSaving(true)}
             onShuffle={() => {
               playQuery(query, { draft: current, label: playLabel });
               fold();
             }}
             onClear={() => {
-              setCleared({ draft: current, editing: editingId });
+              setCleared(current);
               setDraft(EMPTY_DRAFT);
             }}
             onRestore={
               cleared
-                ? () => {
-                    setDraft(cleared.draft);
-                    setEditingId(cleared.editing);
-                  }
+                ? () => setDraft(cleared)
                 : undefined
             }
             onTapIngredient={(index) => setDraft(tapIngredient(current, index))}
@@ -707,14 +748,15 @@ function Builder({
 
         <PromptDialog
           visible={saving}
-          title={editingMix ? 'Save mix' : 'New mix'}
+          title="New mix"
           message={describeQuery(query, names)}
-          initialValue={editingMix?.name ?? ''}
           placeholder="Night drive"
           confirmLabel="Save"
           onSubmit={async (name) => {
-            setEditingId(await saveMixAs(db, name, current, editingMix?.id ?? null));
+            await saveMixAs(db, name, current, null);
             notifyLibraryChanged();
+            // Saved as new while editing: the mix opened stays as it was, and the editing's done.
+            if (editingMix) finishEditing();
           }}
           onClose={() => setSaving(false)}
         />
@@ -722,7 +764,7 @@ function Builder({
           anchor={detailsFrom}
           onClose={() => setDetailsFrom(null)}
           draft={current}
-          title={editingMix?.name ?? describeQuery(query, names)}
+          title={editingMix?.name ?? named?.name ?? describeQuery(query, names)}
           onTune={setDraft}
           onPlay={async (songId) => {
             const request = await queueForQuery(db, query);

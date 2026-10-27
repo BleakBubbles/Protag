@@ -87,7 +87,7 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
       <View style={showQueue ? styles.topArea : styles.dragArea} {...dragHandlers}>
         <View style={styles.topRow}>
           <IconButton icon="chevron-down" label="Close player" onPress={onClose} />
-          <SourceLine queue={queue} onClose={onClose} />
+          <SourceLine queue={queue} />
           <IconButton
             icon="list"
             label={showQueue ? 'Hide queue' : 'Show queue'}

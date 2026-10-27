@@ -42,7 +42,7 @@ export interface DetailsWindowProps {
   onTune: (draft: QueryDraft) => void;
   /** Shuffle the mix, starting with this song. */
   onPlay: (songId: number) => void;
-  /** More things to do with this mix, in the header (the player's Save as mix, Edit in Play). */
+  /** More things to do with this mix, beside its name (the player's Save as mix, Save tuning). */
   actions?: readonly DetailsAction[];
 }
 
