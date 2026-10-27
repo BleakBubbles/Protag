@@ -7,12 +7,14 @@ import { colors, radius, spacing } from './theme';
 
 // Snappy enough that you barely see it grow: out fast and done, no long settle
 // to catch the end of; back in quicker still.
-const OPEN_MS = 150;
-const CLOSE_MS = 150;
+const OPEN_MS = 100;
+const CLOSE_MS = 100;
 const OPEN_EASING = Easing.out(Easing.poly(4));
 /** How big the window starts, centred on what opened it, whatever its shape. */
 const FROM_SCALE = 0.3;
-const CLOSE_EASING = Easing.in(Easing.quad);
+// Shrinking starts at once and settles into the anchor, so you see it go back in
+// rather than hang at full size and vanish.
+const CLOSE_EASING = Easing.out(Easing.cubic);
 
 export interface ExpandWindowProps {
   /** What opened it (measured with `useAnchor` or `measureInWindow`); null while closed. */
@@ -91,7 +93,8 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
               { translateY: between(shown.y + shown.height / 2 - (to.y + to.height / 2), 0) },
               { scale: between(FROM_SCALE, 1) },
             ],
-            opacity: grow.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 1] }),
+            // Faded only at the very small end, so it's on the anchor when it appears and goes.
+            opacity: grow.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 1, 1] }),
           },
         ]}
       >
