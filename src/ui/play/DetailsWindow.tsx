@@ -23,7 +23,7 @@ const ROW_HEIGHT = 60;
 const THUMB = 44;
 const STEP = 30;
 /** The repeat mark beside a weight. */
-const REPEAT = 12;
+const REPEAT = 16;
 
 export interface DetailsAction {
   label: string;
@@ -412,8 +412,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  // The line's own height, the mark overhanging it a touch, so a card is the
+  // same height with or without it.
   repeatMark: {
     width: REPEAT + 1,
+    height: font.caption.lineHeight,
+    justifyContent: 'center',
   },
   filters: {
     gap: spacing.sm,
