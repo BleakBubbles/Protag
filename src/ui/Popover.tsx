@@ -39,6 +39,8 @@ export interface PopoverProps {
   dim?: boolean;
   /** Darker, with a fine edge (menus), rather than the lighter bubble (an explanation, a picker). */
   dark?: boolean;
+  /** Lines up with the anchor's edges even where they reach into the screen's margin (a held card's ring). */
+  flush?: boolean;
   children: ReactNode;
 }
 
@@ -49,12 +51,12 @@ export interface PopoverProps {
  * fonts and short screens; anything taller than either side isn't worth more
  * machinery, since what goes in one is short. Tap outside (or back) to close.
  */
-export function Popover({ anchor, onClose, width: wanted, pointer = false, dim = false, dark = false, children }: PopoverProps) {
+export function Popover({ anchor, onClose, width: wanted, pointer = false, dim = false, dark = false, flush = false, children }: PopoverProps) {
   return (
     <Modal visible={anchor !== null} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Close">
         {anchor && (
-          <Placed anchor={anchor} wanted={wanted} pointer={pointer} dark={dark} dim={dim}>
+          <Placed anchor={anchor} wanted={wanted} pointer={pointer} dark={dark} dim={dim} flush={flush}>
             {children}
           </Placed>
         )}
@@ -70,6 +72,7 @@ function Placed({
   pointer,
   dark,
   dim,
+  flush,
   children,
 }: {
   anchor: Rect;
@@ -77,6 +80,7 @@ function Placed({
   pointer: boolean;
   dark: boolean;
   dim: boolean;
+  flush: boolean;
   children: ReactNode;
 }) {
   const screen = useWindowDimensions();
@@ -92,7 +96,10 @@ function Placed({
   const centre = anchor.x + anchor.width / 2;
   // With a pointer, its tip sits near the panel's right end; without, the panel lines up with the anchor's right edge.
   const right = pointer ? centre + POINTER * 2 : anchor.x + anchor.width;
-  const left = Math.min(Math.max(EDGE, right - width), screen.width - EDGE - width);
+  // Kept off the screen's edges; flush, as far out as the anchor reaches, to line up with it.
+  const start = flush ? Math.min(EDGE, anchor.x) : EDGE;
+  const end = flush ? Math.max(screen.width - EDGE, anchor.x + anchor.width) : screen.width - EDGE;
+  const left = Math.min(Math.max(start, right - width), end - width);
   const below = anchor.y + anchor.height + gap;
   const roomBelow = screen.height - EDGE - below;
   const roomAbove = anchor.y - gap - EDGE;

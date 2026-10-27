@@ -25,6 +25,8 @@ export interface PopupMenuProps {
   header?: ReactNode;
   /** Dims the screen behind it, so what it's for stands out (a held card). */
   dim?: boolean;
+  /** See `Popover`'s `flush`. */
+  flush?: boolean;
 }
 
 const WIDTH = 240;
@@ -36,9 +38,9 @@ const MENU_ICON = 22;
  * overflow menu, each with its icon; a destructive one sits apart below a
  * line, in red. Every action closes the menu before running.
  */
-export function PopupMenu({ anchor, actions, onClose, header, dim }: PopupMenuProps) {
+export function PopupMenu({ anchor, actions, onClose, header, dim, flush }: PopupMenuProps) {
   return (
-    <Popover anchor={anchor} onClose={onClose} width={WIDTH} dim={dim} dark>
+    <Popover anchor={anchor} onClose={onClose} width={WIDTH} dim={dim} flush={flush} dark>
       <View style={styles.menu} accessibilityRole="menu">
         {header && <View style={styles.header}>{header}</View>}
         {actions.map((action, i) => (

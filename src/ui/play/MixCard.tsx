@@ -8,6 +8,8 @@ import { ArtMosaic } from './ArtMosaic';
 
 const RING_GAP = 2;
 const RING_WIDTH = 2;
+/** How far the ring stands out from the artwork. */
+const RING_OUT = RING_GAP + RING_WIDTH;
 
 export interface MixCardProps {
   name: string;
@@ -20,7 +22,7 @@ export interface MixCardProps {
   /** The card is this wide and its artwork square. */
   width: number;
   onPress: () => void;
-  /** With where its artwork is, for its menu to open under. */
+  /** With where its artwork is, ring and all, for its menu to open under and line up with. */
   onLongPress: (at: Rect) => void;
   /** Its menu is open: ringed like a tile in the mix, so it's clear which mix it's for. */
   held?: boolean;
@@ -39,14 +41,17 @@ export function MixCard({ name, description, albumIds, color, width, onPress, on
       delayLongPress={HOLD_MS}
       onLongPress={() => {
         feelHold();
-        art.current?.measureInWindow((x, y, w, h) => onLongPress({ x, y, width: w, height: h }));
+        // The ring the card wears while its menu is open, not the bare artwork.
+        art.current?.measureInWindow((x, y, w, h) =>
+          onLongPress({ x: x - RING_OUT, y: y - RING_OUT, width: w + RING_OUT * 2, height: h + RING_OUT * 2 })
+        );
       }}
       accessibilityRole="button"
       accessibilityLabel={`Shuffle ${name}: ${description}`}
       accessibilityHint="Long press for more options"
       style={({ pressed }) => [styles.card, { width }, pressed && styles.pressed]}
     >
-      <View ref={art} collapsable={false}>
+      <View ref={art} collapsable={false} style={styles.artBox}>
         <View style={styles.art}>
           <ArtMosaic albumIds={albumIds} size={width} fallbackColor={color} />
         </View>
@@ -69,19 +74,22 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.7,
   },
+  // Its margin outside it, so what's measured is just the artwork.
+  artBox: {
+    marginBottom: spacing.xs,
+  },
   art: {
     borderRadius: radius.md,
     overflow: 'hidden',
-    marginBottom: spacing.xs,
   },
   // The same white ring as a tile in the mix: this is the one its menu is for.
   ring: {
     position: 'absolute',
-    top: -RING_GAP - RING_WIDTH,
-    left: -RING_GAP - RING_WIDTH,
-    right: -RING_GAP - RING_WIDTH,
-    bottom: spacing.xs - RING_GAP - RING_WIDTH,
-    borderRadius: radius.md + RING_GAP + RING_WIDTH,
+    top: -RING_OUT,
+    left: -RING_OUT,
+    right: -RING_OUT,
+    bottom: -RING_OUT,
+    borderRadius: radius.md + RING_OUT,
     borderWidth: RING_WIDTH,
     borderColor: colors.text,
   },

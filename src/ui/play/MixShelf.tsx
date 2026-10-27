@@ -95,6 +95,7 @@ export function MixShelf({ mixes, art, describe, colorOf, chipsOf, onPlay, onEdi
       <PopupMenu
         anchor={menu?.at ?? null}
         dim
+        flush
         header={menu && <MixMenuHead name={menu.mix.name} albumIds={art.get(menu.mix.id) ?? []} color={colorOf(menu.mix)} chips={chipsOf(menu.mix)} />}
         actions={
           menu
