@@ -126,7 +126,7 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
   };
 
   // Three parts, set apart the way the Library sets its tags apart from its loose songs:
-  // the summary (what this is, how it's shared out), its tags (tuning), its songs.
+  // the summary (what this is), its tag weights (how it's shared out, and tuning), its songs.
   const header = (
     <View style={styles.headerBody}>
       <View style={styles.section}>
@@ -161,14 +161,6 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
             <Icon name="close" size={iconSize.sm} color={colors.textDim} />
           </Pressable>
         </View>
-
-        {several && ingredients && (
-          <View style={styles.shareLine}>
-            {ingredients.map((ing, k) => (
-              <View key={k} style={{ flex: weights[k], backgroundColor: hueOf(ing.refs) }} />
-            ))}
-          </View>
-        )}
       </View>
 
       {several && (
@@ -188,6 +180,14 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
                 <Icon name="restore" size={iconSize.sm - 4} color={isTuned(draft) ? colors.text : colors.textDim} />
               </Pressable>
             </View>
+            {/* The whole shuffle shared out, right over the rows that change it. */}
+            {ingredients && (
+              <View style={styles.shareLine}>
+                {ingredients.map((ing, k) => (
+                  <View key={k} style={{ flex: weights[k], backgroundColor: hueOf(ing.refs) }} />
+                ))}
+              </View>
+            )}
             {(ingredients ?? []).map((ing, k) => {
               const t = tuningOf(draft, ing.refs);
               const k0 = SHARES.indexOf(t.share as (typeof SHARES)[number]);
