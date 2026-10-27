@@ -83,7 +83,7 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
           <IconButton icon="chevron-down" label="Close player" onPress={onClose} />
           <SourceLine queue={queue} />
           <IconButton
-            icon="list"
+            icon="queue"
             label={showQueue ? 'Hide queue' : 'Show queue'}
             active={showQueue}
             onPress={() => setShowQueue((shown) => !shown)}
