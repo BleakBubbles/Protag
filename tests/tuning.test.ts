@@ -53,7 +53,7 @@ test('every ingredient above the lowest multiplier goes round again; untuned, no
 test('tuning saves and reads back with the mix; malformed tuning, and the old repeats flag, are dropped', () => {
   const d = setTuning(pot, ['artist:IU'], { share: 0.25 });
   assert.deepEqual(parseDraft(JSON.stringify(d)), d);
-  const bad = parseDraft(JSON.stringify({ ...pot, tuning: [{ refs: [1], share: 3 }, { refs: 'x', share: 2 }, null] }));
+  const bad = parseDraft(JSON.stringify({ ...pot, tuning: [{ refs: [1], share: 9 }, { refs: 'x', share: 2 }, null] }));
   assert.equal(bad.tuning, undefined);
   const old = parseDraft(JSON.stringify({ ...pot, tuning: [{ refs: [1], share: 2, repeats: true }] }));
   assert.deepEqual(old.tuning, [{ refs: [1], share: 2 }]);

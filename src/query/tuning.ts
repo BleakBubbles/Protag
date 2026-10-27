@@ -3,7 +3,8 @@ import type { QueryDraft } from './types';
 
 /**
  * How one ingredient of a mix plays in its shuffle, set from the mix's
- * Details: its `share` multiplies its natural share (its size) in doublings.
+ * Details: its `share` multiplies its natural share (its size): whole steps up, or a
+ * half, third or quarter down.
  * Every ingredient keeps its share for the whole shuffle, which runs until
  * every song has played; one that runs out first goes round again (see
  * `repeatsIn`). Kept in the draft beside the ingredients, by the ingredient's
@@ -18,8 +19,12 @@ export interface Tuning {
 
 export type IngredientTuning = Omit<Tuning, 'refs'>;
 
-/** From a quarter to eight times its natural share; 1 is untouched. */
-export const SHARES = [0.25, 0.5, 1, 2, 4, 8] as const;
+/**
+ * From a quarter to eight times its natural share; 1 is untouched. Whole
+ * numbers up, and their mirrors down, so any simple ratio between two
+ * ingredients (3:2, 1:3) is a few taps away.
+ */
+export const SHARES = [1 / 4, 1 / 3, 1 / 2, 1, 2, 3, 4, 5, 6, 7, 8] as const;
 
 export const PLAIN: IngredientTuning = { share: 1 };
 

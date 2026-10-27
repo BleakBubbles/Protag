@@ -46,11 +46,13 @@ export interface DetailsWindowProps {
   actions?: readonly DetailsAction[];
 }
 
+const FRACTIONS: Record<number, string> = { [1 / 4]: '¼', [1 / 3]: '⅓', [1 / 2]: '½' };
+
 /**
  * A mix's Details: its name and size, each ingredient's share as one line in
  * its colours (the picture of the mix), and, with two or more ingredients, a
- * row each to tune it: its share (− / +, halving or doubling its natural,
- * size-based share). A share holds for the whole shuffle, so the ingredients
+ * row each to tune it: its share (− / +, stepping through multiples of its
+ * natural, size-based share). A share holds for the whole shuffle, so the ingredients
  * that will run out first and go round again wear a quiet ↻. Below, every
  * song, grouped under its ingredient in the rows' order and colours, to look
  * through rather than change anything; tap one to shuffle from it.
@@ -229,7 +231,7 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
               const k0 = SHARES.indexOf(t.share as (typeof SHARES)[number]);
               const repeats = repeatsIn(draft, ing.refs);
               const name = label(ing.refs);
-              const times = `×${t.share === 0.25 ? '¼' : t.share === 0.5 ? '½' : t.share}`;
+              const times = `×${FRACTIONS[t.share] ?? t.share}`;
               return (
                 <View key={ing.refs.join()} style={styles.card}>
                   <View style={styles.cardRow}>
@@ -240,7 +242,7 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
                       <Text style={styles.cardName} numberOfLines={1}>
                         {name}
                       </Text>
-                      <View style={styles.cardMeta} accessible accessibilityLabel={`${plural(ing.ids.length, 'song')}, weight ${t.share}${repeats ? ', repeats' : ''}`}>
+                      <View style={styles.cardMeta} accessible accessibilityLabel={`${plural(ing.ids.length, 'song')}, weight ${times}${repeats ? ', repeats' : ''}`}>
                         <Text style={styles.cardCount}>
                           {plural(ing.ids.length, 'song')} · <Text style={t.share !== 1 && styles.timesTuned}>{times}</Text>
                         </Text>
