@@ -205,15 +205,10 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
                         {name}
                       </Text>
                       <View style={styles.cardMeta} accessible accessibilityLabel={`${plural(ing.ids.length, 'song')}, weight ${t.share}${repeats ? ', repeats' : ''}`}>
-                        <Text style={styles.cardCount} numberOfLines={1}>
-                          {plural(ing.ids.length, 'song')}
+                        <Text style={styles.cardCount}>
+                          {plural(ing.ids.length, 'song')} · <Text style={t.share !== 1 && styles.timesTuned}>{times}</Text>
                         </Text>
-                        {/* A fixed slot at the line's end, so the weights and marks line up
-                            down the list however long the song counts run. */}
-                        <Text style={[styles.cardCount, styles.weight, t.share !== 1 && styles.timesTuned]}>{times}</Text>
-                        <View style={styles.repeatSlot}>
-                          {repeats && <Icon name="repeat" size={14} color={t.share !== 1 ? colors.accentFg : colors.textFaint} />}
-                        </View>
+                        {repeats && <Icon name="repeat" size={14} color={t.share !== 1 ? colors.accentFg : colors.textFaint} />}
                       </View>
                     </View>
                     <Pressable
@@ -389,16 +384,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     height: font.caption.lineHeight,
-  },
-  weight: {
-    marginLeft: 'auto',
-    minWidth: 22,
-    textAlign: 'right',
-  },
-  repeatSlot: {
-    width: 14,
-    marginLeft: -2,
-    marginRight: spacing.sm,
   },
   cardCount: {
     ...font.caption,
