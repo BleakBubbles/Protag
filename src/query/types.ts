@@ -96,7 +96,7 @@ export function sameDraft(a: QueryDraft, b: QueryDraft): boolean {
       d.ingredients.map((tags) => sorted(tags).join()).sort(),
       sorted(d.exclude),
       d.includeDescendants,
-      (d.tuning ?? []).map((t) => `${sorted(t.refs).join()}:${t.share}:${t.repeats}`).sort(),
+      (d.tuning ?? []).map((t) => `${sorted(t.refs).join()}:${t.share}`).sort(),
     ]);
   return key(a) === key(b);
 }

@@ -5,8 +5,9 @@ import { buildDescendantMap, listTags } from '../db/tags';
 import { describeQuery } from '../query/describe';
 import { findSongIds } from '../query/run';
 import type { Ref } from '../query/refs';
-import { goesRound, tuningOf } from '../query/tuning';
+import { isTuned, tuningOf } from '../query/tuning';
 import { buildQuery, type QueryDraft, type TagQuery } from '../query/types';
+import { fisherYates } from './queue';
 import { weave, type Stream } from './weave';
 
 /** Everything the player needs to start a queue: which songs, and how to describe them. */
@@ -58,18 +59,19 @@ export async function ingredientSongs(db: SQLiteDatabase, draft: QueryDraft): Pr
 
 /** The ingredients as the weave takes them, tuned as the draft says. */
 export const streamsOf = (draft: QueryDraft, ingredients: readonly Ingredient[]): Stream[] =>
-  ingredients.map(({ refs, ids }) => {
-    const tuning = tuningOf(draft, refs);
-    return { ids, share: tuning.share, repeats: goesRound(tuning) };
-  });
+  ingredients.map(({ refs, ids }) => ({ ids, share: tuningOf(draft, refs).share }));
 
-/** A tuned mix's play order, optionally led by one song. */
+/** A mix's play order, optionally led by one song: woven if it's tuned, else a plain shuffle. */
 export async function tunedOrder(
   db: SQLiteDatabase,
   draft: QueryDraft,
-  options: { first?: number | null; random?: () => number } = {}
+  { first = null, random = Math.random }: { first?: number | null; random?: () => number } = {}
 ): Promise<number[]> {
-  return weave(streamsOf(draft, await ingredientSongs(db, draft)), options);
+  const ingredients = await ingredientSongs(db, draft);
+  if (isTuned(draft)) return weave(streamsOf(draft, ingredients), { first, random });
+  const ids = ingredients.flatMap((i) => i.ids);
+  const lead = first !== null && ids.includes(first) ? [first] : [];
+  return [...lead, ...fisherYates(ids.filter((id) => !lead.includes(id)), random)];
 }
 
 /**

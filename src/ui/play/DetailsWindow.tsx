@@ -9,7 +9,7 @@ import { albumArtUri } from '../../library/assets';
 import { ingredientSongs, type Ingredient } from '../../player/sources';
 import { readRef, type Ref } from '../../query/refs';
 import { findSongs } from '../../query/run';
-import { goesRound, isTuned, setTuning, SHARES, tuningOf, untuned } from '../../query/tuning';
+import { isTuned, repeatsIn, setTuning, SHARES, tuningOf, untuned } from '../../query/tuning';
 import { buildQuery, type QueryDraft } from '../../query/types';
 import { ExpandWindow } from '../ExpandWindow';
 import { FilterChip } from '../FilterChip';
@@ -47,8 +47,8 @@ export interface DetailsWindowProps {
  * A mix's Details: its name and size, each ingredient's share as one line in
  * its colours (the picture of the mix), and, with two or more ingredients, a
  * row each to tune it: its share (− / +, halving or doubling its natural,
- * size-based share) and whether it repeats. A share is of the whole shuffle,
- * so a raised ingredient repeats, locked on, without a word. Below, every
+ * size-based share). A share holds for the whole shuffle, so the ingredients
+ * that will run out first and go round again wear a quiet ↻. Below, every
  * song, filterable by ingredient; tap one to shuffle from it.
  */
 export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, actions }: DetailsWindowProps) {
@@ -191,7 +191,7 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
             {(ingredients ?? []).map((ing, k) => {
               const t = tuningOf(draft, ing.refs);
               const k0 = SHARES.indexOf(t.share as (typeof SHARES)[number]);
-              const raised = t.share > 1;
+              const repeats = repeatsIn(draft, ing.refs);
               const name = label(ing.refs);
               return (
                 <View key={ing.refs.join()} style={styles.card}>
@@ -200,18 +200,11 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
                     <Text style={styles.cardName} numberOfLines={1}>
                       {name} <Text style={styles.cardCount}>{plural(ing.ids.length, 'song')}</Text>
                     </Text>
-                    <Pressable
-                      onPress={() => onTune(setTuning(draft, ing.refs, { ...t, repeats: !t.repeats }))}
-                      disabled={raised}
-                      accessibilityRole="switch"
-                      accessibilityState={{ checked: goesRound(t), disabled: raised }}
-                      accessibilityLabel={`${name} repeats`}
-                      hitSlop={6}
-                      style={({ pressed }) => [styles.toggle, pressed && styles.pressed]}
-                    >
-                      {/* A bare icon like the player's repeat toggle, so it doesn't read as part of the − / + stepper. */}
-                      <Icon name="repeat" size={iconSize.sm} color={goesRound(t) ? colors.accentFg : colors.textFaint} />
-                    </Pressable>
+                    {/* Not a control: a quiet mark on the tags that go round again to keep
+                        their share. Its room is kept either way, so nothing shifts. */}
+                    <View style={styles.repeatMark} accessible={repeats} accessibilityLabel={`${name} repeats`}>
+                      {repeats && <Icon name="repeat" size={iconSize.sm - 4} color={colors.textDim} />}
+                    </View>
                     <Pressable
                       onPress={() => tune(ing.refs, -1)}
                       disabled={k0 === 0}
@@ -410,12 +403,12 @@ const styles = StyleSheet.create({
   timesTuned: {
     color: colors.accentFg,
   },
-  toggle: {
+  repeatMark: {
     width: STEP,
     height: STEP,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
   filters: {
     gap: spacing.sm,
