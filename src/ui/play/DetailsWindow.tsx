@@ -22,6 +22,8 @@ import { colors, font, iconSize, radius, spacing, tagColor, touchTarget } from '
 const ROW_HEIGHT = 60;
 const THUMB = 44;
 const STEP = 30;
+/** The repeat mark beside a weight. */
+const REPEAT = 12;
 
 export interface DetailsAction {
   label: string;
@@ -200,11 +202,6 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
                     <Text style={styles.cardName} numberOfLines={1}>
                       {name} <Text style={styles.cardCount}>{plural(ing.ids.length, 'song')}</Text>
                     </Text>
-                    {/* Not a control: a quiet mark on the tags that go round again to keep
-                        their share. Its room is kept either way, so nothing shifts. */}
-                    <View style={styles.repeatMark} accessible={repeats} accessibilityLabel={`${name} repeats`}>
-                      {repeats && <Icon name="repeat" size={iconSize.sm - 4} color={colors.textDim} />}
-                    </View>
                     <Pressable
                       onPress={() => tune(ing.refs, -1)}
                       disabled={k0 === 0}
@@ -216,9 +213,17 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
                     </Pressable>
                     <View style={styles.shareValue}>
                       <Text style={styles.percent}>{percent(k)}</Text>
-                      <Text style={[styles.times, t.share !== 1 && styles.timesTuned]}>
-                        ×{t.share === 0.25 ? '¼' : t.share === 0.5 ? '½' : t.share}
-                      </Text>
+                      {/* A tag that goes round again to keep its share says so beside its
+                          weight: ↻×2. Its slot is matched on the right, so the weight never moves. */}
+                      <View style={styles.timesLine} accessible accessibilityLabel={`weight ${t.share}${repeats ? ', repeats' : ''}`}>
+                        <View style={styles.repeatMark}>
+                          {repeats && <Icon name="repeat" size={REPEAT} color={t.share !== 1 ? colors.accentFg : colors.textFaint} />}
+                        </View>
+                        <Text style={[styles.times, t.share !== 1 && styles.timesTuned]}>
+                          ×{t.share === 0.25 ? '¼' : t.share === 0.5 ? '½' : t.share}
+                        </Text>
+                        <View style={styles.repeatMark} />
+                      </View>
                     </View>
                     <Pressable
                       onPress={() => tune(ing.refs, 1)}
@@ -403,12 +408,12 @@ const styles = StyleSheet.create({
   timesTuned: {
     color: colors.accentFg,
   },
-  repeatMark: {
-    width: STEP,
-    height: STEP,
+  timesLine: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.xs,
+  },
+  repeatMark: {
+    width: REPEAT + 1,
   },
   filters: {
     gap: spacing.sm,
