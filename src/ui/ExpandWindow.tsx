@@ -10,6 +10,8 @@ import { colors, radius, spacing } from './theme';
 const OPEN_MS = 150;
 const CLOSE_MS = 150;
 const OPEN_EASING = Easing.out(Easing.poly(4));
+/** How big the window starts, centred on what opened it, whatever its shape. */
+const FROM_SCALE = 0.3;
 const CLOSE_EASING = Easing.in(Easing.quad);
 
 export interface ExpandWindowProps {
@@ -22,8 +24,8 @@ export interface ExpandWindowProps {
 /**
  * A window floating over the app that grows out of what opened it, and
  * shrinks back into it, rather than sliding up from the bottom, the way an app
- * opens from its icon: the whole window, contents and all, scales up from the
- * anchor's corner to its place. Only transforms and opacity move, on the
+ * opens from its icon: the whole window, contents and all, starts small and
+ * centred on the anchor, and grows outwards from there to its place. Only transforms and opacity move, on the
  * native side, so a busy JS thread can't stall it. It starts at once: the empty
  * window is laid out and growing before its contents are built, which happens
  * as it grows, so building them neither delays the start nor eats its first frames.
@@ -83,12 +85,11 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
             top: to.y,
             width: to.width,
             height: to.height,
-            // From the anchor's corner at its width, to the window's place at full size.
-            transformOrigin: 'top left',
+            // From small on the anchor's centre to full size in its place, scaled about its own centre.
             transform: [
-              { translateX: between(shown.x - to.x, 0) },
-              { translateY: between(shown.y - to.y, 0) },
-              { scale: between(shown.width / to.width, 1) },
+              { translateX: between(shown.x + shown.width / 2 - (to.x + to.width / 2), 0) },
+              { translateY: between(shown.y + shown.height / 2 - (to.y + to.height / 2), 0) },
+              { scale: between(FROM_SCALE, 1) },
             ],
             opacity: grow.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 1] }),
           },
