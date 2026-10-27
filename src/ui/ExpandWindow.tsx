@@ -7,12 +7,14 @@ import { colors, radius, spacing } from './theme';
 
 // Snappy enough that you barely see it grow: out fast and done, no long settle
 // to catch the end of; back in quicker still.
-const OPEN_MS = 100;
-const CLOSE_MS = 100;
+const OPEN_MS = 150;
+const CLOSE_MS = 150;
 const OPEN_EASING = Easing.out(Easing.poly(4));
-// Shrinking starts at once and settles into the anchor, so you see it go back in
-// rather than hang at full size and vanish.
+// Closing starts at once, heading back to the anchor, but only part of the way:
+// it fades out as it goes and is gone by then, rather than dwindling all the way in.
 const CLOSE_EASING = Easing.out(Easing.cubic);
+/** How far back towards the anchor it shrinks before it's gone (0 is all the way in). */
+const CLOSE_TO = 0.5;
 
 export interface ExpandWindowProps {
   /** What opened it (measured with `useAnchor` or `measureInWindow`); null while closed. */
@@ -26,7 +28,7 @@ export interface ExpandWindowProps {
  * shrinks back into it, rather than sliding up from the bottom, the way an app
  * opens from its icon: the whole window, contents and all, starts shrunk to fit
  * inside the anchor, centred on it, and grows outwards from there to its place.
- * Shrinking back, it goes into the anchor rather than past it. Only transforms and opacity move, on the
+ * Closing, it heads back towards the anchor, fading as it goes. Only transforms and opacity move, on the
  * native side, so a busy JS thread can't stall it. It starts at once: the empty
  * window is laid out and growing before its contents are built, which happens
  * as it grows, so building them neither delays the start nor eats its first frames.
@@ -36,6 +38,8 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
   const screen = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const grow = useRef(new Animated.Value(0)).current;
+  /** Fully there while open; closing, it fades as it shrinks. */
+  const fade = useRef(new Animated.Value(1)).current;
   // Kept while it shrinks away, after `anchor` has gone.
   const [shown, setShown] = useState<Rect | null>(null);
   /** Opened, waiting for the first layout to start growing. */
@@ -46,17 +50,19 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
   useEffect(() => {
     if (anchor) {
       grow.setValue(0);
+      fade.setValue(1);
       pending.current = true;
       setFilled(false);
       setShown(anchor);
     } else if (shown) {
       pending.current = false;
-      Animated.timing(grow, { toValue: 0, duration: CLOSE_MS, easing: CLOSE_EASING, useNativeDriver: true }).start(
-        ({ finished }) => finished && setShown(null)
-      );
+      Animated.parallel([
+        Animated.timing(grow, { toValue: CLOSE_TO, duration: CLOSE_MS, easing: CLOSE_EASING, useNativeDriver: true }),
+        Animated.timing(fade, { toValue: 0, duration: CLOSE_MS, easing: Easing.linear, useNativeDriver: true }),
+      ]).start(({ finished }) => finished && setShown(null));
     }
     // Not on `shown`: it's what's closing, and following it would reopen it.
-  }, [anchor, grow]);
+  }, [anchor, grow, fade]);
 
   // Growing starts as soon as the window is in place, without waiting on a layout event.
   useLayoutEffect(() => {
@@ -77,7 +83,7 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
 
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: grow }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: Animated.multiply(grow, fade) }]}>
         <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={onClose} accessibilityLabel="Close" />
       </Animated.View>
       <Animated.View
@@ -94,8 +100,7 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
               { translateY: between(shown.y + shown.height / 2 - (to.y + to.height / 2), 0) },
               { scale: between(fit, 1) },
             ],
-            // Faded only at the very small end, so it's on the anchor when it appears and goes.
-            opacity: grow.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 1, 1] }),
+            opacity: fade,
           },
         ]}
       >
