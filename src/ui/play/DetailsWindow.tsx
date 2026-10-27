@@ -21,6 +21,8 @@ import { colors, font, iconSize, radius, spacing, tagColor, touchTarget } from '
 const ROW_HEIGHT = 60;
 const THUMB = 44;
 const STEP = 30;
+/** A mix action beside its name. */
+const INLINE = 32;
 
 type Item = { kind: 'group'; key: string; k: number } | { kind: 'song'; key: string; song: SongRow };
 
@@ -145,31 +147,34 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
       <View style={styles.section}>
         <View style={styles.titleRow}>
           <View style={styles.titleText}>
-            <Text style={styles.title} numberOfLines={2}>
-              {title}
-            </Text>
+            {/* The mix's own actions sit right after its name, what they act on; the corner only closes. */}
+            <View style={styles.nameLine}>
+              <Text style={styles.title} numberOfLines={2}>
+                {title}
+              </Text>
+              {actions?.map((action) => (
+                <Pressable
+                  key={action.label}
+                  onPress={() => {
+                    onClose();
+                    action.onPress();
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={action.label}
+                  hitSlop={(touchTarget - INLINE) / 2}
+                  style={({ pressed }) => [styles.inlineAction, pressed && styles.pressed]}
+                >
+                  <Icon name={action.icon} size={iconSize.sm - 4} color={colors.textDim} />
+                </Pressable>
+              ))}
+            </View>
             <Text style={styles.count}>{songs ? plural(songs.length, 'song') : ' '}</Text>
           </View>
-          {actions?.map((action) => (
-            <Pressable
-              key={action.label}
-              onPress={() => {
-                onClose();
-                action.onPress();
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={action.label}
-              style={({ pressed }) => [styles.action, pressed && styles.pressed]}
-            >
-              <Icon name={action.icon} size={iconSize.sm} color={colors.textDim} />
-            </Pressable>
-          ))}
-          {/* Always last, a little apart, so the mix's own buttons keep their places. */}
           <Pressable
             onPress={onClose}
             accessibilityRole="button"
             accessibilityLabel="Close"
-            style={({ pressed }) => [styles.action, actions?.length ? styles.close : undefined, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.action, pressed && styles.pressed]}
           >
             <Icon name="close" size={iconSize.sm} color={colors.textDim} />
           </Pressable>
@@ -348,6 +353,7 @@ const styles = StyleSheet.create({
   title: {
     ...font.heading,
     color: colors.text,
+    flexShrink: 1,
   },
   count: {
     ...font.label,
@@ -360,8 +366,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  close: {
-    marginLeft: spacing.sm,
+  nameLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  // Overhangs the name's line rather than heightening it, so the count stays put.
+  inlineAction: {
+    width: INLINE,
+    height: INLINE,
+    marginVertical: -spacing.sm,
+    borderRadius: INLINE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pressed: {
     opacity: 0.6,
