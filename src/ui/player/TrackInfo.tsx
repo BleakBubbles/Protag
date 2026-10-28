@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Marquee } from '../Marquee';
 import { font, spacing } from '../theme';
-import { makeStyles, useColors } from '../ThemeContext';
+import { makeStyles } from '../ThemeContext';
 
 export interface TrackInfoProps {
   title: string;

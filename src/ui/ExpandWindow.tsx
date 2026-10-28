@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Rect } from './Popover';
 import { radius, spacing } from './theme';
-import { makeStyles, useColors } from './ThemeContext';
+import { makeStyles } from './ThemeContext';
 
 // Snappy enough that you barely see it grow: out fast and done, no long settle
 // to catch the end of; back in quicker still.

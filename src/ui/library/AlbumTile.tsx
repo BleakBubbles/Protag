@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { albumArtUri } from '../../library/assets';
 import { Artwork } from '../player/Artwork';
 import { font, spacing } from '../theme';
-import { makeStyles, useColors } from '../ThemeContext';
+import { makeStyles } from '../ThemeContext';
 
 export interface AlbumTileProps {
   albumId: string;

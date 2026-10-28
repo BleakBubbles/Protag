@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, useWindowDimensions, View, type ViewInstance } from 'react-native';
 
 import { radius, spacing } from './theme';
-import { makeStyles, useColors } from './ThemeContext';
+import { makeStyles } from './ThemeContext';
 
 /** The screen's edge margin, which a popover keeps clear of. */
 const EDGE = spacing.lg;

@@ -11,7 +11,7 @@ import { shuffleModeOf, shuffleModesOf, type QueueState } from '@/player/queue';
 import { EmptyState } from '@/ui/EmptyState';
 import { IconButton } from '@/ui/IconButton';
 import { font, spacing } from '@/ui/theme';
-import { makeStyles, useColors } from '@/ui/ThemeContext';
+import { makeStyles } from '@/ui/ThemeContext';
 import { ArtworkSlot } from './ArtworkSlot';
 import { QueueList } from './QueueList';
 import { SeekBar } from './SeekBar';

@@ -3,7 +3,7 @@ import { PanResponder, StyleSheet, Text, View, type LayoutChangeEvent } from 're
 
 import { formatTime } from '../format';
 import { font, radius, spacing, touchTarget } from '../theme';
-import { makeStyles, useColors } from '../ThemeContext';
+import { makeStyles } from '../ThemeContext';
 
 export interface SeekBarProps {
   positionSec: number;

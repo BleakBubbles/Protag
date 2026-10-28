@@ -11,11 +11,12 @@ import { openLibraryFolders } from '@/navigation';
 import { Button } from '@/ui/Button';
 import { Card, CardActions, CardStatus, CardText } from '@/ui/Card';
 import { formatDaysAgo } from '@/ui/format';
+import type { IconName } from '@/ui/Icon';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { PlaylistsCard } from '@/ui/library/ImportCards';
 import { LibraryOverview, type LibraryCounts } from '@/ui/library/LibraryOverview';
 import { spacing } from '@/ui/theme';
-import { makeStyles, useColors } from '@/ui/ThemeContext';
+import { makeStyles, useThemeChoice, type ThemeChoice } from '@/ui/ThemeContext';
 
 /** What ProTag sees on this phone, playlists, and tag backups — the library's housekeeping. */
 export default function ManageLibraryScreen() {
@@ -79,7 +80,34 @@ export default function ManageLibraryScreen() {
         </CardActions>
       </Card>
 
+      <AppearanceCard />
     </ScrollView>
+  );
+}
+
+const THEMES: { choice: ThemeChoice; label: string; icon: IconName }[] = [
+  { choice: 'system', label: 'System', icon: 'phone-portrait-outline' },
+  { choice: 'dark', label: 'Dark', icon: 'moon-outline' },
+  { choice: 'light', label: 'Light', icon: 'sunny-outline' },
+];
+
+/** Dark or light: the phone's own setting unless one is picked here. */
+function AppearanceCard() {
+  const { choice, setChoice } = useThemeChoice();
+  return (
+    <Card title="Appearance">
+      <CardActions>
+        {THEMES.map((theme) => (
+          <Button
+            key={theme.choice}
+            label={theme.label}
+            icon={theme.icon}
+            variant={choice === theme.choice ? 'tonal' : 'secondary'}
+            onPress={() => setChoice(theme.choice)}
+          />
+        ))}
+      </CardActions>
+    </Card>
   );
 }
 

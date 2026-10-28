@@ -45,10 +45,45 @@ const dark = {
   /** Android's press ripple over an `accent` fill. */
   rippleOnAccent: '#FFFFFF33',
 
+  /** Text on a tag's colour (pot tiles, mix chips): dark on the mid-tone tag colours in either scheme. */
+  onTag: '#151413',
+
   include: '#8FB57E',
   exclude: '#D9706A',
 
   danger: '#D9706A',
+};
+
+/**
+ * Light: its own palette rather than the dark one inverted — warm paper and
+ * ink, closest to the original bookstore idea, with the deep teal that's too
+ * dark on dark. Surfaces step *down* from the page (a shade darker) the way the
+ * dark palette's step up, so cards still read as raised.
+ */
+const light: typeof dark = {
+  bg: '#F6F2EA',
+  surface: '#EDE7DC',
+  surfaceAlt: '#E5DED1',
+  border: '#D9D1C3',
+  raised: '#D2C9B9',
+  scrim: 'rgba(40, 32, 20, 0.28)',
+
+  text: '#1E1B17',
+  textDim: '#5C564D',
+  textFaint: '#8A8378',
+
+  accent: '#1F5E58',
+  onAccent: '#FFFFFF',
+  accentFg: '#1D6A61',
+  accentTint: '#1D6A6124',
+  rippleOnAccent: '#FFFFFF33',
+
+  onTag: '#1E1B17',
+
+  include: '#4E8A3E',
+  exclude: '#C2524B',
+
+  danger: '#B9463F',
 };
 
 export const spacing = {
@@ -180,8 +215,23 @@ function palette(scheme: Scheme, roles: typeof dark, tags: Record<TagColor, stri
   return { ...roles, scheme, tag: (name) => (name && isTagColor(name) ? tags[name] : tags.gray) };
 }
 
-// The light palette is still the dark one until it's designed.
+/** The same twelve, a touch deeper, so they hold their own on paper. */
+const lightTags = {
+  red: '#D35A51',
+  orange: '#D97B3A',
+  yellow: '#CFA42F',
+  green: '#5E9F51',
+  teal: '#2E8D7E',
+  cyan: '#3A9DB4',
+  blue: '#4D7FD0',
+  indigo: '#7468CF',
+  purple: '#9D66C1',
+  pink: '#CF6598',
+  brown: '#966F4E',
+  gray: '#8B857C',
+} satisfies Record<TagColor, string>;
+
 export const palettes: Record<Scheme, Palette> = {
   dark: palette('dark', dark, darkTags),
-  light: palette('light', dark, darkTags),
+  light: palette('light', light, lightTags),
 };

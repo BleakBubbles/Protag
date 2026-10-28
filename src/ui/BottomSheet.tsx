@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { font, radius, spacing } from './theme';
-import { makeStyles, useColors } from './ThemeContext';
+import { makeStyles } from './ThemeContext';
 
 export interface BottomSheetProps {
   visible: boolean;

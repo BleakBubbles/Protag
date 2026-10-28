@@ -27,7 +27,7 @@ import { PICK_ROW_HEIGHT, PickSongRow } from '@/ui/library/PickSongRow';
 import { SaveButton } from '@/ui/SaveButton';
 import { SearchField } from '@/ui/SearchField';
 import { font, spacing } from '@/ui/theme';
-import { makeStyles, useColors } from '@/ui/ThemeContext';
+import { makeStyles } from '@/ui/ThemeContext';
 
 const SUGGESTION_LIMIT = 20;
 

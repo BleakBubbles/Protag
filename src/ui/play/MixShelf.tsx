@@ -196,7 +196,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   chipText: {
     ...font.caption,
-    color: colors.bg,
+    color: colors.onTag,
   },
   chipNeutral: {
     color: colors.text,

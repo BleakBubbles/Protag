@@ -5,7 +5,7 @@ import { albumArtUri } from '../../library/assets';
 import { MOSAIC_TILES } from '../../library/mixArt';
 import { Artwork } from '../player/Artwork';
 import { iconSize } from '../theme';
-import { makeStyles, useColors } from '../ThemeContext';
+import { makeStyles } from '../ThemeContext';
 
 export interface ArtMosaicProps {
   /** Up to four album ids, most representative first. */

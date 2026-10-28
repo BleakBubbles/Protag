@@ -16,7 +16,7 @@ import { DetailsWindow, type DetailsAction } from '@/ui/play/DetailsWindow';
 import { useAnchor } from '@/ui/Popover';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { font, radius, spacing } from '@/ui/theme';
-import { makeStyles, useColors } from '@/ui/ThemeContext';
+import { makeStyles } from '@/ui/ThemeContext';
 
 const PILL_HEIGHT = 32;
 const PILL_PADDING = spacing.md;

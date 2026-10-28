@@ -17,7 +17,7 @@ import { Artwork } from '../../ui/player/Artwork';
 import { NoTags, TagButton } from '../../ui/TagButton';
 import { TagChip } from '../../ui/TagChip';
 import { font, spacing } from '../../ui/theme';
-import { makeStyles, useColors } from '../../ui/ThemeContext';
+import { makeStyles } from '../../ui/ThemeContext';
 
 const NO_TAGS: readonly TagRow[] = [];
 const MAX_PICTURE = 220;

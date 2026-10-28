@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vi
 import { Button } from './Button';
 import type { MenuAction } from './PopupMenu';
 import { font, radius, spacing, touchTarget } from './theme';
-import { makeStyles, useColors } from './ThemeContext';
+import { makeStyles } from './ThemeContext';
 
 export interface ChoiceDialogProps {
   visible: boolean;

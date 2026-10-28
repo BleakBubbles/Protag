@@ -16,7 +16,7 @@ import { SELECTION_BAR_HEIGHT, SelectionBar } from '../../ui/library/SelectionBa
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { SearchField } from '../../ui/SearchField';
 import { font, spacing } from '../../ui/theme';
-import { makeStyles, useColors } from '../../ui/ThemeContext';
+import { makeStyles } from '../../ui/ThemeContext';
 
 const NO_TAGS: readonly TagRow[] = [];
 

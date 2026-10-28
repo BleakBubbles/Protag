@@ -4,7 +4,7 @@ import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 
 import { feelHold, HOLD_MS } from '../haptics';
 import { spacing } from '../theme';
-import { makeStyles, useColors } from '../ThemeContext';
+import { makeStyles } from '../ThemeContext';
 import { POT_ROW, trayHeight } from './Pot';
 
 /** The strip it sits in: thin, so what's below barely moves for it. */

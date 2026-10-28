@@ -4,7 +4,7 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-na
 import { ButtonFillContext } from './Button';
 import { InfoButton, type InfoButtonProps } from './InfoButton';
 import { font, iconSize, radius, spacing, touchTarget } from './theme';
-import { makeStyles, useColors } from './ThemeContext';
+import { makeStyles } from './ThemeContext';
 
 export interface CardProps {
   /** Small uppercase caption above the content. */

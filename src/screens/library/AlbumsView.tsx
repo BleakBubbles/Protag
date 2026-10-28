@@ -9,7 +9,7 @@ import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
 import { AlbumTile } from '../../ui/library/AlbumTile';
 import { SearchField } from '../../ui/SearchField';
 import { spacing } from '../../ui/theme';
-import { makeStyles, useColors } from '../../ui/ThemeContext';
+import { makeStyles } from '../../ui/ThemeContext';
 
 const COLUMNS = 2;
 const GAP = spacing.lg;

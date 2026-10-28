@@ -434,7 +434,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   nameText: {
     ...font.label,
     flexShrink: 1,
-    color: colors.bg,
+    color: colors.onTag,
   },
   neutralText: {
     color: colors.text,

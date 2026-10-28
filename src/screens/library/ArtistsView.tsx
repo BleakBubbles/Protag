@@ -10,7 +10,7 @@ import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
 import { ARTIST_ROW_HEIGHT, ArtistRow } from '../../ui/library/ArtistRow';
 import { SearchField } from '../../ui/SearchField';
 import { spacing } from '../../ui/theme';
-import { makeStyles, useColors } from '../../ui/ThemeContext';
+import { makeStyles } from '../../ui/ThemeContext';
 
 /** Every artist, A to Z. Tap one for their albums and songs. */
 export function ArtistsView() {

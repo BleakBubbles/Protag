@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View, type ViewInstance } from 'react-nati
 import { feelHold, HOLD_MS } from '../haptics';
 import type { Rect } from '../Popover';
 import { font, radius, spacing } from '../theme';
-import { makeStyles, useColors } from '../ThemeContext';
+import { makeStyles } from '../ThemeContext';
 import { ArtMosaic } from './ArtMosaic';
 
 const RING_GAP = 2;

@@ -28,7 +28,7 @@ import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { NewTagRow, TagRow } from '../../ui/library/TagRow';
 import { PromptDialog } from '../../ui/PromptDialog';
 import { font, spacing } from '../../ui/theme';
-import { makeStyles, useColors } from '../../ui/ThemeContext';
+import { makeStyles } from '../../ui/ThemeContext';
 
 const NO_TAGS: readonly Tag[] = [];
 const LOOSE_LABEL = 'Not tagged yet';

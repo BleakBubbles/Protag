@@ -825,7 +825,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   segmentText: {
     ...font.label,
     flexShrink: 1,
-    color: colors.bg,
+    color: colors.onTag,
   },
   // The × stands in its own gap of background, like the space between two tiles.
   times: {
@@ -901,7 +901,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     ...font.caption,
     marginLeft: 'auto',
     paddingLeft: spacing.xs,
-    color: colors.bg,
+    color: colors.onTag,
     opacity: 0.75,
   },
   // Edge to edge with the tray above, with the tiles' gap between the two.
