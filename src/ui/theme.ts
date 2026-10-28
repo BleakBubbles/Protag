@@ -68,17 +68,18 @@ const light: typeof dark = {
   raised: '#D2C9B9',
   scrim: 'rgba(40, 32, 20, 0.28)',
 
-  text: '#1E1B17',
-  textDim: '#5C564D',
-  textFaint: '#8A8378',
+  // Soft ink rather than near-black, which reads harsh on paper, most of all in filled icons.
+  text: '#35302A',
+  textDim: '#665F55',
+  textFaint: '#8E877C',
 
   accent: '#1F5E58',
   onAccent: '#FFFFFF',
-  accentFg: '#1D6A61',
-  accentTint: '#1D6A6124',
+  accentFg: '#17695F',
+  accentTint: '#17695F3D',
   rippleOnAccent: '#FFFFFF33',
 
-  onTag: '#1E1B17',
+  onTag: '#2A2520',
 
   include: '#4E8A3E',
   exclude: '#C2524B',
@@ -215,20 +216,20 @@ function palette(scheme: Scheme, roles: typeof dark, tags: Record<TagColor, stri
   return { ...roles, scheme, tag: (name) => (name && isTagColor(name) ? tags[name] : tags.gray) };
 }
 
-/** The same twelve, a touch deeper, so they hold their own on paper. */
+/** The same twelve, brighter and a little more saturated, so they stay lively on paper rather than muddy. */
 const lightTags = {
-  red: '#D35A51',
-  orange: '#D97B3A',
-  yellow: '#CFA42F',
-  green: '#5E9F51',
-  teal: '#2E8D7E',
-  cyan: '#3A9DB4',
-  blue: '#4D7FD0',
-  indigo: '#7468CF',
-  purple: '#9D66C1',
-  pink: '#CF6598',
-  brown: '#966F4E',
-  gray: '#8B857C',
+  red: '#EC7A70',
+  orange: '#F29A55',
+  yellow: '#EDC84B',
+  green: '#82C471',
+  teal: '#4FB7A6',
+  cyan: '#5EC3DA',
+  blue: '#719FEE',
+  indigo: '#978CEE',
+  purple: '#C38EE4',
+  pink: '#EE89BA',
+  brown: '#BE936D',
+  gray: '#ABA59C',
 } satisfies Record<TagColor, string>;
 
 export const palettes: Record<Scheme, Palette> = {

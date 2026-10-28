@@ -82,7 +82,7 @@ export function TagTile({ tagId, name, parent, color, songCount, choice, width, 
   );
   const drop = usePotDrop();
   const shown = pressed ? AFTER_TAP[choice] : choice;
-  const text = shown === 'off' ? colors.text : colors.bg;
+  const text = shown === 'off' ? colors.text : colors.onTag;
   const opens = onOpen !== undefined && (subtags ?? 0) > 0;
 
   return (
