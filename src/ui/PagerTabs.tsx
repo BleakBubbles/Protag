@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Keyboard, Pressable, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 
-import { colors, font, spacing } from './theme';
+import { font, spacing } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 const TAB_HEIGHT = 44;
 /** The wait before building the next unopened page in the background. */
@@ -34,6 +35,7 @@ export interface PagerTabsProps<T extends string> {
  * soon after in the background, then kept, so switching is quick every time.
  */
 export function PagerTabs<T extends string>({ pages, value, onChange, swipeEnabled = true }: PagerTabsProps<T>) {
+  const styles = useStyles();
   const [width, setWidth] = useState(0);
   /** The pages' height: a sideways scroller doesn't stretch its pages to fill it. */
   const [height, setHeight] = useState(0);
@@ -144,7 +146,7 @@ export function PagerTabs<T extends string>({ pages, value, onChange, swipeEnabl
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   wrap: {
     flex: 1,
   },
@@ -172,4 +174,4 @@ const styles = StyleSheet.create({
     borderTopRightRadius: BAR_HEIGHT,
     backgroundColor: colors.text,
   },
-});
+}));

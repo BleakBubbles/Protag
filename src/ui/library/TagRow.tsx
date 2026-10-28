@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react
 
 import { plural } from '../format';
 import { artworkRadius } from '../player/Artwork';
-import { colors, font, iconSize, spacing, tagColor } from '../theme';
+import { font, iconSize, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 export const TAG_ROW_HEIGHT = 72;
 /** The same size as a song row's artwork, so folders and songs line up as one directory. */
@@ -24,6 +25,8 @@ export interface TagRowProps {
  * pattern people already know. A folder icon on the tag's own colour.
  */
 export function TagRow({ name, color, songCount, childCount, onPress }: TagRowProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const meta = [plural(songCount, 'song'), childCount > 0 ? plural(childCount, 'subtag') : null]
     .filter(Boolean)
     .join(' · ');
@@ -35,8 +38,8 @@ export function TagRow({ name, color, songCount, childCount, onPress }: TagRowPr
       accessibilityLabel={`${name}, ${meta}`}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
-      <View style={[styles.tile, { backgroundColor: `${tagColor(color)}38` }]}>
-        <Ionicons name="folder" size={iconSize.md} color={tagColor(color)} />
+      <View style={[styles.tile, { backgroundColor: `${colors.tag(color)}38` }]}>
+        <Ionicons name="folder" size={iconSize.md} color={colors.tag(color)} />
       </View>
       <View style={styles.text}>
         <Text style={styles.name} numberOfLines={1}>
@@ -63,6 +66,8 @@ export interface NewTagRowProps {
  * another sits right where it'll appear, even with only one tag above it.
  */
 export function NewTagRow({ onPress, disabled = false, onLayout }: NewTagRowProps) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -80,7 +85,7 @@ export function NewTagRow({ onPress, disabled = false, onLayout }: NewTagRowProp
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   row: {
     height: TAG_ROW_HEIGHT,
     flexDirection: 'row',
@@ -121,4 +126,4 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.textDim,
   },
-});
+}));

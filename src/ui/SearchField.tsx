@@ -3,7 +3,8 @@ import { StyleSheet, TextInput, View, type TextInputInstance, type TextInputProp
 
 import { Icon, type IconName } from './Icon';
 import { IconButton } from './IconButton';
-import { colors, font, iconSize, radius, spacing, touchTarget } from './theme';
+import { font, iconSize, radius, spacing, touchTarget } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 export interface SearchFieldProps extends Omit<TextInputProps, 'style'> {
   value: string;
@@ -16,6 +17,8 @@ export const SearchField = forwardRef<TextInputInstance, SearchFieldProps>(funct
   { value, onChangeText, icon = 'search', ...inputProps },
   ref
 ) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.field}>
       <Icon name={icon} size={iconSize.sm} color={colors.textFaint} />
@@ -43,7 +46,7 @@ export const SearchField = forwardRef<TextInputInstance, SearchFieldProps>(funct
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   field: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -61,4 +64,4 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingVertical: spacing.sm,
   },
-});
+}));

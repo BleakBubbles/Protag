@@ -16,7 +16,8 @@ import { plural } from '../format';
 import { Icon, type IconName } from '../Icon';
 import { Artwork } from '../player/Artwork';
 import type { Rect } from '../Popover';
-import { colors, font, iconSize, radius, spacing, tagColor, touchTarget } from '../theme';
+import { font, iconSize, radius, spacing, touchTarget } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 const ROW_HEIGHT = 60;
 const THUMB = 44;
@@ -76,11 +77,14 @@ export function OwnDetailsWindow({
 }
 
 export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, actions }: DetailsWindowProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const db = useSQLiteContext();
   const open = anchor !== null;
 
   // Names and colours for the ingredients.
-  const [looks, setLooks] = useState<{ names: Map<Ref, string>; hues: Map<Ref, string> } | null>(null);
+  // Tags' colour names rather than colours, so a theme switch recolours them.
+  const [looks, setLooks] = useState<{ names: Map<Ref, string>; colorNames: Map<Ref, string | null> } | null>(null);
   useEffect(() => {
     if (!open) return;
     let live = true;
@@ -88,7 +92,7 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
       if (!live) return;
       setLooks({
         names: new Map<Ref, string>([...tags.map((t) => [t.id, t.name] as const), ...albums]),
-        hues: new Map<Ref, string>(tags.map((t) => [t.id, tagColor(t.color)] as const)),
+        colorNames: new Map<Ref, string | null>(tags.map((t) => [t.id, t.color] as const)),
       });
     });
     return () => {
@@ -99,7 +103,10 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
     const read = readRef(ref);
     return looks?.names.get(ref) ?? (read.kind === 'artist' ? read.name : read.kind === 'album' ? 'Album' : '');
   };
-  const hueOf = (refs: readonly Ref[]) => refs.map((ref) => looks?.hues.get(ref)).find(Boolean) ?? colors.raised;
+  const hueOf = (refs: readonly Ref[]) => {
+    const tag = refs.find((ref) => looks?.colorNames.has(ref));
+    return tag === undefined ? colors.raised : colors.tag(looks?.colorNames.get(tag));
+  };
 
   // Each ingredient's songs, reloaded only when the ingredients change (not the tuning).
   const what = JSON.stringify([draft.ingredients, draft.exclude, draft.includeDescendants]);
@@ -341,7 +348,7 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   headerBody: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
@@ -507,4 +514,4 @@ const styles = StyleSheet.create({
     color: colors.textDim,
     includeFontPadding: false,
   },
-});
+}));

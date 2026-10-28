@@ -5,7 +5,8 @@ import { albumArtUri } from '../../library/assets';
 import type { Ref } from '../../query/refs';
 import type { TagChoice } from '../../query/types';
 import { Artwork } from '../player/Artwork';
-import { colors, font, iconSize, radius, spacing } from '../theme';
+import { font, iconSize, radius, spacing, type Palette } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 import { useDraggable, usePotDrop } from './PotDrag';
 
 export const PICTURE_TILE_SIZE = 76;
@@ -14,7 +15,7 @@ const RING_GAP = 2;
 const RING_WIDTH = 2;
 
 /** The same rings as a tag tile: white when it's in the mix, red when it's kept out. */
-const RING: Record<Exclude<TagChoice, 'off'>, string> = { include: colors.text, exclude: colors.exclude };
+const RING = { include: 'text', exclude: 'exclude' } as const satisfies Record<Exclude<TagChoice, 'off'>, keyof Palette>;
 
 const TAP_LABEL: Record<TagChoice, string> = {
   off: 'Add to the mix',
@@ -39,6 +40,8 @@ export interface PictureTileProps {
  * a white ring and ✓ when it's in, a red ring and − when it's kept out.
  */
 export function PictureTile({ refId, name, cover, round, choice, onPress }: PictureTileProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const { handlers, pressed, lifting } = useDraggable(
     { kind: 'tile', ref: refId },
     // Lifts as its picture, not as text.
@@ -71,7 +74,7 @@ export function PictureTile({ refId, name, cover, round, choice, onPress }: Pict
           <>
             <View
               pointerEvents="none"
-              style={[styles.ring, { borderColor: RING[choice], borderRadius: corner + RING_GAP + RING_WIDTH }]}
+              style={[styles.ring, { borderColor: colors[RING[choice]], borderRadius: corner + RING_GAP + RING_WIDTH }]}
             />
             <View style={[styles.badge, { backgroundColor: choice === 'include' ? colors.text : colors.exclude }]}>
               <Ionicons name={choice === 'include' ? 'checkmark' : 'remove'} size={iconSize.sm - 6} color={colors.bg} />
@@ -88,6 +91,8 @@ export function PictureTile({ refId, name, cover, round, choice, onPress }: Pict
 
 /** The end of a picture row: the way to every artist or album, in a searchable sheet. */
 export function SeeAllTile({ label, round, onPress }: { label: string; round: boolean; onPress: () => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -105,7 +110,7 @@ export function SeeAllTile({ label, round, onPress }: { label: string; round: bo
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   seeAll: {
     width: PICTURE_TILE_SIZE,
     height: PICTURE_TILE_SIZE,
@@ -150,4 +155,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     alignSelf: 'stretch',
   },
-});
+}));

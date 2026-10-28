@@ -10,7 +10,8 @@ import { formatCount } from '@/ui/format';
 import { feelHold } from '@/ui/haptics';
 import { Icon } from '@/ui/Icon';
 import { IconButton } from '@/ui/IconButton';
-import { colors, font, iconSize, radius, spacing, touchTarget } from '@/ui/theme';
+import { font, iconSize, radius, spacing, touchTarget } from '@/ui/theme';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 import { Artwork } from './Artwork';
 
 const ROW = 56;
@@ -44,6 +45,8 @@ interface Drag {
  * to another place in its part of the queue.
  */
 export function QueueList({ queue }: { queue: QueueState }) {
+  const colors = useColors();
+  const styles = useStyles();
   const db = useSQLiteContext();
   const { jumpTo, removeUpcoming, moveUpcoming } = usePlayerActions();
 
@@ -260,6 +263,8 @@ interface QueueRowProps {
 }
 
 function QueueRow(props: QueueRowProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const { song, shift, settling, hidden, onPlay, onRemove, onNudge } = props;
   const title = song?.title ?? ' ';
 
@@ -316,6 +321,7 @@ function QueueRow(props: QueueRowProps) {
 }
 
 function RowContent({ song }: { song?: PlayableSong }) {
+  const styles = useStyles();
   return (
     <>
       <Artwork uri={albumArtUri(song?.album_id ?? null)} size={THUMB} />
@@ -331,7 +337,7 @@ function RowContent({ song }: { song?: PlayableSong }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   box: {
     flex: 1,
     alignSelf: 'stretch',
@@ -397,4 +403,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingTop: spacing.xl,
   },
-});
+}));

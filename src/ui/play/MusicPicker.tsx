@@ -9,7 +9,8 @@ import type { TagChoice } from '../../query/types';
 import { BottomSheet } from '../BottomSheet';
 import { Artwork } from '../player/Artwork';
 import { SearchField } from '../SearchField';
-import { colors, font, iconSize, spacing } from '../theme';
+import { font, iconSize, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 const ROW_HEIGHT = 64;
 const PICTURE = 44;
@@ -39,6 +40,8 @@ export interface MusicPickerProps {
  * the sheet stays open to pick several.
  */
 export function MusicPicker({ visible, title, items, choiceOf, onTap, onClose }: MusicPickerProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const screen = useWindowDimensions();
   const [query, setQuery] = useState('');
   useEffect(() => {
@@ -100,7 +103,7 @@ export function MusicPicker({ visible, title, items, choiceOf, onTap, onClose }:
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   search: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
@@ -126,4 +129,4 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.textDim,
   },
-});
+}));

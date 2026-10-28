@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Marquee } from '../Marquee';
-import { colors, font, spacing } from '../theme';
+import { font, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 export interface TrackInfoProps {
   title: string;
@@ -26,6 +27,7 @@ const HEIGHT = font.title.lineHeight + spacing.xs + font.body.lineHeight;
  * if they change.
  */
 export function TrackInfo({ title, artist, album, onPressArtist, onPressAlbum }: TrackInfoProps) {
+  const styles = useStyles();
   const subtitle = [artist, album].filter(Boolean).join(' · ');
   // Spans inside one line, so it still scrolls as a whole; each name is its own link.
   const link = (name: string, onPress: (() => void) | undefined) => (
@@ -59,7 +61,7 @@ export function TrackInfo({ title, artist, album, onPressArtist, onPressAlbum }:
 
 // includeFontPadding: Android otherwise adds padding sized from each font's own
 // metrics, which differ between Latin and the fallback fonts CJK text uses.
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   container: {
     alignSelf: 'stretch',
     alignItems: 'center',
@@ -80,4 +82,4 @@ const styles = StyleSheet.create({
   link: {
     color: colors.accentFg,
   },
-});
+}));

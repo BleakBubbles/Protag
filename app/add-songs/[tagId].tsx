@@ -26,7 +26,8 @@ import { useStagedSave } from '@/ui/hooks/useStagedSave';
 import { PICK_ROW_HEIGHT, PickSongRow } from '@/ui/library/PickSongRow';
 import { SaveButton } from '@/ui/SaveButton';
 import { SearchField } from '@/ui/SearchField';
-import { colors, font, spacing } from '@/ui/theme';
+import { font, spacing } from '@/ui/theme';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 const SUGGESTION_LIMIT = 20;
 
@@ -38,6 +39,7 @@ const SUGGESTION_LIMIT = 20;
  * at what else fits.
  */
 export default function AddSongsScreen() {
+  const styles = useStyles();
   const { tagId: rawId } = useLocalSearchParams<{ tagId: string }>();
   const tagId = Number(rawId);
   const db = useSQLiteContext();
@@ -224,7 +226,7 @@ export default function AddSongsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -255,4 +257,4 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.xs,
   },
-});
+}));

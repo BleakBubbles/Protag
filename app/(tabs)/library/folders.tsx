@@ -11,7 +11,8 @@ import { EmptyState } from '@/ui/EmptyState';
 import { InfoButton } from '@/ui/InfoButton';
 import { plural } from '@/ui/format';
 import { ScanCard } from '@/ui/library/ScanCard';
-import { colors, font, iconSize, spacing } from '@/ui/theme';
+import { font, iconSize, spacing } from '@/ui/theme';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 const ROW_HEIGHT = 64;
 
@@ -31,6 +32,7 @@ const FOLDERS_INFO = {
  * rescan button stays pinned below the list.
  */
 export default function FoldersScreen() {
+  const styles = useStyles();
   const db = useSQLiteContext();
   const scan = useLibraryScan();
   const [folders, setFolders] = useState<LibraryFolder[] | null>(null);
@@ -88,6 +90,8 @@ export default function FoldersScreen() {
 }
 
 function FolderRow({ folder, onToggle }: { folder: LibraryFolder; onToggle: (id: string) => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   const { title, include, reason } = folder.choice;
   const files = plural(folder.count, 'file');
   return (
@@ -116,7 +120,7 @@ function FolderRow({ folder, onToggle }: { folder: LibraryFolder; onToggle: (id:
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -155,4 +159,4 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-});
+}));

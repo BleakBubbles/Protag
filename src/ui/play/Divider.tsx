@@ -3,7 +3,8 @@ import { useRef, useState } from 'react';
 import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 
 import { feelHold, HOLD_MS } from '../haptics';
-import { colors, spacing } from '../theme';
+import { spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 import { POT_ROW, trayHeight } from './Pot';
 
 /** The strip it sits in: thin, so what's below barely moves for it. */
@@ -57,6 +58,7 @@ export interface DividerProps {
  * for a scroll.
  */
 export function Divider({ label, onTap, tray, rows, minRows, maxRows, onSettle, pull, onSwipeFold }: DividerProps) {
+  const styles = useStyles();
   const latest = useRef({ onTap, rows, minRows, maxRows, onSettle, pull, onSwipeFold });
   latest.current = { onTap, rows, minRows, maxRows, onSettle, pull, onSwipeFold };
   const gesture = useRef<{ mode: Mode; from: number; tick: number; hold: ReturnType<typeof setTimeout> | null }>({
@@ -190,7 +192,7 @@ export function Divider({ label, onTap, tray, rows, minRows, maxRows, onSettle, 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   strip: {
     height: STRIP,
     alignSelf: 'center',
@@ -208,4 +210,4 @@ const styles = StyleSheet.create({
   barHeld: {
     backgroundColor: colors.textDim,
   },
-});
+}));

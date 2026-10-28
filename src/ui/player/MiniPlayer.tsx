@@ -5,7 +5,8 @@ import { albumArtUri } from '../../library/assets';
 import { useNowPlaying, usePlaybackStatus, usePlayerActions } from '../../player/PlayerProvider';
 import { IconButton } from '../IconButton';
 import { Marquee } from '../Marquee';
-import { colors, font, iconSize, radius, spacing } from '../theme';
+import { font, iconSize, radius, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 import { Artwork } from './Artwork';
 import { useMiniPlayerVisibility } from './MiniPlayerVisibility';
 import { usePlayerSheet, type PlayerSheetControls } from './PlayerSheet';
@@ -25,6 +26,8 @@ const SLIDE_OUT = Dimensions.get('window').width;
  * while tagging (the music keeps playing); swipe up for the full player.
  */
 export function MiniPlayer() {
+  const colors = useColors();
+  const styles = useStyles();
   const { song } = useNowPlaying();
   const { visible, hintVisible, hide } = useMiniPlayerVisibility();
   const sheet = usePlayerSheet();
@@ -71,6 +74,7 @@ export function MiniPlayer() {
 
 /** Split out so twice-a-second status ticks only re-render the parts that change. */
 function PlayPause() {
+  const colors = useColors();
   const { playing } = usePlaybackStatus();
   const { togglePlay } = usePlayerActions();
   return (
@@ -85,6 +89,7 @@ function PlayPause() {
 }
 
 function PreviousTrack() {
+  const colors = useColors();
   const { previous } = usePlayerActions();
   return (
     <IconButton icon="play-skip-back" label="Previous track" size={iconSize.md} color={colors.text} onPress={previous} />
@@ -92,11 +97,13 @@ function PreviousTrack() {
 }
 
 function NextTrack() {
+  const colors = useColors();
   const { next } = usePlayerActions();
   return <IconButton icon="play-skip-forward" label="Next track" size={iconSize.md} color={colors.text} onPress={next} />;
 }
 
 function Progress({ fallbackDurationSec }: { fallbackDurationSec: number }) {
+  const styles = useStyles();
   const { positionSec, durationSec } = usePlaybackStatus();
   const total = durationSec > 0 ? durationSec : fallbackDurationSec;
   const fraction = total > 0 ? Math.min(1, positionSec / total) : 0;
@@ -122,6 +129,7 @@ function SwipeGestures({
   sheet: PlayerSheetControls;
   children: ReactNode;
 }) {
+  const styles = useStyles();
   const offset = useRef(new Animated.ValueXY()).current;
   const direction = useRef<'sideways' | 'down' | 'up'>('down');
   const springBack = () => Animated.spring(offset, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
@@ -180,7 +188,7 @@ function SwipeGestures({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   card: {
     height: MINI_PLAYER_HEIGHT,
     marginHorizontal: spacing.sm,
@@ -224,4 +232,4 @@ const styles = StyleSheet.create({
     ...font.label,
     color: colors.textDim,
   },
-});
+}));

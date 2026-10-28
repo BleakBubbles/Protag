@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { albumArtUri } from '../../library/assets';
 import { Artwork } from '../player/Artwork';
-import { colors, font, spacing } from '../theme';
+import { font, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 export interface AlbumTileProps {
   albumId: string;
@@ -16,6 +17,7 @@ export interface AlbumTileProps {
 
 /** An album as its cover, with its name under it: square, like the cover itself. */
 export const AlbumTile = memo(function AlbumTile({ albumId, title, artist, size, onPress }: AlbumTileProps) {
+  const styles = useStyles();
   return (
     <Pressable
       onPress={() => onPress(albumId)}
@@ -38,7 +40,7 @@ export const AlbumTile = memo(function AlbumTile({ albumId, title, artist, size,
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   pressed: {
     opacity: 0.7,
   },
@@ -53,4 +55,4 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.textDim,
   },
-});
+}));

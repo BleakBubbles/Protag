@@ -10,7 +10,8 @@ import { useNowPlaying, usePlaybackStatus, usePlayerActions } from '@/player/Pla
 import { shuffleModeOf, shuffleModesOf, type QueueState } from '@/player/queue';
 import { EmptyState } from '@/ui/EmptyState';
 import { IconButton } from '@/ui/IconButton';
-import { colors, font, spacing } from '@/ui/theme';
+import { font, spacing } from '@/ui/theme';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 import { ArtworkSlot } from './ArtworkSlot';
 import { QueueList } from './QueueList';
 import { SeekBar } from './SeekBar';
@@ -30,6 +31,7 @@ export interface FullPlayerProps {
  * pieces live alongside this file, and PlayerSheet moves it on and off screen.
  */
 export function FullPlayer(props: FullPlayerProps) {
+  const styles = useStyles();
   const { song, queue } = useNowPlaying();
   const insets = useSafeAreaInsets();
 
@@ -44,6 +46,7 @@ export function FullPlayer(props: FullPlayerProps) {
 }
 
 function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { song: SongRow; queue: QueueState }) {
+  const styles = useStyles();
   const status = usePlaybackStatus();
   const actions = usePlayerActions();
   const insets = useSafeAreaInsets();
@@ -119,7 +122,7 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -148,4 +151,4 @@ const styles = StyleSheet.create({
     color: colors.danger,
     textAlign: 'center',
   },
-});
+}));

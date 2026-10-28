@@ -1,7 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon, type IconName } from '../Icon';
-import { colors, font, iconSize, radius, spacing } from '../theme';
+import { font, iconSize, radius, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 /** Fits in the room a list already leaves at the bottom for its floating button. */
 export const SELECTION_BAR_HEIGHT = 64;
@@ -19,6 +20,8 @@ export interface SelectionAction {
  * `disabled` dims it and ignores taps, e.g. while nothing is selected.
  */
 export function SelectionBar({ actions, disabled }: { actions: readonly SelectionAction[]; disabled?: boolean }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={[styles.bar, disabled && styles.disabled]}>
       {actions.map((action) => {
@@ -45,7 +48,7 @@ export function SelectionBar({ actions, disabled }: { actions: readonly Selectio
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   bar: {
     position: 'absolute',
     left: spacing.lg,
@@ -72,4 +75,4 @@ const styles = StyleSheet.create({
   label: {
     ...font.caption,
   },
-});
+}));

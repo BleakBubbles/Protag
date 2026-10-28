@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PanResponder, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
 import { formatTime } from '../format';
-import { colors, font, radius, spacing, touchTarget } from '../theme';
+import { font, radius, spacing, touchTarget } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 export interface SeekBarProps {
   positionSec: number;
@@ -21,6 +22,7 @@ const PENDING_TIMEOUT_MS = 1500;
  * it needs no native module (no rebuild) and is fully restylable.
  */
 export function SeekBar({ positionSec, durationSec, onSeek }: SeekBarProps) {
+  const styles = useStyles();
   const [width, setWidth] = useState(0);
   const [dragFraction, setDragFraction] = useState<number | null>(null);
   // After release, position lags until the next status update; hold the target
@@ -114,7 +116,7 @@ export function SeekBar({ positionSec, durationSec, onSeek }: SeekBarProps) {
 
 const THUMB = 14;
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   container: {
     alignSelf: 'stretch',
     gap: spacing.xs,
@@ -151,4 +153,4 @@ const styles = StyleSheet.create({
     ...font.numeric,
     color: colors.textDim,
   },
-});
+}));

@@ -3,7 +3,8 @@ import { Animated, Easing, Modal, Pressable, StyleSheet, useWindowDimensions } f
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Rect } from './Popover';
-import { colors, radius, spacing } from './theme';
+import { radius, spacing } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 // Snappy enough that you barely see it grow: out fast and done, no long settle
 // to catch the end of; back in quicker still.
@@ -35,6 +36,7 @@ export interface ExpandWindowProps {
  * Tap outside or press back to close.
  */
 export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
+  const styles = useStyles();
   const screen = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const grow = useRef(new Animated.Value(0)).current;
@@ -110,7 +112,7 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   backdrop: {
     backgroundColor: colors.scrim,
   },
@@ -120,4 +122,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
   },
-});
+}));

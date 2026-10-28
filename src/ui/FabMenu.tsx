@@ -4,7 +4,8 @@ import { Animated, BackHandler, Pressable, StyleSheet, Text } from 'react-native
 
 import { Fab, FAB_SIZE } from './Fab';
 import { Icon, type IconName } from './Icon';
-import { colors, font, iconSize, radius, spacing } from './theme';
+import { font, iconSize, radius, spacing } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 export interface FabMenuItem {
   label: string;
@@ -28,6 +29,8 @@ export interface FabMenuProps {
  * stay exactly where they are; the screen's container must fill the screen.
  */
 export function FabMenu({ label, icon, extended, items }: FabMenuProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const [open, setOpen] = useState(false);
   const shown = useRef(new Animated.Value(0)).current;
 
@@ -93,7 +96,7 @@ export function FabMenu({ label, icon, extended, items }: FabMenuProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   backdrop: {
     position: 'absolute',
     top: 0,
@@ -135,4 +138,4 @@ const styles = StyleSheet.create({
     ...font.listTitle,
     color: colors.text,
   },
-});
+}));

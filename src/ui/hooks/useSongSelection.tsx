@@ -9,7 +9,7 @@ import { plural } from '../format';
 import { IconButton } from '../IconButton';
 import type { SelectionAction } from '../library/SelectionBar';
 import { HeaderTitle } from '../stackOptions';
-import { colors } from '../theme';
+import { useColors } from '../ThemeContext';
 
 /**
  * Selection mode for a list of songs (long-press a row to start): which songs
@@ -31,6 +31,7 @@ import { colors } from '../theme';
  * drop out of the selection.
  */
 export function useSongSelection(songIds: readonly number[] | undefined) {
+  const colors = useColors();
   const [selection, setSelection] = useState<ReadonlySet<number> | null>(null);
   const selecting = selection !== null;
 

@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View, type ViewInstance } from 'react-nati
 
 import { feelHold, HOLD_MS } from '../haptics';
 import type { Rect } from '../Popover';
-import { colors, font, radius, spacing } from '../theme';
+import { font, radius, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 import { ArtMosaic } from './ArtMosaic';
 
 const RING_GAP = 2;
@@ -34,6 +35,7 @@ export interface MixCardProps {
  * artwork. Fixed height, so cards line up whatever their text.
  */
 export function MixCard({ name, description, albumIds, color, width, onPress, onLongPress, held }: MixCardProps) {
+  const styles = useStyles();
   const art = useRef<ViewInstance>(null);
   return (
     <Pressable
@@ -67,7 +69,7 @@ export function MixCard({ name, description, albumIds, color, width, onPress, on
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   card: {
     gap: 2,
   },
@@ -101,4 +103,4 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.textDim,
   },
-});
+}));

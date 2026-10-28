@@ -1,7 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from './Icon';
-import { colors, font, iconSize, radius, spacing, touchTarget } from './theme';
+import { font, iconSize, radius, spacing, touchTarget } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 export interface TagButtonProps {
   onPress: () => void;
@@ -14,6 +15,8 @@ export interface TagButtonProps {
  * the row rather than a call to action, but always there and easy to hit.
  */
 export function TagButton({ onPress, label }: TagButtonProps) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -33,6 +36,7 @@ export function TagButton({ onPress, label }: TagButtonProps) {
  * placeholder's place. The placeholder is a way in too.
  */
 export function NoTags({ onPress, label }: TagButtonProps) {
+  const styles = useStyles();
   return (
     <View style={styles.line}>
       <Pressable
@@ -48,7 +52,7 @@ export function NoTags({ onPress, label }: TagButtonProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   line: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -81,4 +85,4 @@ const styles = StyleSheet.create({
     ...font.label,
     color: colors.textFaint,
   },
-});
+}));

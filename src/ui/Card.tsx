@@ -3,7 +3,8 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-na
 
 import { ButtonFillContext } from './Button';
 import { InfoButton, type InfoButtonProps } from './InfoButton';
-import { colors, font, iconSize, radius, spacing, touchTarget } from './theme';
+import { font, iconSize, radius, spacing, touchTarget } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 export interface CardProps {
   /** Small uppercase caption above the content. */
@@ -17,6 +18,7 @@ export interface CardProps {
 }
 
 export function Card({ label, title, info, children, style }: CardProps) {
+  const styles = useStyles();
   return (
     <View style={[styles.card, style]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -38,11 +40,13 @@ export function Card({ label, title, info, children, style }: CardProps) {
 
 /** Body text inside a card. */
 export function CardText({ children, tone = 'dim' }: { children: ReactNode; tone?: 'dim' | 'error' }) {
+  const styles = useStyles();
   return <Text style={tone === 'error' ? styles.error : styles.text}>{children}</Text>;
 }
 
 /** A line saying how things stand ("Last scanned 2 days ago"): smaller and quieter than body text. */
 export function CardStatus({ children }: { children: ReactNode }) {
+  const styles = useStyles();
   return (
     <Text style={styles.status} numberOfLines={1}>
       {children}
@@ -55,6 +59,7 @@ export function CardStatus({ children }: { children: ReactNode }) {
  * get half each. Main action first (tonal), the other after it (secondary).
  */
 export function CardActions({ children }: { children: ReactNode }) {
+  const styles = useStyles();
   return (
     <ButtonFillContext.Provider value={true}>
       <View style={styles.actions}>
@@ -68,7 +73,7 @@ export function CardActions({ children }: { children: ReactNode }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -121,4 +126,4 @@ const styles = StyleSheet.create({
   slot: {
     flex: 1,
   },
-});
+}));

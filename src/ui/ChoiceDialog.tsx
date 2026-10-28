@@ -2,7 +2,8 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vi
 
 import { Button } from './Button';
 import type { MenuAction } from './PopupMenu';
-import { colors, font, radius, spacing, touchTarget } from './theme';
+import { font, radius, spacing, touchTarget } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 export interface ChoiceDialogProps {
   visible: boolean;
@@ -16,6 +17,7 @@ export interface ChoiceDialogProps {
  * dialog like the rename one, its list scrolling inside. Picking closes it.
  */
 export function ChoiceDialog({ visible, title, choices, onClose }: ChoiceDialogProps) {
+  const styles = useStyles();
   const screen = useWindowDimensions();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -51,7 +53,7 @@ export function ChoiceDialog({ visible, title, choices, onClose }: ChoiceDialogP
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -94,4 +96,4 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: spacing.xl,
   },
-});
+}));

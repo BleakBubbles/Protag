@@ -4,7 +4,8 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 
 import { nextRepeatMode, nextShuffleMode, type RepeatMode, type ShuffleMode } from '../../player/queue';
 import { IconButton } from '../IconButton';
-import { colors, font, iconSize, radius, spacing } from '../theme';
+import { font, iconSize, radius, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 export interface TransportControlsProps {
   playing: boolean;
@@ -49,6 +50,8 @@ export function TransportControls({
   onToggleShuffle,
   onCycleRepeat,
 }: TransportControlsProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const { said, say } = useSaying();
   const shuffled = shuffle !== 'off';
 
@@ -113,6 +116,7 @@ function useSaying() {
 
 /** Floats above the controls (never shifting them), fading in and out. */
 function Said({ text }: { text: string | null }) {
+  const styles = useStyles();
   const opacity = useRef(new Animated.Value(0)).current;
   // Keeps the last words on screen while they fade out.
   const [shown, setShown] = useState(text);
@@ -128,7 +132,7 @@ function Said({ text }: { text: string | null }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   wrap: {
     alignSelf: 'stretch',
   },
@@ -156,4 +160,4 @@ const styles = StyleSheet.create({
     ...font.label,
     color: colors.text,
   },
-});
+}));

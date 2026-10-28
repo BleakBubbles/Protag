@@ -24,7 +24,8 @@ import { Icon } from '../Icon';
 import { IconButton } from '../IconButton';
 import type { Rect } from '../Popover';
 import { Artwork } from '../player/Artwork';
-import { colors, font, iconSize, radius, spacing, touchTarget } from '../theme';
+import { font, iconSize, radius, spacing, touchTarget, type Palette } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 import { Join, useDraggable, useDropTarget, usePotDragState, usePotDrop, type Look } from './PotDrag';
 import { withAlpha } from './TagTile';
 
@@ -156,6 +157,8 @@ export function Pot({
   onOpen,
   onWellPress,
 }: PotProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const { active, hover } = usePotDragState();
   const screen = useWindowDimensions();
   const rowWidth = screen.width - spacing.lg * 2 - INSET * 2;
@@ -309,6 +312,8 @@ export interface FinishButtonsProps {
  * song count is in the line above, not on the button.
  */
 export function FinishButtons({ empty, editing, counted, onSave, onShuffle, children }: FinishButtonsProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const shuffle = shuffleText(counted);
   return (
     <View style={styles.actions}>
@@ -382,6 +387,8 @@ function DetailsLine({
   tuned: boolean;
   onPress: (from: Rect) => void;
 }) {
+  const colors = useColors();
+  const styles = useStyles();
   const ref = useRef<ViewInstance>(null);
   const none = counted?.count === 0;
   const count = counted === null ? null : plural(counted.count, 'song');
@@ -499,6 +506,7 @@ function useLinger(on: boolean, ms: number): boolean {
 
 /** Fades its children in when it mounts: how the first tiles replace the empty well. */
 function FadeIn({ children }: { children: ReactNode }) {
+  const styles = useStyles();
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
@@ -534,6 +542,8 @@ interface IngredientTileProps {
  * together. Its song count sits at the end, in the colour's ink.
  */
 function IngredientTile({ index, others, tags, look, count, width, resting, onTap }: IngredientTileProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const looks = tags.map(look);
   const label = looks.map((l) => l.name);
   const { handlers, lifting } = useDraggable({ kind: 'ingredient', index }, ghostOf(looks), onTap);
@@ -582,7 +592,7 @@ function IngredientTile({ index, others, tags, look, count, width, resting, onTa
                 <Join both size={SYMBOL} color={colors.text} />
               </View>
             )}
-            <View style={[styles.share, faceStyle(l), i > 0 && styles.joinedLeft, !last && styles.joinedRight]}>
+            <View style={[styles.share, faceStyle(l, colors, styles), i > 0 && styles.joinedLeft, !last && styles.joinedRight]}>
               <Face look={l} />
               {last && <Text style={[styles.countText, l.hue === null && styles.neutralCount]}>{counted}</Text>}
             </View>
@@ -608,6 +618,8 @@ interface ExcludedTileProps {
  * how it's marked on its tile below.
  */
 function ExcludedTile({ refId, look, width, resting, onTap }: ExcludedTileProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const { name } = look;
   const { handlers, lifting } = useDraggable({ kind: 'excluded', ref: refId }, ghostOf([look]), onTap);
   const drop = usePotDrop();
@@ -628,7 +640,7 @@ function ExcludedTile({ refId, look, width, resting, onTap }: ExcludedTileProps)
       }}
       style={[styles.tile, { width }, lifting && styles.lifting]}
     >
-      <View style={[styles.share, faceStyle(look)]}>
+      <View style={[styles.share, faceStyle(look, colors, styles)]}>
         <Face look={look} />
       </View>
       <View pointerEvents="none" style={styles.ring} />
@@ -641,6 +653,7 @@ function ExcludedTile({ refId, look, width, resting, onTap }: ExcludedTileProps)
 
 /** A tag's name on its colour; an artist's or album's on neutral, after its little picture. */
 function Face({ look }: { look: Look }) {
+  const styles = useStyles();
   return (
     <>
       {look.hue === null && (
@@ -657,13 +670,18 @@ function Face({ look }: { look: Look }) {
   );
 }
 
-const faceStyle = (look: Look) => [{ backgroundColor: look.hue ?? colors.raised }, look.hue === null && styles.withPicture];
+const faceStyle = (look: Look, colors: Palette, styles: ReturnType<typeof useStyles>) => [
+  { backgroundColor: look.hue ?? colors.raised },
+  look.hue === null && styles.withPicture,
+];
 
 /** What floats under the finger: its tags as pills. */
 const ghostOf = (looks: readonly Look[]) => ({ parts: [...looks] });
 
 /** Slides over the buttons while something is lifted; dropping a tag here excludes it. */
 function KeepOut({ shown }: { shown: boolean }) {
+  const colors = useColors();
+  const styles = useStyles();
   const target = useDropTarget({ kind: 'keepOut' });
   const progress = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -690,7 +708,7 @@ function KeepOut({ shown }: { shown: boolean }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   // On the page's own background, like everything else: the pot is the top of
   // the screen, set off from the tags by a line rather than as a card.
   pot: {
@@ -946,4 +964,4 @@ const styles = StyleSheet.create({
     ...font.label,
     color: colors.exclude,
   },
-});
+}));

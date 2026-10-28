@@ -4,7 +4,8 @@ import { StyleSheet, View } from 'react-native';
 import { albumArtUri } from '../../library/assets';
 import { MOSAIC_TILES } from '../../library/mixArt';
 import { Artwork } from '../player/Artwork';
-import { colors, iconSize } from '../theme';
+import { iconSize } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 export interface ArtMosaicProps {
   /** Up to four album ids, most representative first. */
@@ -19,6 +20,7 @@ export interface ArtMosaicProps {
  * first one full size (a grid with gaps or repeats looks broken).
  */
 export function ArtMosaic({ albumIds, size, fallbackColor }: ArtMosaicProps) {
+  const styles = useStyles();
   if (albumIds.length === 0) {
     return (
       <View style={[styles.fallback, { width: size, height: size, backgroundColor: `${fallbackColor}40` }]}>
@@ -39,7 +41,7 @@ export function ArtMosaic({ albumIds, size, fallbackColor }: ArtMosaicProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   fallback: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -49,4 +51,4 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     backgroundColor: colors.surfaceAlt,
   },
-});
+}));

@@ -67,7 +67,8 @@ import { SearchButton, SearchRow, SectionHead, Trail } from '@/ui/play/SectionHe
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
 import { PromptDialog } from '@/ui/PromptDialog';
-import { colors, font, spacing, tagColor } from '@/ui/theme';
+import { font, spacing } from '@/ui/theme';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 /** Covers in the pot's preview line, and how many of the most-played songs to find them among. */
 const COVERS = 5;
@@ -102,6 +103,7 @@ const SLIDE_MS = 200;
  * pot gets back what it held before.
  */
 export default function PlayScreen() {
+  const styles = useStyles();
   const { show } = useMiniPlayerVisibility();
   // Opening Play is one way a hidden mini-player comes back.
   useFocusEffect(useCallback(() => show(), [show]));
@@ -189,6 +191,8 @@ function Builder({
   initialPot,
   initialAt,
 }: BuilderProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const playQuery = usePlayQuery();
@@ -277,7 +281,7 @@ function Builder({
     for (const a of music.albums) map.set(albumRef(a.albumId), a.title);
     return map;
   }, [tags, music]);
-  const hues = useMemo(() => new Map<Ref, string>(tags.map((t) => [t.id, tagColor(t.color)])), [tags]);
+  const hues = useMemo(() => new Map<Ref, string>(tags.map((t) => [t.id, colors.tag(t.color)])), [tags, colors]);
   const pictures = useMemo(() => {
     const map = new Map<Ref, string | null>();
     for (const a of music.artists) map.set(artistRef(a.name), a.coverAlbumId);
@@ -517,7 +521,7 @@ function Builder({
       color: refs.map((ref) => look(ref).hue).find((hue) => hue !== null) ?? null,
     }));
   // A mix wears the colour of its first tag (artists and albums have none).
-  const mixColor = (mix: Mix) => hues.get(mix.draft.ingredients.flat().find(isTagRef) ?? -1) ?? tagColor(null);
+  const mixColor = (mix: Mix) => hues.get(mix.draft.ingredients.flat().find(isTagRef) ?? -1) ?? colors.tag(null);
   // A pot that's a saved mix, unchanged, plays under the mix's name.
   const named = mixes.find((m) => sameDraft(m.draft, current)) ?? null;
   const playLabel = named?.name;
@@ -777,7 +781,7 @@ function Builder({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -822,4 +826,4 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.textFaint,
   },
-});
+}));

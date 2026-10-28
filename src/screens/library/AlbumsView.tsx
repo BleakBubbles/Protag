@@ -8,13 +8,15 @@ import { EmptyState } from '../../ui/EmptyState';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
 import { AlbumTile } from '../../ui/library/AlbumTile';
 import { SearchField } from '../../ui/SearchField';
-import { colors, spacing } from '../../ui/theme';
+import { spacing } from '../../ui/theme';
+import { makeStyles, useColors } from '../../ui/ThemeContext';
 
 const COLUMNS = 2;
 const GAP = spacing.lg;
 
 /** Every album as its cover, two to a row. Tap one for its tracklist. */
 export function AlbumsView() {
+  const styles = useStyles();
   const { data } = useLibraryQuery(listAlbums, []);
   const screen = useWindowDimensions();
   const [query, setQuery] = useState('');
@@ -59,7 +61,7 @@ export function AlbumsView() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -75,4 +77,4 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: spacing.lg,
   },
-});
+}));

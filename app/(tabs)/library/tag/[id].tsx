@@ -44,7 +44,8 @@ import { TagRow } from '@/ui/library/TagRow';
 import { LogoMark } from '@/ui/LogoMark';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { headerTitleText } from '@/ui/stackOptions';
-import { colors, font, iconSize, spacing, tagColor } from '@/ui/theme';
+import { font, iconSize, spacing } from '@/ui/theme';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 const NO_TAGS: readonly Tag[] = [];
 const SHUFFLE_SIZE = 52;
@@ -53,6 +54,8 @@ type Dialog = 'rename' | 'move' | 'add-subtag' | null;
 
 /** One tag: its subtags, every song under it (subtags included), and shuffle. */
 export default function TagScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const id = Number(rawId);
   const db = useSQLiteContext();
@@ -212,7 +215,7 @@ export default function TagScreen() {
               accessibilityLabel={`Colour: ${tag.color ?? 'none'}. Change colour`}
               style={({ pressed }) => [
                 styles.titleDot,
-                { backgroundColor: tagColor(tag.color) },
+                { backgroundColor: colors.tag(tag.color) },
                 pressed && styles.titleDotPressed,
               ]}
             />
@@ -394,7 +397,7 @@ export default function TagScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -468,4 +471,4 @@ const styles = StyleSheet.create({
     marginVertical: spacing.xs,
     backgroundColor: colors.border,
   },
-});
+}));

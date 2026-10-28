@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { stackScreenOptions } from '@/ui/stackOptions';
+import { useStackScreenOptions } from '@/ui/stackOptions';
 
 /**
  * The Library's main page always sits under anything opened into the tab from
@@ -15,6 +15,7 @@ export const unstable_settings = {
  * mini-player on screen, the way browsing into a playlist does in other apps.
  */
 export default function LibraryLayout() {
+  const stackScreenOptions = useStackScreenOptions();
   return (
     <Stack screenOptions={stackScreenOptions}>
       {/* The index sets its own header: it changes while selecting songs. */}

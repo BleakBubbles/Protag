@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon, type IconName } from './Icon';
-import { colors, font, spacing } from './theme';
+import { font, spacing } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 export interface EmptyStateProps {
   icon?: IconName;
@@ -17,6 +18,8 @@ export interface EmptyStateProps {
 }
 
 export function EmptyState({ icon, art, title, body, children, large }: EmptyStateProps) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.container}>
       {art ?? (icon ? <Icon name={icon} size={large ? 64 : 48} color={colors.textFaint} /> : null)}
@@ -28,7 +31,7 @@ export function EmptyState({ icon, art, title, body, children, large }: EmptySta
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   container: {
     alignItems: 'center',
     gap: spacing.md,
@@ -59,4 +62,4 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: spacing.sm,
   },
-});
+}));

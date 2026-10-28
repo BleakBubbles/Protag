@@ -5,7 +5,7 @@ import { Icon } from '@/ui/Icon';
 import { MiniPlayer } from '@/ui/player/MiniPlayer';
 import { MiniPlayerVisibilityProvider } from '@/ui/player/MiniPlayerVisibility';
 import { PlayerSheet, usePlayerSheet } from '@/ui/player/PlayerSheet';
-import { colors } from '@/ui/theme';
+import { useColors } from '@/ui/ThemeContext';
 
 /**
  * Three tabs: Mixes (play what you've saved; the app opens here), Shuffle (build
@@ -15,6 +15,7 @@ import { colors } from '@/ui/theme';
  * automatically ends where the mini-player begins, with no per-screen padding.
  */
 export default function TabsLayout() {
+  const colors = useColors();
   return (
     <MiniPlayerVisibilityProvider>
       <PlayerSheet>
@@ -59,6 +60,7 @@ export default function TabsLayout() {
 
 /** Mini-player over the tab bar. Measured so the player sheet grows from its top edge. */
 function BottomBar(props: BottomTabBarProps) {
+  const colors = useColors();
   const { setBarHeight } = usePlayerSheet();
   return (
     <View style={{ backgroundColor: colors.bg }} onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>

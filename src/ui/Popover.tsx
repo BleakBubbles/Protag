@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, useWindowDimensions, View, type ViewInstance } from 'react-native';
 
-import { colors, radius, spacing } from './theme';
+import { radius, spacing } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 /** The screen's edge margin, which a popover keeps clear of. */
 const EDGE = spacing.lg;
@@ -52,6 +53,7 @@ export interface PopoverProps {
  * machinery, since what goes in one is short. Tap outside (or back) to close.
  */
 export function Popover({ anchor, onClose, width: wanted, pointer = false, dim = false, dark = false, flush = false, children }: PopoverProps) {
+  const styles = useStyles();
   return (
     <Modal visible={anchor !== null} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Close">
@@ -83,6 +85,7 @@ function Placed({
   flush: boolean;
   children: ReactNode;
 }) {
+  const styles = useStyles();
   const screen = useWindowDimensions();
   const [natural, setNatural] = useState<number | null>(null);
   // Fades in (with the dimming behind) once it's measured where it goes.
@@ -122,7 +125,7 @@ function Placed({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   // Catches a tap anywhere outside, to close.
   scrim: {
     ...StyleSheet.absoluteFill,
@@ -157,4 +160,4 @@ const styles = StyleSheet.create({
   pointerDown: {
     bottom: -POINTER,
   },
-});
+}));

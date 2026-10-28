@@ -8,10 +8,12 @@ import { SongCollection } from '@/screens/library/SongCollection';
 import { EmptyState } from '@/ui/EmptyState';
 import { plural } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
-import { colors } from '@/ui/theme';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 /** An album: its cover, its artist (a link), and its tracklist in order. */
 export default function AlbumScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const fromPlayer = useFromPlayer();
   const { data } = useLibraryQuery(
@@ -55,7 +57,7 @@ export default function AlbumScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -64,4 +66,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-});
+}));

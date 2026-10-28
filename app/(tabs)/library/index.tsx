@@ -15,7 +15,7 @@ import { IconButton } from '@/ui/IconButton';
 import { Welcome } from '@/ui/library/Welcome';
 import { PagerTabs } from '@/ui/PagerTabs';
 import { HeaderTitle } from '@/ui/stackOptions';
-import { colors } from '@/ui/theme';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 type LibraryView = 'tags' | 'songs' | 'artists' | 'albums';
 
@@ -34,6 +34,8 @@ const libraryHeader = {
  * there's nothing to browse yet.
  */
 export default function LibraryScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const { data: songCount } = useLibraryQuery(countSongs, []);
   const scan = useLibraryScan();
   const [view, setView] = useState<LibraryView>('tags');
@@ -88,7 +90,7 @@ export default function LibraryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -101,4 +103,4 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
   },
-});
+}));

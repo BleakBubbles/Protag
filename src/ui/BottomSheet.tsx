@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, font, radius, spacing } from './theme';
+import { font, radius, spacing } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 export interface BottomSheetProps {
   visible: boolean;
@@ -13,6 +14,7 @@ export interface BottomSheetProps {
 
 /** A panel that slides up from the bottom; tapping outside it closes it. */
 export function BottomSheet({ visible, title, onClose, children }: BottomSheetProps) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -25,7 +27,7 @@ export function BottomSheet({ visible, title, onClose, children }: BottomSheetPr
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -45,4 +47,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
   },
-});
+}));

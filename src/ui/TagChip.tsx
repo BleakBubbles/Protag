@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatCount } from './format';
-import { colors, font, iconSize, radius, spacing, tagColor, touchTarget } from './theme';
+import { font, iconSize, radius, spacing, touchTarget } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 export interface TagChipProps {
   name: string;
@@ -24,6 +25,8 @@ export interface TagChipProps {
 }
 
 export function TagChip({ name, color, count, onPress, onRemove, disabled, compact, isNew }: TagChipProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const handler = onRemove ?? onPress;
   let label = name;
   if (onRemove) label = `Remove ${name}`;
@@ -46,7 +49,7 @@ export function TagChip({ name, color, count, onPress, onRemove, disabled, compa
       {isNew ? (
         <Ionicons name="add" size={iconSize.sm - 4} color={colors.textDim} />
       ) : (
-        <View style={[styles.dot, compact && styles.dotCompact, { backgroundColor: tagColor(color) }]} />
+        <View style={[styles.dot, compact && styles.dotCompact, { backgroundColor: colors.tag(color) }]} />
       )}
       <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={1}>
         {name}
@@ -57,7 +60,7 @@ export function TagChip({ name, color, count, onPress, onRemove, disabled, compa
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -107,4 +110,4 @@ const styles = StyleSheet.create({
     ...font.numeric,
     color: colors.textFaint,
   },
-});
+}));

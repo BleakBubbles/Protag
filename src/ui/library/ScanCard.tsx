@@ -5,7 +5,8 @@ import type { ScanState } from '../../library/useLibraryScan';
 import { Button } from '../Button';
 import { Card, CardActions, CardText } from '../Card';
 import { formatCount, plural } from '../format';
-import { colors, spacing } from '../theme';
+import { spacing } from '../theme';
+import { useColors } from '../ThemeContext';
 
 export interface ScanCardProps {
   state: ScanState;
@@ -17,6 +18,7 @@ export interface ScanCardProps {
 
 /** Scan status and the rescan button, once there's a library (the first scan is `Welcome`'s). */
 export function ScanCard({ state, disabled, onScan, onChooseFolders }: ScanCardProps) {
+  const colors = useColors();
   if (state.kind === 'scanning') {
     const { progress } = state;
     return (

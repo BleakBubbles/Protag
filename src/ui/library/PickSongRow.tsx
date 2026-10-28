@@ -3,7 +3,8 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Artwork } from '../player/Artwork';
-import { colors, font, iconSize, spacing } from '../theme';
+import { font, iconSize, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 /** Fixed, for the same reason as SongRow: the list computes positions instead of measuring. */
 export const PICK_ROW_HEIGHT = 64;
@@ -31,6 +32,8 @@ export const PickSongRow = memo(function PickSongRow({
   viaSubtag,
   onToggle,
 }: PickSongRowProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const subtitle = viaSubtag && !selected ? `in via ${viaSubtag}` : (artist ?? ' ');
   return (
     <Pressable
@@ -58,7 +61,7 @@ export const PickSongRow = memo(function PickSongRow({
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   row: {
     height: PICK_ROW_HEIGHT,
     flexDirection: 'row',
@@ -85,4 +88,4 @@ const styles = StyleSheet.create({
   via: {
     color: colors.accentFg,
   },
-});
+}));

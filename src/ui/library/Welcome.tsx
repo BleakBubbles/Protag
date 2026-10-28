@@ -5,7 +5,8 @@ import { Button } from '../Button';
 import { EmptyState } from '../EmptyState';
 import { formatCount } from '../format';
 import { LogoMark } from '../LogoMark';
-import { colors, font, spacing } from '../theme';
+import { font, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 export interface WelcomeProps {
   state: ScanState;
@@ -20,6 +21,8 @@ export interface WelcomeProps {
  * songs. Each step of the first scan says how it's going in the same spot.
  */
 export function Welcome({ state, disabled, onScan, onChooseFolders }: WelcomeProps) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <EmptyState large art={<LogoMark width={48} />} title="Welcome to ProTag" body={bodyFor(state)}>
       {state.kind === 'scanning' ? (
@@ -67,7 +70,7 @@ function bodyFor(state: ScanState): string {
   }
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   progress: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -78,4 +81,4 @@ const styles = StyleSheet.create({
     ...font.label,
     color: colors.textDim,
   },
-});
+}));

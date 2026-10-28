@@ -4,7 +4,8 @@ import type { ScanState } from '../../library/useLibraryScan';
 import { Button } from '../Button';
 import { Card, CardActions, CardText } from '../Card';
 import { formatCount, formatDaysAgo } from '../format';
-import { colors, font, radius, spacing } from '../theme';
+import { font, radius, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 import { ScanSummaryText } from './ScanCard';
 
 const STATUS_HEIGHT = 20;
@@ -32,6 +33,8 @@ export interface LibraryOverviewProps {
  * looked, and the two ways to change that — rescan, or choose folders.
  */
 export function LibraryOverview({ counts, state, disabled, onScan, onChooseFolders }: LibraryOverviewProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const denied = state.kind === 'denied' ? state : null;
   // Before the first scan there's nothing to scan *again*.
   const scanned = counts.songs > 0 || counts.lastScanAt !== null;
@@ -99,6 +102,7 @@ function statusLine(state: ScanState, lastScanAt: number | null, scanned: boolea
 }
 
 function Stat({ value, of, unit }: { value: string; of?: string; unit: string }) {
+  const styles = useStyles();
   return (
     <View style={styles.stat}>
       <Text style={styles.value} numberOfLines={1}>
@@ -110,7 +114,7 @@ function Stat({ value, of, unit }: { value: string; of?: string; unit: string })
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   stats: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -146,4 +150,4 @@ const styles = StyleSheet.create({
     color: colors.textFaint,
     flexShrink: 1,
   },
-});
+}));

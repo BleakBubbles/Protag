@@ -6,7 +6,8 @@ import type { TagRow as Tag } from '../../db/types';
 import { feelHold, HOLD_MS } from '../haptics';
 import { Artwork, artworkRadius } from '../player/Artwork';
 import { TagChip } from '../TagChip';
-import { colors, font, iconSize, spacing } from '../theme';
+import { font, iconSize, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 /**
  * Fixed so the list can compute row positions instead of measuring each one,
@@ -51,6 +52,8 @@ export const SongRow = memo(function SongRow({
   onPress,
   onLongPress,
 }: SongRowProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const hidden = tags.length - MAX_CHIPS;
 
   return (
@@ -108,7 +111,7 @@ export const SongRow = memo(function SongRow({
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   row: {
     height: SONG_ROW_HEIGHT,
     flexDirection: 'row',
@@ -165,4 +168,4 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.textFaint,
   },
-});
+}));

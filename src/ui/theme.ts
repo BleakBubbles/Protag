@@ -6,8 +6,10 @@ import { isTagColor, type TagColor } from '@/db/tagColors';
  * Design tokens — the only place visual values live.
  *
  * Every component reads from here instead of hardcoding, so re-theming the app
- * means editing this file, not hunting through screens. `app.json` pins
- * `userInterfaceStyle` to "dark" so the system never fights this palette.
+ * means editing this file, not hunting through screens. Colours come in two
+ * palettes, dark and light, picked by ThemeContext (the phone's setting unless
+ * the user chose one); components read the current one with `useColors()` or
+ * `makeStyles()`, never these objects directly.
  *
  * Warm dark: neutrals with a faint brown tint, so the UI feels considered but
  * still recedes behind album art. Keep the tint barely visible — more and the
@@ -17,7 +19,7 @@ import { isTagColor, type TagColor } from '@/db/tagColors';
  * and `accentFg` for teal text, icons and thin lines on the dark background,
  * where the deep shade is too dark to read.
  */
-export const colors = {
+const dark = {
   bg: '#151413',
   surface: '#1E1D1B',
   surfaceAlt: '#272624',
@@ -47,7 +49,7 @@ export const colors = {
   exclude: '#D9706A',
 
   danger: '#D9706A',
-} as const;
+};
 
 export const spacing = {
   xs: 4,
@@ -150,7 +152,7 @@ export const touchTarget = 44;
  * What each tag colour name looks like. A wide range, so a big library can tell
  * tags apart, but softened slightly so they sit on the warm neutrals.
  */
-export const tagColors = {
+const darkTags = {
   red: '#E06C64',
   orange: '#E08A4F',
   yellow: '#D9B648',
@@ -165,7 +167,21 @@ export const tagColors = {
   gray: '#959089',
 } satisfies Record<TagColor, string>;
 
-/** A tag's stored colour name as a colour; gray for none or a name no longer in the palette. */
-export function tagColor(name: string | null | undefined): string {
-  return name && isTagColor(name) ? tagColors[name] : tagColors.gray;
+export type Scheme = 'dark' | 'light';
+
+/** Every colour role, plus the tag colours and which scheme it is. */
+export type Palette = { readonly [Role in keyof typeof dark]: string } & {
+  readonly scheme: Scheme;
+  /** A tag's stored colour name as a colour; gray for none or a name no longer in the palette. */
+  tag: (name: string | null | undefined) => string;
+};
+
+function palette(scheme: Scheme, roles: typeof dark, tags: Record<TagColor, string>): Palette {
+  return { ...roles, scheme, tag: (name) => (name && isTagColor(name) ? tags[name] : tags.gray) };
 }
+
+// The light palette is still the dark one until it's designed.
+export const palettes: Record<Scheme, Palette> = {
+  dark: palette('dark', dark, darkTags),
+  light: palette('light', dark, darkTags),
+};

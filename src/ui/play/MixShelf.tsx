@@ -7,7 +7,8 @@ import { deleteMix, renameMix, type Mix } from '../../db/mixes';
 import type { Rect } from '../Popover';
 import { PopupMenu } from '../PopupMenu';
 import { PromptDialog } from '../PromptDialog';
-import { colors, font, radius, spacing } from '../theme';
+import { font, radius, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 import { ArtMosaic } from './ArtMosaic';
 import { MixCard } from './MixCard';
 
@@ -46,6 +47,7 @@ export interface MixShelfProps {
  * its tags as chips): Edit (into the pot), Rename, Delete.
  */
 export function MixShelf({ mixes, art, describe, colorOf, chipsOf, onPlay, onEdit, scrollEnabled }: MixShelfProps) {
+  const styles = useStyles();
   const db = useSQLiteContext();
   const { width: screenWidth } = useWindowDimensions();
   const cardWidth = (screenWidth - spacing.lg * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
@@ -125,6 +127,8 @@ export function MixShelf({ mixes, art, describe, colorOf, chipsOf, onPlay, onEdi
 
 /** The head of a mix's menu: the mix it's for, by its artwork, name and tags. */
 function MixMenuHead({ name, albumIds, color, chips }: { name: string; albumIds: readonly string[]; color: string; chips: readonly MixChip[] }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.head}>
       <View style={styles.headRow}>
@@ -150,7 +154,7 @@ function MixMenuHead({ name, albumIds, color, chips }: { name: string; albumIds:
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   // Room above the first row for a held card's ring, which the list would clip.
   grid: {
     paddingTop: spacing.sm,
@@ -203,4 +207,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingTop: spacing.lg,
   },
-});
+}));

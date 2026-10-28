@@ -3,7 +3,8 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { TagMark } from '../../library/bulkTags';
-import { colors, font, iconSize, radius, spacing, tagColor } from '../theme';
+import { font, iconSize, radius, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 export const TAG_CHECK_ROW_HEIGHT = 56;
 const BOX = 22;
@@ -31,6 +32,8 @@ export interface TagCheckRowProps {
  * whole row is the target.
  */
 export const TagCheckRow = memo(function TagCheckRow({ id, label, color, mark, note, onPress }: TagCheckRowProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const on = mark !== 'none';
   return (
     <Pressable
@@ -43,7 +46,7 @@ export const TagCheckRow = memo(function TagCheckRow({ id, label, color, mark, n
       <View style={[styles.box, on && styles.boxOn]}>
         {on && <Ionicons name={mark === 'all' ? 'checkmark' : 'remove'} size={iconSize.sm - 4} color={colors.bg} />}
       </View>
-      <View style={[styles.dot, { backgroundColor: tagColor(color) }]} />
+      <View style={[styles.dot, { backgroundColor: colors.tag(color) }]} />
       <Text style={styles.label} numberOfLines={1}>
         {label}
       </Text>
@@ -52,7 +55,7 @@ export const TagCheckRow = memo(function TagCheckRow({ id, label, color, mark, n
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   row: {
     height: TAG_CHECK_ROW_HEIGHT,
     flexDirection: 'row',
@@ -90,4 +93,4 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.textDim,
   },
-});
+}));

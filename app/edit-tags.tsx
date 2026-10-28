@@ -21,7 +21,8 @@ import { Icon } from '@/ui/Icon';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { SaveButton } from '@/ui/SaveButton';
 import { SearchField } from '@/ui/SearchField';
-import { colors, font, spacing } from '@/ui/theme';
+import { font, spacing } from '@/ui/theme';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 const RECENT_LIMIT = 12;
 /** As wide as a tag row's checkbox, so the + sits in the same column. */
@@ -41,6 +42,8 @@ const lower = (names: readonly string[]) => names.map((n) => n.toLowerCase()).jo
  * typed, with "parent/child" making nested tags in one go.
  */
 export default function EditTagsScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const { songs: rawSongs } = useLocalSearchParams<{ songs: string }>();
   const songIds = useMemo(
     () => (rawSongs ?? '').split(',').map(Number).filter(Number.isInteger),
@@ -275,7 +278,7 @@ export default function EditTagsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -307,4 +310,4 @@ const styles = StyleSheet.create({
   createNote: {
     color: colors.textDim,
   },
-});
+}));

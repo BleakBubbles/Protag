@@ -15,7 +15,8 @@ import type { SongSelection } from '../../ui/hooks/useSongSelection';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '../../ui/library/SelectionBar';
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { SearchField } from '../../ui/SearchField';
-import { colors, font, spacing } from '../../ui/theme';
+import { font, spacing } from '../../ui/theme';
+import { makeStyles, useColors } from '../../ui/ThemeContext';
 
 const NO_TAGS: readonly TagRow[] = [];
 
@@ -31,6 +32,7 @@ export interface SongsViewProps {
  * to start selecting, then Tag… to tag them (one or many).
  */
 export function SongsView({ selection, onSongs }: SongsViewProps) {
+  const styles = useStyles();
   const { data } = useLibraryQuery(async (db) => {
     const [songs, tags] = await Promise.all([listAllSongs(db), listAllSongTags(db)]);
     return { songs, tags };
@@ -123,7 +125,7 @@ export function SongsView({ selection, onSongs }: SongsViewProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   header: {
     padding: spacing.lg,
     paddingBottom: spacing.sm,
@@ -133,4 +135,4 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.textFaint,
   },
-});
+}));

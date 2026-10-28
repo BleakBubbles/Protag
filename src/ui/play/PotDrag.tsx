@@ -13,7 +13,8 @@ import {
 import type { PotItem, PotSpot } from '../../query/pot';
 import { albumArtUri } from '../../library/assets';
 import { Artwork } from '../player/Artwork';
-import { colors, font, radius, spacing } from '../theme';
+import { font, radius, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 /** How long a finger rests on a tag before it lifts. Shorter fights scrolling; longer feels stuck. */
 const HOLD_MS = 100;
@@ -307,15 +308,17 @@ export function Join({
   both,
   minus,
   size,
-  color = colors.textDim,
+  color,
 }: {
   both?: boolean;
   minus?: boolean;
   size: number;
   color?: string;
 }) {
+  const styles = useStyles();
+  const colors = useColors();
   const arm = Math.round(size * 0.6);
-  const bar = { backgroundColor: color, borderRadius: STROKE / 2 };
+  const bar = { backgroundColor: color ?? colors.textDim, borderRadius: STROKE / 2 };
   return (
     <View style={[styles.join, { width: size, height: size }, both && styles.turned]}>
       <View style={[bar, { width: arm, height: STROKE }]} />
@@ -326,6 +329,8 @@ export function Join({
 
 /** The floating copy of whatever is being dragged. Render it last in the drag root. */
 export function DragGhost() {
+  const colors = useColors();
+  const styles = useStyles();
   const { active, position } = usePotDrag();
   if (!active) return null;
   const { parts, picture } = active.ghost;
@@ -388,7 +393,7 @@ export function DragGhost() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   ghost: {
     position: 'absolute',
     top: 0,
@@ -466,4 +471,4 @@ const styles = StyleSheet.create({
   turned: {
     transform: [{ rotate: '45deg' }],
   },
-});
+}));

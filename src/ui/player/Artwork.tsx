@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
-import { colors, radius } from '../theme';
+import { radius } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 export interface ArtworkProps {
   /** `content://` album-art URI from MediaStore, or null. */
@@ -23,6 +24,8 @@ export function artworkRadius(size: number): number {
 }
 
 export function Artwork({ uri, size, cornerRadius }: ArtworkProps) {
+  const colors = useColors();
+  const styles = useStyles();
   // Keyed by uri so a new song gets a fresh chance to load.
   const [failedUri, setFailedUri] = useState<string | null>(null);
   const showImage = uri !== null && failedUri !== uri;
@@ -43,11 +46,11 @@ export function Artwork({ uri, size, cornerRadius }: ArtworkProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   frame: {
     backgroundColor: colors.surfaceAlt,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
-});
+}));

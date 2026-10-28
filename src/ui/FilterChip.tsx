@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { colors, font, iconSize, radius, spacing, touchTarget } from './theme';
+import { font, iconSize, radius, spacing, touchTarget } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 const HEIGHT = 32;
 
@@ -16,6 +17,8 @@ export interface FilterChipProps {
  * accent with a check, so it's clear at a glance which filters are applied.
  */
 export function FilterChip({ label, selected, onToggle }: FilterChipProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const color = selected ? colors.accentFg : colors.textDim;
   return (
     <Pressable
@@ -31,7 +34,7 @@ export function FilterChip({ label, selected, onToggle }: FilterChipProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   chip: {
     height: HEIGHT,
     flexDirection: 'row',
@@ -52,4 +55,4 @@ const styles = StyleSheet.create({
   label: {
     ...font.label,
   },
-});
+}));

@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 
 import { Icon, type IconName } from './Icon';
-import { colors, font, radius, spacing } from './theme';
+import { font, radius, spacing } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 /** The button's height, and its width with the label folded away. */
 export const FAB_SIZE = 56;
@@ -66,6 +67,8 @@ export interface FabProps {
  * already above the tab bar and mini-player, so no insets are added here.
  */
 export function Fab({ label, icon, extended, shown = true, onPress }: FabProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const progress = useRef(new Animated.Value(extended ? 1 : 0)).current;
   const appear = useRef(new Animated.Value(shown ? 1 : 0)).current;
   const [labelWidth, setLabelWidth] = useState(0);
@@ -130,7 +133,7 @@ export function Fab({ label, icon, extended, shown = true, onPress }: FabProps) 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   place: {
     position: 'absolute',
     right: spacing.lg,
@@ -159,4 +162,4 @@ const styles = StyleSheet.create({
     left: 0,
     opacity: 0,
   },
-});
+}));

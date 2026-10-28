@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View, type TextInputInstance } from 'react-native';
 
 import { Button } from './Button';
-import { colors, font, radius, spacing, touchTarget } from './theme';
+import { font, radius, spacing, touchTarget } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 export interface PromptDialogProps {
   visible: boolean;
@@ -40,6 +41,8 @@ export function PromptDialog({
   onSubmit,
   onClose,
 }: PromptDialogProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const [value, setValue] = useState(initialValue);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -109,7 +112,7 @@ export function PromptDialog({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   backdrop: {
     position: 'absolute',
     top: 0,
@@ -158,4 +161,4 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: spacing.md,
   },
-});
+}));

@@ -16,7 +16,8 @@ import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { Artwork } from '../../ui/player/Artwork';
 import { NoTags, TagButton } from '../../ui/TagButton';
 import { TagChip } from '../../ui/TagChip';
-import { colors, font, spacing } from '../../ui/theme';
+import { font, spacing } from '../../ui/theme';
+import { makeStyles, useColors } from '../../ui/ThemeContext';
 
 const NO_TAGS: readonly TagRow[] = [];
 const MAX_PICTURE = 220;
@@ -68,6 +69,7 @@ export function SongCollection({
   children,
   inOrder = true,
 }: SongCollectionProps) {
+  const styles = useStyles();
   const screen = useWindowDimensions();
   const { playQueue } = usePlayerActions();
   const fromPlayer = useFromPlayer();
@@ -192,6 +194,7 @@ export function SongCollection({
 
 /** A labelled part of an album or artist page ("Song tags", "Albums"), full width. */
 export function CollectionSection({ title, children }: { title: string; children: ReactNode }) {
+  const styles = useStyles();
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -200,7 +203,7 @@ export function CollectionSection({ title, children }: { title: string; children
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -259,4 +262,4 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
-});
+}));

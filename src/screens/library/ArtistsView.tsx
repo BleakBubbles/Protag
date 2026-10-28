@@ -9,10 +9,12 @@ import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
 import { ARTIST_ROW_HEIGHT, ArtistRow } from '../../ui/library/ArtistRow';
 import { SearchField } from '../../ui/SearchField';
-import { colors, spacing } from '../../ui/theme';
+import { spacing } from '../../ui/theme';
+import { makeStyles, useColors } from '../../ui/ThemeContext';
 
 /** Every artist, A to Z. Tap one for their albums and songs. */
 export function ArtistsView() {
+  const styles = useStyles();
   const { data } = useLibraryQuery(listArtists, []);
   const { getItemLayout, onHeaderLayout } = useFixedRowLayout(ARTIST_ROW_HEIGHT);
   const [query, setQuery] = useState('');
@@ -52,7 +54,7 @@ export function ArtistsView() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -61,4 +63,4 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.sm,
   },
-});
+}));

@@ -3,7 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { IconButton } from './IconButton';
 import { Popover, useAnchor } from './Popover';
-import { colors, font, iconSize, spacing } from './theme';
+import { font, iconSize, spacing } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 export interface InfoButtonProps {
   /** What it explains, for the bubble's heading and the button's label ("About playlists"). */
@@ -20,6 +21,8 @@ const WIDTH = 320;
  * for whoever wants it. Tap anywhere (or back) to close.
  */
 export function InfoButton({ topic, paragraphs }: InfoButtonProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const anchor = useAnchor();
   return (
     <View ref={anchor.ref} collapsable={false}>
@@ -44,7 +47,7 @@ export function InfoButton({ topic, paragraphs }: InfoButtonProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   bubble: {
     padding: spacing.lg,
     gap: spacing.sm,
@@ -57,4 +60,4 @@ const styles = StyleSheet.create({
     ...font.body,
     color: colors.textDim,
   },
-});
+}));

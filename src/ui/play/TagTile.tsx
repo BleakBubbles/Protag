@@ -3,7 +3,8 @@ import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import type { TagChoice } from '../../query/types';
 import { formatCount } from '../format';
-import { colors, font, iconSize, radius, spacing, tagColor } from '../theme';
+import { font, iconSize, radius, spacing, type Palette } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 import { useDraggable, usePotDrop } from './PotDrag';
 
 export const TAG_TILE_HEIGHT = 64;
@@ -14,7 +15,7 @@ const STRIP = 40;
 const WASH: Record<TagChoice, number> = { include: 1, off: 0.5, exclude: 1 };
 
 /** The ring that says a tag is in the mix, and how: white for in, red for kept out. */
-const RING: Record<Exclude<TagChoice, 'off'>, string> = { include: colors.text, exclude: colors.exclude };
+const RING = { include: 'text', exclude: 'exclude' } as const satisfies Record<Exclude<TagChoice, 'off'>, keyof Palette>;
 /** The ring sits this far outside the tile, with a sliver of background between. TagGrid's gap leaves room for two. */
 const RING_GAP = 2;
 const RING_WIDTH = 2;
@@ -66,7 +67,9 @@ export interface TagTileProps {
  * arrow, that goes in to them; the rest of the tile still drops it in the pot.
  */
 export function TagTile({ tagId, name, parent, color, songCount, choice, width, onPress, subtags, onOpen }: TagTileProps) {
-  const hue = tagColor(color);
+  const colors = useColors();
+  const styles = useStyles();
+  const hue = colors.tag(color);
   const included = choice === 'include';
   const excluded = choice === 'exclude';
 
@@ -113,7 +116,7 @@ export function TagTile({ tagId, name, parent, color, songCount, choice, width, 
       {/* A layer outside rather than a border on the tile: it can't shift the
           text, and the tile never has a border removed (which on Android once
           left its contents blank). */}
-      {choice !== 'off' && <View style={[styles.ring, { borderColor: RING[choice] }]} pointerEvents="none" />}
+      {choice !== 'off' && <View style={[styles.ring, { borderColor: colors[RING[choice]] }]} pointerEvents="none" />}
 
       {choice !== 'off' && (
         <View
@@ -140,7 +143,7 @@ export function TagTile({ tagId, name, parent, color, songCount, choice, width, 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   // Not clipped, so the ring can sit outside it; the coloured part clips itself.
   tile: {
     height: TAG_TILE_HEIGHT,
@@ -215,4 +218,4 @@ const styles = StyleSheet.create({
     width: 1,
     opacity: 0.35,
   },
-});
+}));

@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon, type IconName } from './Icon';
 import { Popover, type Rect } from './Popover';
-import { colors, font, radius, spacing, touchTarget } from './theme';
+import { font, radius, spacing, touchTarget } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 export interface MenuAction {
   label: string;
@@ -39,6 +40,8 @@ const MENU_ICON = 22;
  * line, in red. Every action closes the menu before running.
  */
 export function PopupMenu({ anchor, actions, onClose, header, dim, flush }: PopupMenuProps) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <Popover anchor={anchor} onClose={onClose} width={WIDTH} dim={dim} flush={flush} dark>
       <View style={styles.menu} accessibilityRole="menu">
@@ -77,7 +80,7 @@ export function PopupMenu({ anchor, actions, onClose, header, dim, flush }: Popu
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   // Clips the pressed highlight to the panel's corners.
   menu: {
     paddingVertical: spacing.xs,
@@ -118,4 +121,4 @@ const styles = StyleSheet.create({
   disabled: {
     color: colors.textFaint,
   },
-});
+}));

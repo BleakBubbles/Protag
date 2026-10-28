@@ -27,7 +27,8 @@ import { SelectionBar } from '../../ui/library/SelectionBar';
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
 import { NewTagRow, TagRow } from '../../ui/library/TagRow';
 import { PromptDialog } from '../../ui/PromptDialog';
-import { colors, font, spacing } from '../../ui/theme';
+import { font, spacing } from '../../ui/theme';
+import { makeStyles, useColors } from '../../ui/ThemeContext';
 
 const NO_TAGS: readonly Tag[] = [];
 const LOOSE_LABEL = 'Not tagged yet';
@@ -47,6 +48,7 @@ export interface TagsViewProps {
  * batch at once.
  */
 export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
+  const styles = useStyles();
   const db = useSQLiteContext();
   const { data } = useLibraryQuery(async (db) => {
     const [tags, loose] = await Promise.all([
@@ -183,7 +185,7 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   notices: {
     padding: spacing.lg,
     gap: spacing.md,
@@ -206,4 +208,4 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-});
+}));

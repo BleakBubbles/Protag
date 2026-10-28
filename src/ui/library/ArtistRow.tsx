@@ -6,7 +6,8 @@ import type { ArtistSummary } from '../../db/albums';
 import { albumArtUri } from '../../library/assets';
 import { plural } from '../format';
 import { Artwork } from '../player/Artwork';
-import { colors, font, iconSize, spacing } from '../theme';
+import { font, iconSize, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 export const ARTIST_ROW_HEIGHT = 72;
 const PICTURE = 48;
@@ -19,6 +20,8 @@ export const ArtistRow = memo(function ArtistRow({
   artist: ArtistSummary;
   onPress: (name: string) => void;
 }) {
+  const colors = useColors();
+  const styles = useStyles();
   const meta = [plural(artist.songs, 'song'), artist.albums > 0 ? plural(artist.albums, 'album') : null]
     .filter(Boolean)
     .join(' · ');
@@ -47,7 +50,7 @@ export const ArtistRow = memo(function ArtistRow({
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   row: {
     height: ARTIST_ROW_HEIGHT,
     flexDirection: 'row',
@@ -69,4 +72,4 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.textDim,
   },
-});
+}));

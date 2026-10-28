@@ -2,7 +2,8 @@ import { createContext, useContext } from 'react';
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Icon, type IconName } from './Icon';
-import { colors, font, iconSize, radius, spacing, touchTarget } from './theme';
+import { font, iconSize, radius, spacing, touchTarget, type Palette } from './theme';
+import { makeStyles, useColors } from './ThemeContext';
 
 /**
  * Every button is a pill, whatever its variant, so buttons side by side match.
@@ -34,10 +35,10 @@ const SMALL_HEIGHT = 32;
  */
 export const ButtonFillContext = createContext(false);
 
-const LABEL_COLOR: Record<ButtonVariant, string> = {
-  primary: colors.onAccent,
-  tonal: colors.accentFg,
-  secondary: colors.text,
+const LABEL_COLOR: Record<ButtonVariant, keyof Palette> = {
+  primary: 'onAccent',
+  tonal: 'accentFg',
+  secondary: 'text',
 };
 
 export function Button({
@@ -49,7 +50,9 @@ export function Button({
   size = 'regular',
   style,
 }: ButtonProps) {
-  const color = LABEL_COLOR[variant];
+  const styles = useStyles();
+  const colors = useColors();
+  const color = colors[LABEL_COLOR[variant]] as string;
   const fill = useContext(ButtonFillContext);
   return (
     <Pressable
@@ -76,7 +79,7 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -111,4 +114,4 @@ const styles = StyleSheet.create({
   label: {
     ...font.label,
   },
-});
+}));

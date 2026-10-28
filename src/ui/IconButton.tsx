@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Icon, type IconName } from './Icon';
-import { colors, iconSize, radius, touchTarget } from './theme';
+import { iconSize, radius, touchTarget } from './theme';
+import { useColors } from './ThemeContext';
 
 export interface IconButtonProps {
   icon: IconName;
@@ -28,6 +29,7 @@ export function IconButton({
   disabled,
   badge,
 }: IconButtonProps) {
+  const colors = useColors();
   const tint = color ?? (active ? colors.accentFg : colors.text);
   return (
     <Pressable

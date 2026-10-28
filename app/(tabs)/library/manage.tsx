@@ -14,10 +14,12 @@ import { formatDaysAgo } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { PlaylistsCard } from '@/ui/library/ImportCards';
 import { LibraryOverview, type LibraryCounts } from '@/ui/library/LibraryOverview';
-import { colors, spacing } from '@/ui/theme';
+import { spacing } from '@/ui/theme';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 /** What ProTag sees on this phone, playlists, and tag backups — the library's housekeeping. */
 export default function ManageLibraryScreen() {
+  const styles = useStyles();
   const { data: counts } = useLibraryQuery(async (db): Promise<LibraryCounts> => {
     const [songs, tags, folders, lastScanAt] = await Promise.all([
       countSongs(db),
@@ -81,7 +83,7 @@ export default function ManageLibraryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -90,4 +92,4 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.lg,
   },
-});
+}));

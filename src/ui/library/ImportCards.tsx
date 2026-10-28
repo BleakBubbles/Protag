@@ -9,7 +9,8 @@ import { openTag } from '../../navigation';
 import { Button } from '../Button';
 import { Card, CardActions, CardText } from '../Card';
 import { formatCount, plural } from '../format';
-import { colors, font, iconSize, radius, spacing, tagColor } from '../theme';
+import { font, iconSize, radius, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 const TILE = 36;
 
@@ -81,6 +82,8 @@ export function ImportStatus({ state }: { state: ImportState }) {
 }
 
 function ImportProgress({ state }: { state: ImportState }) {
+  const colors = useColors();
+  const styles = useStyles();
   if (state.kind === 'idle') return null;
   if (state.kind === 'importing') {
     return (
@@ -95,6 +98,7 @@ function ImportProgress({ state }: { state: ImportState }) {
 }
 
 function ImportResults({ summary }: { summary: FolderImportSummary }) {
+  const styles = useStyles();
   const { results, unreadable } = summary;
   return (
     <View style={styles.results}>
@@ -115,9 +119,11 @@ function ImportResults({ summary }: { summary: FolderImportSummary }) {
  * looked into instead of just counted.
  */
 function ResultRow({ result }: { result: PlaylistImportResult }) {
+  const colors = useColors();
+  const styles = useStyles();
   const [showMissing, setShowMissing] = useState(false);
   const { tagId } = result;
-  const hue = tagColor(result.color);
+  const hue = colors.tag(result.color);
   const detail =
     tagId === null
       ? result.unmatched === 1
@@ -182,7 +188,7 @@ function ResultRow({ result }: { result: PlaylistImportResult }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   progress: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -248,4 +254,4 @@ const styles = StyleSheet.create({
     ...font.caption,
     color: colors.textFaint,
   },
-});
+}));

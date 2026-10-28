@@ -15,7 +15,8 @@ import { Marquee } from '@/ui/Marquee';
 import { DetailsWindow, type DetailsAction } from '@/ui/play/DetailsWindow';
 import { useAnchor } from '@/ui/Popover';
 import { PromptDialog } from '@/ui/PromptDialog';
-import { colors, font, radius, spacing } from '@/ui/theme';
+import { font, radius, spacing } from '@/ui/theme';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 const PILL_HEIGHT = 32;
 const PILL_PADDING = spacing.md;
@@ -32,6 +33,7 @@ export interface SourceLineProps {
  * Changing what's in a mix is the Play tab's job, from the mix's own Edit.
  */
 export function SourceLine({ queue }: SourceLineProps) {
+  const styles = useStyles();
   const db = useSQLiteContext();
   const draft = queue.source?.draft;
   const { data: mixes } = useLibraryQuery((db) => listMixes(db), []);
@@ -120,7 +122,7 @@ export function SourceLine({ queue }: SourceLineProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   slot: {
     flex: 1,
     alignItems: 'center',
@@ -151,4 +153,4 @@ const styles = StyleSheet.create({
     ...font.numeric,
     color: colors.textFaint,
   },
-});
+}));

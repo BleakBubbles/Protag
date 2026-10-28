@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, type ColorValue } from 'react-native';
 
-import { colors, headerTitleStyle } from './theme';
+import { headerTitleStyle } from './theme';
+import { useColors } from './ThemeContext';
 
 /** A header title's text; for a header that builds its own title (a tag page's, with its colour dot). */
 export const headerTitleText = {
@@ -17,6 +19,7 @@ export const headerTitleText = {
  * up by eye.
  */
 export function HeaderTitle({ children, tintColor }: { children: string; tintColor?: ColorValue }) {
+  const colors = useColors();
   return (
     <Text style={[styles.title, { color: tintColor ?? colors.text }]} numberOfLines={1}>
       {children}
@@ -25,13 +28,19 @@ export function HeaderTitle({ children, tintColor }: { children: string; tintCol
 }
 
 /** Header and background styling shared by every stack, so nested stacks match the root. */
-export const stackScreenOptions = {
-  headerStyle: { backgroundColor: colors.bg },
-  headerTintColor: colors.text,
-  headerTitleStyle,
-  headerTitle: HeaderTitle,
-  contentStyle: { backgroundColor: colors.bg },
-};
+export function useStackScreenOptions() {
+  const colors = useColors();
+  return useMemo(
+    () => ({
+      headerStyle: { backgroundColor: colors.bg },
+      headerTintColor: colors.text,
+      headerTitleStyle,
+      headerTitle: HeaderTitle,
+      contentStyle: { backgroundColor: colors.bg },
+    }),
+    [colors]
+  );
+}
 
 const styles = StyleSheet.create({
   title: headerTitleText,

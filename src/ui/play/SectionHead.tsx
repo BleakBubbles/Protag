@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { colors, font, iconSize, radius, spacing } from '../theme';
+import { font, iconSize, radius, spacing } from '../theme';
+import { makeStyles, useColors } from '../ThemeContext';
 
 /** The search row's height: the label row it replaces is this tall too, so opening it moves nothing. */
 export const SEARCH_HEIGHT = 32;
@@ -24,6 +25,8 @@ export interface SectionHeadProps {
 
 /** A Play tab section's label, with its order beside it as a quiet control. */
 export function SectionHead({ label, sort, onSort, children, tall, title }: SectionHeadProps) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={[styles.head, tall && styles.tall]}>
       {title ?? <Text style={styles.label}>{label}</Text>}
@@ -55,6 +58,8 @@ export interface TrailProps {
 
 /** Where you are among your tags, like "Your tags › kpop › generations": tap any but the last to go back out to it. */
 export function Trail({ root, path, onGo }: TrailProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const crumbs = [{ id: null, name: root }, ...path];
   return (
     <View style={styles.trail}>
@@ -84,6 +89,8 @@ export function Trail({ root, path, onGo }: TrailProps) {
 
 /** The magnifier at the end of a section head, which opens the search row. */
 export function SearchButton({ onPress }: { onPress: () => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -106,6 +113,8 @@ export interface SearchRowProps {
 
 /** A slim search field in place of a section head. Leaving it empty closes it. */
 export function SearchRow({ value, onChangeText, onClose }: SearchRowProps) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.field}>
       <Ionicons name="search" size={iconSize.sm - 4} color={colors.textFaint} />
@@ -129,7 +138,7 @@ export function SearchRow({ value, onChangeText, onClose }: SearchRowProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   head: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -206,4 +215,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-});
+}));

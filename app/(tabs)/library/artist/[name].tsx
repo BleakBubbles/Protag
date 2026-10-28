@@ -9,12 +9,15 @@ import { EmptyState } from '@/ui/EmptyState';
 import { plural } from '@/ui/format';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { AlbumTile } from '@/ui/library/AlbumTile';
-import { colors, spacing } from '@/ui/theme';
+import { spacing } from '@/ui/theme';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 const ALBUM_SIZE = 128;
 
 /** An artist: their albums as covers to dive into, then all their songs. */
 export default function ArtistScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const { name } = useLocalSearchParams<{ name: string }>();
   const fromPlayer = useFromPlayer();
   const { data } = useLibraryQuery(
@@ -74,7 +77,7 @@ export default function ArtistScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -87,4 +90,4 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
   },
-});
+}));

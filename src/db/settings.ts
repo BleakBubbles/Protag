@@ -24,6 +24,8 @@ export const SettingKey = {
   pot: 'shuffle.pot',
   /** Id of the tag the Play tab's tags were last gone in to, to come back there; empty at the top. */
   tagsAt: 'shuffle.tagsAt',
+  /** 'system' (follow the phone), 'dark' or 'light'. */
+  theme: 'app.theme',
 } as const;
 
 export type SettingKey = (typeof SettingKey)[keyof typeof SettingKey];
