@@ -30,8 +30,9 @@ const dark = {
    */
   raised: '#3D3B38',
   /**
-   * The pot: a teal band with a dark recess, the same in both schemes, like
-   * an object with its own colours (the app icon's) under any light.
+   * The pot: a teal band, the same in both schemes, with the recess cut into
+   * it and Shuffle under it in the scheme's own colours (dark teal here, paper
+   * in light), so neither is a dark hole in a light app or a white slab in a dark one.
    */
   potBand: '#0F5C54',
   potRecess: '#0B1F1C',
@@ -40,11 +41,12 @@ const dark = {
   /** Text and icons on the band. */
   onPot: '#EAF4F1',
   onPotDim: '#A9CFC8',
+  /** Inside the recess: the × between combined tags, a hovered tile's ring. */
+  onRecess: '#EAF4F1',
   /** The empty recess's words. */
   potHint: '#7FA79F',
-  /** Shuffle, the one light thing on the band. */
-  potButton: '#F3EDE2',
-  onPotButton: '#0F5C54',
+  potButton: '#0B1F1C',
+  onPotButton: '#EAF4F1',
   /** Dims the app behind something floating over it (the (i) bubble), so it stands out. */
   scrim: 'rgba(0, 0, 0, 0.4)',
 
@@ -82,18 +84,15 @@ const light: typeof dark = {
   surfaceAlt: '#E5DED1',
   border: '#D9D1C3',
   raised: '#D2C9B9',
-  // The pot keeps its own colours in light too.
+  // The band stays teal; the recess and Shuffle are paper, like the page.
   potBand: '#0F5C54',
-  potRecess: '#0B1F1C',
-  /** The recess's edge while building. */
-  potEdge: '#3F7A71',
-  /** Text and icons on the band. */
+  potRecess: '#F6F2EA',
+  potEdge: '#9CC9C0',
   onPot: '#EAF4F1',
   onPotDim: '#A9CFC8',
-  /** The empty recess's words. */
-  potHint: '#7FA79F',
-  /** Shuffle, the one light thing on the band. */
-  potButton: '#F3EDE2',
+  onRecess: '#35302A',
+  potHint: '#8E877C',
+  potButton: '#F6F2EA',
   onPotButton: '#0F5C54',
   scrim: 'rgba(40, 32, 20, 0.28)',
 

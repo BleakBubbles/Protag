@@ -185,7 +185,7 @@ export function Pot({
   }, [building, lit]);
   const edgeColor = lit.interpolate({ inputRange: [0, 1], outputRange: [colors.potRecess, colors.potEdge] });
   // The empty pot's words light up with its edge, to the same colour.
-  const wellColor = lit.interpolate({ inputRange: [0, 1], outputRange: [colors.potHint, colors.onPotDim] });
+  const wellColor = lit.interpolate({ inputRange: [0, 1], outputRange: [colors.potHint, colors.onRecess] });
 
   /** Each ingredient as a screen reader says it ("kpop and chill"), for naming what to combine with. */
   const spoken = draft.ingredients.map((tags) => tags.map((ref) => look(ref).name).join(' and '));
@@ -284,7 +284,7 @@ export function Pot({
               accessibilityRole="button"
               style={({ pressed }) => [styles.well, pressed && styles.dimmed]}
             >
-              {onOpen && <Icon name="add" size={iconSize.md} color={colors.onPotDim} />}
+              {onOpen && <Icon name="add" size={iconSize.md} color={colors.potHint} />}
               <Animated.Text style={[styles.wellText, { color: wellColor }]}>
                 {onOpen ? 'Add tags, artists or albums' : 'Tap your tags or drag them here'}
               </Animated.Text>
@@ -301,7 +301,7 @@ export function Pot({
 }
 
 /**
- * Shuffle, the way to hear what's in the pot: the one light thing on the band,
+ * Shuffle, the way to hear what's in the pot: in the scheme's own colour on the band,
  * under the recess. (Keeping it as a mix is the bookmark in the top line.) The
  * song count is in that line too, not on the button.
  */
@@ -571,7 +571,7 @@ function IngredientTile({ index, others, tags, look, count, width, resting, onTa
           <Fragment key={tags[i]}>
             {i > 0 && (
               <View style={styles.times} importantForAccessibility="no-hide-descendants">
-                <Join both size={SYMBOL} color={colors.onPot} />
+                <Join both size={SYMBOL} color={colors.onRecess} />
               </View>
             )}
             <View style={[styles.share, faceStyle(l, colors, styles), i > 0 && styles.joinedLeft, !last && styles.joinedRight]}>
@@ -782,8 +782,8 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   // Something held over the pot: a pale wash where it will land.
   landing: {
-    borderColor: colors.onPotDim,
-    backgroundColor: withAlpha(colors.onPot, 0.08),
+    borderColor: colors.potEdge,
+    backgroundColor: withAlpha(colors.onRecess, 0.08),
   },
   wellText: {
     ...font.label,
@@ -835,7 +835,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     borderColor: 'transparent',
   },
   tileHovered: {
-    borderColor: colors.onPot,
+    borderColor: colors.onRecess,
     transform: [{ scale: 1.04 }],
   },
   // Each tag's equal share of a tile, its name on its colour.
