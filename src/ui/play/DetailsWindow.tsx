@@ -167,11 +167,12 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
       <View style={styles.section}>
         <View style={styles.titleRow}>
           <View style={styles.titleText}>
-            {/* The mix's own actions sit right after its name, what they act on; the corner only closes. */}
-            <View style={styles.nameLine}>
-              <Text style={styles.title} numberOfLines={2}>
-                {title}
-              </Text>
+            {/* The mix's own actions sit right after its name, what they act on; the corner only closes.
+                They're inline in the name's text, which fills its column: shrunk to fit its words in a
+                row instead, Android's remeasure on a second opening came up a hair narrow, and the
+                last word wrapped onto a line the name doesn't show ("kpop Driving" showed "kpop"). */}
+            <Text style={styles.title} numberOfLines={2}>
+              {title}
               {actions?.map((action) => (
                 <Pressable
                   key={action.label}
@@ -187,7 +188,7 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
                   <Icon name={action.icon} size={iconSize.sm - 4} color={colors.textDim} />
                 </Pressable>
               ))}
-            </View>
+            </Text>
             <Text style={styles.count}>{songs ? plural(songs.length, 'song') : ' '}</Text>
           </View>
           <Pressable
@@ -373,7 +374,6 @@ const styles = StyleSheet.create({
   title: {
     ...font.heading,
     color: colors.text,
-    flexShrink: 1,
   },
   count: {
     ...font.label,
@@ -386,16 +386,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  nameLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
   // Overhangs the name's line rather than heightening it, so the count stays put.
+  // Inline in the text it sits on the baseline, so it's lowered to centre on the letters.
   inlineAction: {
     width: INLINE,
     height: INLINE,
     marginVertical: -spacing.sm,
+    transform: [{ translateY: 6 }],
     borderRadius: INLINE / 2,
     alignItems: 'center',
     justifyContent: 'center',
