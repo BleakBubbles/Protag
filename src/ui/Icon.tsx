@@ -21,11 +21,12 @@ const OWN = {
   restore: 'restore',
   'add-to-queue': 'playlist-plus',
   queue: 'playlist-music-outline',
+  cog: 'cog',
 } as const satisfies Record<string, ComponentProps<typeof MaterialCommunityIcons>['name']>;
 
 type OwnIconName = keyof typeof OWN;
 
-/** Any Ionicons name, or one of ProTag's own (`tag`, `tags` and their `-filled` forms; the menu actions; the queue). */
+/** Any Ionicons name, or one of ProTag's own (`tag`, `tags` and their `-filled` forms; the menu actions; the queue; the settings cog). */
 export type IconName = ComponentProps<typeof Ionicons>['name'] | OwnIconName;
 
 export interface IconProps {

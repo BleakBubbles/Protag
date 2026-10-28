@@ -23,7 +23,7 @@ export default function PlayLayout() {
           headerStyle: { backgroundColor: colors.potBand },
           headerTintColor: colors.onPot,
           headerShadowVisible: false,
-          headerRight: () => <IconButton icon="settings" label="Settings" color={colors.onPot} onPress={openSettings} />,
+          headerRight: () => <IconButton icon="cog" label="Settings" color={colors.onPot} onPress={openSettings} />,
         }}
       />
     </Stack>
