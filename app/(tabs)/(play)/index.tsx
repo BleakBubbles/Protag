@@ -108,6 +108,9 @@ export default function PlayScreen() {
   const { show } = useMiniPlayerVisibility();
   // Opening Play is one way a hidden mini-player comes back.
   useFocusEffect(useCallback(() => show(), [show]));
+  // Light icons over the band in either scheme, while this tab is what's showing.
+  const focused = useIsFocused();
+  const statusBar = focused && <StatusBar style="light" />;
 
   const { data } = useLibraryQuery(async (db) => {
     const [songs, allTags, descendants, mixes, artists, albums, tagPlays, sorts, potRows, pot, tagsAt] = await Promise.all([
@@ -140,11 +143,12 @@ export default function PlayScreen() {
     };
   }, []);
 
-  if (!data) return <View style={styles.screen} />;
+  if (!data) return <View style={styles.screen}>{statusBar}</View>;
 
   if (data.songs === 0) {
     return (
       <View style={[styles.screen, styles.centered]}>
+        {statusBar}
         <EmptyState large icon="play-circle-outline" title="Nothing to play yet" body="Scan your music from the Library tab, then mix and play it here.">
           <Button label="Go to Library" variant="tonal" onPress={openLibrary} />
         </EmptyState>
@@ -152,7 +156,12 @@ export default function PlayScreen() {
     );
   }
 
-  return <Builder {...data} />;
+  return (
+    <>
+      {statusBar}
+      <Builder {...data} />
+    </>
+  );
 }
 
 /** Artists and albums, as ingredients. */
@@ -497,12 +506,9 @@ function Builder({
       return () => sub.remove();
     }, [editingMix, browsing, changed, before])
   );
-  // The header turns teal for the mode, naming the mix, with its ways out.
-  // The header is the top of the pot's band, flowing into it with no line between.
-  const band = { headerStyle: { backgroundColor: colors.potBand }, headerTintColor: colors.onPot, headerShadowVisible: false };
+  // Editing names the mix in the header (the band's, set by the layout), with its ways out.
   const header = editingMix
     ? {
-        ...band,
         title: `Editing ${editingMix.name}`,
         headerLeft: () => <IconButton icon="close" label="Stop editing" color={colors.onPot} onPress={leaveEditing} />,
         headerRight: () => (
@@ -516,14 +522,11 @@ function Builder({
         ),
       }
     : {
-        ...band,
         title: 'Play',
         headerLeft: undefined,
-        // Not while editing, where this corner is the mix's ✓.
+        // The Settings gear, as the layout sets it; while editing, this corner is the mix's ✓.
         headerRight: () => <IconButton icon="settings-outline" label="Settings" color={colors.onPot} onPress={openSettings} />,
       };
-  // Light icons over the band in either scheme, while this tab is what's showing.
-  const focused = useIsFocused();
   const describeMix = (mix: Mix) => describeQuery(buildQuery(mixDraft(mix)), names);
   // Its ingredients as chips for its menu: names joined like the pot's (×), on the first tag's colour.
   const mixChips = (mix: Mix) =>
@@ -541,7 +544,6 @@ function Builder({
     <PotDragContext.Provider value={drag}>
       <View ref={drag.rootRef} style={styles.screen} onLayout={(e) => setRoom(e.nativeEvent.layout.height)}>
         <Stack.Screen options={header} />
-        {focused && <StatusBar style="light" />}
         <View
           onLayout={(e) => {
             // Only the part that never changes is kept, so dragging the tray doesn't re-render.
