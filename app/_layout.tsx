@@ -59,6 +59,9 @@ function App() {
           {/* Focused tasks cover everything, the mini-player included. */}
           <Stack.Screen name="add-songs/[tagId]" options={{ presentation: 'modal', title: '' }} />
           <Stack.Screen name="edit-tags" options={{ presentation: 'modal', title: '' }} />
+          {/* Settings are a detour, not a place: over the tabs, so leaving means Back, to where you were. */}
+          <Stack.Screen name="settings/index" options={{ title: 'Manage library' }} />
+          <Stack.Screen name="settings/folders" options={{ title: 'Folders' }} />
           {/* Pages opened from the full player, over it, so Back returns to it as it was. */}
           <Stack.Screen name="from-player/tag/[id]" options={{ title: '' }} />
           <Stack.Screen name="from-player/album/[id]" options={{ title: '' }} />

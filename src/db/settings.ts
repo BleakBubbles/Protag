@@ -12,7 +12,7 @@ export const SettingKey = {
   backupFolder: 'backup.folderUri',
   /** 'shown' once the user has seen how to bring back a hidden mini-player. */
   miniPlayerHint: 'miniPlayer.hint',
-  /** JSON `FolderChoices`: which of the phone's audio folders are read (library/folders.ts). */
+  /** JSON `FolderChoices`: which of the phone's audio folders are read (library/libraryFolders.ts). */
   libraryFolders: 'library.folders',
   /** Epoch ms when the last complete library scan finished. */
   lastScanAt: 'library.lastScanAt',
