@@ -53,6 +53,11 @@ export function useStagedSave(dirty: boolean, apply: () => Promise<void>) {
     setSaving(true);
     try {
       await apply();
+      // Saving can change the screen underneath (the Library ends its selection, swapping its
+      // header). Two frames let that land while this screen is still standing, before it closes:
+      // a header update during the closing animation crashed release builds
+      // (react-native-screens: "The specified child already has a parent").
+      await nextFrames(2);
       setLeaving(true);
     } catch (error) {
       setSaving(false);
@@ -62,3 +67,9 @@ export function useStagedSave(dirty: boolean, apply: () => Promise<void>) {
 
   return { save, saving };
 }
+
+const nextFrames = (count: number) =>
+  new Promise<void>((resolve) => {
+    const step = (left: number) => (left === 0 ? resolve() : requestAnimationFrame(() => step(left - 1)));
+    step(count);
+  });
