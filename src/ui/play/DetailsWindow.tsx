@@ -192,7 +192,7 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
                   hitSlop={(touchTarget - INLINE) / 2}
                   style={({ pressed }) => [styles.inlineAction, pressed && styles.pressed]}
                 >
-                  <Icon name={action.icon} size={iconSize.sm - 4} color={colors.textDim} />
+                  <Icon name={action.icon} size={iconSize.sm} color={colors.textDim} />
                 </Pressable>
               ))}
             </Text>
@@ -202,9 +202,9 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
             onPress={onClose}
             accessibilityRole="button"
             accessibilityLabel="Close"
-            style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.action, styles.closeLevel, pressed && styles.pressed]}
           >
-            <Icon name="close" size={iconSize.sm} color={colors.textDim} />
+            <Icon name="close" size={iconSize.sm + 2} color={colors.textDim} />
           </Pressable>
         </View>
       </View>
@@ -392,6 +392,11 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     borderRadius: touchTarget / 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Level with the title's first line rather than the title and count together; its touch area
+  // overhangs above. Lora's letters sit low in their line, so it's lowered a touch to meet them by eye.
+  closeLevel: {
+    marginTop: -(touchTarget - font.heading.lineHeight) / 2 + 4,
   },
   // Overhangs the name's line rather than heightening it, so the count stays put.
   // Inline in the text it sits on the baseline, so it's lowered to centre on the letters.
