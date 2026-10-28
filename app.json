@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "protag",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.protag.app"
@@ -37,9 +37,13 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#151413",
+          "backgroundColor": "#F6F2EA",
           "image": "./assets/logo-mark.png",
-          "imageWidth": 80
+          "imageWidth": 80,
+          "dark": {
+            "backgroundColor": "#151413",
+            "image": "./assets/logo-mark.png"
+          }
         }
       ],
       "expo-asset",
