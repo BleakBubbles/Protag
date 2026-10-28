@@ -72,7 +72,7 @@ import { font, spacing } from '@/ui/theme';
 import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 /** Covers in the pot's preview line, and how many of the most-played songs to find them among. */
-const COVERS = 5;
+const COVERS = 3;
 const COVER_SAMPLE = 60;
 /** How many artists and albums each picture row shows before "All". */
 const ROW = 12;
