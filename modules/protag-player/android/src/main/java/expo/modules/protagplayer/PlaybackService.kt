@@ -6,6 +6,7 @@ import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
@@ -28,6 +29,10 @@ class PlaybackService : MediaLibraryService() {
 
   override fun onCreate() {
     super.onCreate()
+    // ProTag's mark in the status bar and on the notification, rather than Media3's music note.
+    setMediaNotificationProvider(
+      DefaultMediaNotificationProvider.Builder(this).build().apply { setSmallIcon(R.drawable.protag_notification_icon) }
+    )
     val builder = MediaLibrarySession.Builder(this, Playback.player(this), Library(this))
     // Tapping the notification opens the app.
     packageManager.getLaunchIntentForPackage(packageName)?.let { launch ->

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The status bar and media notification's small icon: the ProTag mark (assets/brand/logo.svg)
+  as a silhouette, which Android tints. The logo's 560 square, cropped to the mark: its ring
+  and its stem, cut off at the bottom so it fits a square like a P, with a little room all round.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="340"
+    android:viewportHeight="340">
+  <group android:translateX="-110" android:translateY="-125">
+    <!-- The stem, from under the ring to the bottom of the crop. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M144.73,279.964 L200.73,279.964 L200.73,445 L144.73,445 Z" />
+    <!-- The ring: an ellipse with an ellipse cut out, tilted as in the logo. -->
+    <group
+        android:pivotX="279.611"
+        android:pivotY="254.964"
+        android:rotation="-22.5">
+      <path
+          android:fillColor="#FFFFFFFF"
+          android:fillType="evenOdd"
+          android:pathData="M139.611,254.964 a140,100 0 1,0 280,0 a140,100 0 1,0 -280,0 Z M195.567,254.578 a84,60 0 1,0 168,0 a84,60 0 1,0 -168,0 Z" />
+    </group>
+  </group>
+</vector>
