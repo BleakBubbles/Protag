@@ -123,7 +123,7 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
           />
         )}
         ListHeaderComponent={
-          <View onLayout={onHeaderLayout}>
+          <View onLayout={onHeaderLayout} style={styles.top}>
             {/* Only takes room while there's something to report or offer. */}
             {(imports.state.kind !== 'idle' || (tags.length === 0 && imports.showPrompt)) && (
               <View style={styles.notices}>
@@ -186,6 +186,10 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
 }
 
 const useStyles = makeStyles((colors) => StyleSheet.create({
+  // With the rows' own padding, the first tile starts as far below the tabs as the other tabs' search fields.
+  top: {
+    paddingTop: spacing.xs,
+  },
   notices: {
     padding: spacing.lg,
     gap: spacing.md,
