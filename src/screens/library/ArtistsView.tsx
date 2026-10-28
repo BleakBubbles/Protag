@@ -47,7 +47,7 @@ export function ArtistsView() {
         data && trimmed ? (
           <EmptyState icon="search" title="No matches" body={`No artist matches "${trimmed}".`} />
         ) : data ? (
-          <EmptyState icon="person-outline" title="No artists" body="None of the songs on this phone say who they're by." />
+          <EmptyState icon="person-outline" title="No artists" body="Artists show up here when your music files name them." />
         ) : undefined
       }
     />

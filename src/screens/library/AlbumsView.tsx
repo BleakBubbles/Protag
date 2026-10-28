@@ -54,7 +54,7 @@ export function AlbumsView() {
         data && trimmed ? (
           <EmptyState icon="search" title="No matches" body={`No album matches "${trimmed}".`} />
         ) : data ? (
-          <EmptyState icon="disc-outline" title="No albums" body="None of the songs on this phone say which album they're from." />
+          <EmptyState icon="disc-outline" title="No albums" body="Albums show up here when your music files name them." />
         ) : undefined
       }
     />
