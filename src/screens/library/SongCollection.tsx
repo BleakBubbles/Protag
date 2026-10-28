@@ -9,6 +9,7 @@ import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
 import { ARTIST_MODES } from '../../player/queue';
 import { Button } from '../../ui/Button';
 import { CardActions } from '../../ui/Card';
+import { useDragSelect } from '../../ui/hooks/useDragSelect';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useSongSelection } from '../../ui/hooks/useSongSelection';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '../../ui/library/SelectionBar';
@@ -74,11 +75,12 @@ export function SongCollection({
   const { playQueue } = usePlayerActions();
   const fromPlayer = useFromPlayer();
   const { song: current } = useNowPlaying();
-  const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
+  const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(SONG_ROW_HEIGHT);
   const ids = useMemo(() => songs.map((s) => s.id), [songs]);
   // Press and hold a song to start selecting; then Tag… tags them.
   const selection = useSongSelection(ids);
   const { selecting, selected, toggle } = selection;
+  const drag = useDragSelect({ ids, rowHeight: SONG_ROW_HEIGHT, headerHeight, selection });
   const size = Math.min(MAX_PICTURE, screen.width * 0.55);
 
   /** The tags on these songs, the most widely used first. */
@@ -103,88 +105,90 @@ export function SongCollection({
   return (
     <>
       <Stack.Screen options={selecting ? selection.header : { title: '' }} />
-      <FlatList
-        style={styles.screen}
-        data={songs}
-        keyExtractor={(song) => String(song.id)}
-        getItemLayout={getItemLayout}
-        extraData={selection.selection}
-        contentContainerStyle={selecting ? { paddingBottom: SELECTION_BAR_HEIGHT } : undefined}
-        renderItem={({ item }) => (
-          <SongRow
-            id={item.id}
-            title={item.title}
-            artist={item.artist}
-            artworkUri={albumArtUri(item.album_id)}
-            tags={tags.get(item.id) ?? NO_TAGS}
-            active={current?.id === item.id}
-            selecting={selecting}
-            selected={selection.selection?.has(item.id) ?? false}
-            // In order from it (an album), or shuffled by song starting with it (an artist).
-            onPress={selecting ? toggle : (id) => play(id, !inOrder, false)}
-            onLongPress={toggle}
-          />
-        )}
-        ListHeaderComponent={
-          <View style={styles.header} onLayout={onHeaderLayout}>
-            <Artwork
-              uri={picture.albumId ? albumArtUri(picture.albumId) : null}
-              size={size}
-              cornerRadius={picture.round ? size / 2 : undefined}
+      <View ref={drag.frameRef} style={styles.screen} {...drag.frameProps}>
+        <FlatList
+          {...drag.listProps}
+          data={songs}
+          keyExtractor={(song) => String(song.id)}
+          getItemLayout={getItemLayout}
+          extraData={selection.selection}
+          contentContainerStyle={selecting ? { paddingBottom: SELECTION_BAR_HEIGHT } : undefined}
+          renderItem={({ item }) => (
+            <SongRow
+              id={item.id}
+              title={item.title}
+              artist={item.artist}
+              artworkUri={albumArtUri(item.album_id)}
+              tags={tags.get(item.id) ?? NO_TAGS}
+              active={current?.id === item.id}
+              selecting={selecting}
+              selected={selection.selection?.has(item.id) ?? false}
+              // In order from it (an album), or shuffled by song starting with it (an artist).
+              onPress={selecting ? toggle : (id) => play(id, !inOrder, false)}
+              onLongPress={drag.start}
             />
-            <View style={styles.names}>
-              <Text style={styles.title} numberOfLines={2}>
-                {title}
-              </Text>
-              {subtitle &&
-                (subtitle.onPress ? (
-                  <Pressable onPress={subtitle.onPress} accessibilityRole="link" hitSlop={8}>
-                    <Text style={[styles.subtitle, styles.link]} numberOfLines={1}>
+          )}
+          ListHeaderComponent={
+            <View style={styles.header} onLayout={onHeaderLayout}>
+              <Artwork
+                uri={picture.albumId ? albumArtUri(picture.albumId) : null}
+                size={size}
+                cornerRadius={picture.round ? size / 2 : undefined}
+              />
+              <View style={styles.names}>
+                <Text style={styles.title} numberOfLines={2}>
+                  {title}
+                </Text>
+                {subtitle &&
+                  (subtitle.onPress ? (
+                    <Pressable onPress={subtitle.onPress} accessibilityRole="link" hitSlop={8}>
+                      <Text style={[styles.subtitle, styles.link]} numberOfLines={1}>
+                        {subtitle.label}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <Text style={styles.subtitle} numberOfLines={1}>
                       {subtitle.label}
                     </Text>
-                  </Pressable>
-                ) : (
-                  <Text style={styles.subtitle} numberOfLines={1}>
-                    {subtitle.label}
-                  </Text>
-                ))}
-              <Text style={styles.meta}>{meta}</Text>
+                  ))}
+                <Text style={styles.meta}>{meta}</Text>
+              </View>
+              <View style={styles.actions}>
+                <CardActions>
+                  {inOrder ? (
+                    <Button label="Play" icon="play" onPress={() => play()} disabled={ids.length === 0} />
+                  ) : (
+                    <Button label="Shuffle" icon="shuffle" onPress={() => play(undefined, true, false)} disabled={ids.length === 0} />
+                  )}
+                  {inOrder ? (
+                    <Button label="Shuffle" icon="shuffle" variant="secondary" onPress={() => play(undefined, true)} disabled={ids.length === 0} />
+                  ) : (
+                    <Button label="Shuffle albums" icon="disc" variant="secondary" onPress={() => play(undefined, true, true)} disabled={ids.length === 0} />
+                  )}
+                </CardActions>
+              </View>
+              {ids.length > 0 && (
+                <CollectionSection title="Song tags">
+                  {makeup.length === 0 ? (
+                    <View style={styles.prompt}>
+                      <NoTags onPress={() => openEditTags(ids)} label={tagPrompt} />
+                    </View>
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
+                      {makeup.map(({ tag, count }) => (
+                        <TagChip key={tag.id} name={tag.name} color={tag.color} count={count} onPress={() => openTag(tag.id, fromPlayer)} />
+                      ))}
+                      <TagButton onPress={() => openEditTags(ids)} label={tagPrompt} />
+                    </ScrollView>
+                  )}
+                </CollectionSection>
+              )}
+              {children}
+              {ids.length > 0 && <Text style={[styles.sectionTitle, styles.songsTitle]}>Songs</Text>}
             </View>
-            <View style={styles.actions}>
-              <CardActions>
-                {inOrder ? (
-                  <Button label="Play" icon="play" onPress={() => play()} disabled={ids.length === 0} />
-                ) : (
-                  <Button label="Shuffle" icon="shuffle" onPress={() => play(undefined, true, false)} disabled={ids.length === 0} />
-                )}
-                {inOrder ? (
-                  <Button label="Shuffle" icon="shuffle" variant="secondary" onPress={() => play(undefined, true)} disabled={ids.length === 0} />
-                ) : (
-                  <Button label="Shuffle albums" icon="disc" variant="secondary" onPress={() => play(undefined, true, true)} disabled={ids.length === 0} />
-                )}
-              </CardActions>
-            </View>
-            {ids.length > 0 && (
-              <CollectionSection title="Song tags">
-                {makeup.length === 0 ? (
-                  <View style={styles.prompt}>
-                    <NoTags onPress={() => openEditTags(ids)} label={tagPrompt} />
-                  </View>
-                ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
-                    {makeup.map(({ tag, count }) => (
-                      <TagChip key={tag.id} name={tag.name} color={tag.color} count={count} onPress={() => openTag(tag.id, fromPlayer)} />
-                    ))}
-                    <TagButton onPress={() => openEditTags(ids)} label={tagPrompt} />
-                  </ScrollView>
-                )}
-              </CollectionSection>
-            )}
-            {children}
-            {ids.length > 0 && <Text style={[styles.sectionTitle, styles.songsTitle]}>Songs</Text>}
-          </View>
-        }
-      />
+          }
+        />
+      </View>
       {selecting && (
         <SelectionBar disabled={selected.length === 0} actions={[{ label: 'Tag…', icon: 'tags', onPress: selection.editTags }, ...selection.queueActions]} />
       )}

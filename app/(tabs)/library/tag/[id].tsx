@@ -32,6 +32,7 @@ import { EmptyState } from '@/ui/EmptyState';
 import { FAB_CLEARANCE, useFabFold } from '@/ui/Fab';
 import { FabMenu } from '@/ui/FabMenu';
 import { plural } from '@/ui/format';
+import { useDragSelect } from '@/ui/hooks/useDragSelect';
 import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useSongSelection } from '@/ui/hooks/useSongSelection';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
@@ -67,7 +68,7 @@ export default function TagScreen() {
   const menuAnchor = useAnchor();
   const fromPlayer = useFromPlayer();
   const colorAnchor = useAnchor();
-  const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
+  const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(SONG_ROW_HEIGHT);
 
   const fab = useFabFold();
 
@@ -88,7 +89,9 @@ export default function TagScreen() {
   const ancestors = data && tag ? data.index.path(id).slice(0, -1) : [];
 
   const songIds = useMemo(() => data?.songs.map((s) => s.id), [data]);
-  const { selection, selecting, selected, toggle, clear, editTags, queueActions, header: selectionHeader } = useSongSelection(songIds);
+  const songSelection = useSongSelection(songIds);
+  const { selection, selecting, selected, toggle, clear, editTags, queueActions, header: selectionHeader } = songSelection;
+  const drag = useDragSelect({ ids: songIds, rowHeight: SONG_ROW_HEIGHT, headerHeight, selection: songSelection, onScroll: fab.scrollProps.onScroll });
 
   const playFrom = useCallback(
     (songId: number) =>
@@ -233,96 +236,98 @@ export default function TagScreen() {
     <View style={styles.screen}>
       <Stack.Screen options={selecting ? selectionHeader : tagHeader} />
 
-      <FlatList
-        data={data?.songs ?? []}
-        keyExtractor={(song) => String(song.id)}
-        getItemLayout={getItemLayout}
-        extraData={selection}
-        {...fab.scrollProps}
-        contentContainerStyle={songCount > 0 ? { paddingBottom: FAB_CLEARANCE } : undefined}
-        renderItem={({ item }) => (
-          <SongRow
-            id={item.id}
-            title={item.title}
-            artist={item.artist}
-            artworkUri={albumArtUri(item.album_id)}
-            tags={data?.songTags.get(item.id) ?? NO_TAGS}
-            active={current?.id === item.id}
-            selecting={selecting}
-            selected={selection?.has(item.id) ?? false}
-            onPress={selecting ? toggle : playFrom}
-            onLongPress={toggle}
-          />
-        )}
-        ListHeaderComponent={
-          <View style={styles.header} onLayout={onHeaderLayout}>
-            <View style={styles.block}>
-              {ancestors.length > 0 && (
-                <View style={styles.breadcrumb}>
-                  <Text style={styles.crumbText}>in </Text>
-                  {ancestors.map((ancestor, i) => (
-                    <Pressable key={ancestor.id} onPress={() => openTag(ancestor.id, fromPlayer)} hitSlop={8}>
-                      <Text style={styles.crumbLink}>
-                        {ancestor.name}
-                        {i < ancestors.length - 1 ? ' › ' : ''}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-              {/* What's inside, and shuffle once there's something to play. Until
-                  then, the empty state below carries the calls to action. */}
-              <View style={styles.summaryRow}>
-                <Text style={styles.summary}>
-                  {[childCount > 0 ? plural(childCount, 'subtag') : null, plural(songCount, 'song')]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-                {songCount > 0 && (
-                  <Pressable
-                    onPress={() => {
-                      // As a one-tag combination, so the player can offer to save it as a mix.
-                      const draft = { ...EMPTY_DRAFT, ingredients: [[id]] };
-                      playQuery(buildQuery(draft), { draft });
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Shuffle ${plural(songCount, 'song')}`}
-                    android_ripple={{ color: colors.rippleOnAccent, foreground: true }}
-                    style={styles.shuffle}
-                  >
-                    <Ionicons name="shuffle" size={iconSize.md} color={colors.onAccent} />
-                  </Pressable>
+      <View ref={drag.frameRef} style={styles.frame} {...drag.frameProps}>
+        <FlatList
+          {...drag.listProps}
+          data={data?.songs ?? []}
+          keyExtractor={(song) => String(song.id)}
+          getItemLayout={getItemLayout}
+          extraData={selection}
+          contentContainerStyle={songCount > 0 ? { paddingBottom: FAB_CLEARANCE } : undefined}
+          renderItem={({ item }) => (
+            <SongRow
+              id={item.id}
+              title={item.title}
+              artist={item.artist}
+              artworkUri={albumArtUri(item.album_id)}
+              tags={data?.songTags.get(item.id) ?? NO_TAGS}
+              active={current?.id === item.id}
+              selecting={selecting}
+              selected={selection?.has(item.id) ?? false}
+              onPress={selecting ? toggle : playFrom}
+              onLongPress={drag.start}
+            />
+          )}
+          ListHeaderComponent={
+            <View style={styles.header} onLayout={onHeaderLayout}>
+              <View style={styles.block}>
+                {ancestors.length > 0 && (
+                  <View style={styles.breadcrumb}>
+                    <Text style={styles.crumbText}>in </Text>
+                    {ancestors.map((ancestor, i) => (
+                      <Pressable key={ancestor.id} onPress={() => openTag(ancestor.id, fromPlayer)} hitSlop={8}>
+                        <Text style={styles.crumbLink}>
+                          {ancestor.name}
+                          {i < ancestors.length - 1 ? ' › ' : ''}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
                 )}
+                {/* What's inside, and shuffle once there's something to play. Until
+                    then, the empty state below carries the calls to action. */}
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summary}>
+                    {[childCount > 0 ? plural(childCount, 'subtag') : null, plural(songCount, 'song')]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
+                  {songCount > 0 && (
+                    <Pressable
+                      onPress={() => {
+                        // As a one-tag combination, so the player can offer to save it as a mix.
+                        const draft = { ...EMPTY_DRAFT, ingredients: [[id]] };
+                        playQuery(buildQuery(draft), { draft });
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Shuffle ${plural(songCount, 'song')}`}
+                      android_ripple={{ color: colors.rippleOnAccent, foreground: true }}
+                      style={styles.shuffle}
+                    >
+                      <Ionicons name="shuffle" size={iconSize.md} color={colors.onAccent} />
+                    </Pressable>
+                  )}
+                </View>
               </View>
+              {/* Full-width rows, like the Tags view: outside the padded block. */}
+              {data?.children.map((child) => (
+                <TagRow
+                  key={child.id}
+                  name={child.name}
+                  color={child.color}
+                  songCount={child.song_count}
+                  childCount={child.child_count}
+                  onPress={() => openTag(child.id, fromPlayer)}
+                />
+              ))}
+              {/* Folders first, then songs, like any file browser. */}
+              {childCount > 0 && songCount > 0 && <View style={styles.divider} />}
             </View>
-            {/* Full-width rows, like the Tags view: outside the padded block. */}
-            {data?.children.map((child) => (
-              <TagRow
-                key={child.id}
-                name={child.name}
-                color={child.color}
-                songCount={child.song_count}
-                childCount={child.child_count}
-                onPress={() => openTag(child.id, fromPlayer)}
-              />
-            ))}
-            {/* Folders first, then songs, like any file browser. */}
-            {childCount > 0 && songCount > 0 && <View style={styles.divider} />}
-          </View>
-        }
-        ListEmptyComponent={
-          data && tag ? (
-            <EmptyState
-              art={<LogoMark width={56} color={colors.border} />}
-              title="No songs yet"
-              body={`Add songs to "${tag.name}" here, or tag them from the player as you listen.`}
-            >
-              <Button label="Add songs" icon="add" variant="tonal" onPress={() => openAddSongs(id)} />
-              <Button label="New subtag" variant="secondary" onPress={() => setDialog('add-subtag')} />
-            </EmptyState>
-          ) : undefined
-        }
-      />
+          }
+          ListEmptyComponent={
+            data && tag ? (
+              <EmptyState
+                art={<LogoMark width={56} color={colors.border} />}
+                title="No songs yet"
+                body={`Add songs to "${tag.name}" here, or tag them from the player as you listen.`}
+              >
+                <Button label="Add songs" icon="add" variant="tonal" onPress={() => openAddSongs(id)} />
+                <Button label="New subtag" variant="secondary" onPress={() => setDialog('add-subtag')} />
+              </EmptyState>
+            ) : undefined
+          }
+        />
+      </View>
 
       {/* Adding songs is a main way to tag, so it stays in reach anywhere in a
           long list. An empty tag has the same call to action in its empty state. */}
@@ -401,6 +406,9 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  frame: {
+    flex: 1,
   },
   titleRow: {
     flexDirection: 'row',

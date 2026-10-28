@@ -18,7 +18,8 @@ import { useColors } from '../ThemeContext';
  * the Songs view, and album and artist pages. Hold a song, then Tag…, is how
  * songs are tagged from a list.
  *
- * - Long-press starts selecting; then taps toggle. Only the header's close
+ * - Long-press starts selecting; then taps toggle. Sliding on from the
+ *   long-press picks every row passed over (`useDragSelect`). Only the header's close
  *   button or back leaves selection mode: deselecting everything keeps it, so
  *   the next pick is still one tap.
  * - Add to queue (`queueActions`) queues the songs, say so in a
@@ -55,6 +56,8 @@ export function useSongSelection(songIds: readonly number[] | undefined) {
     []
   );
   const clear = useCallback(() => setSelection(null), []);
+  /** Sets the whole selection at once (a drag across rows), starting selection mode if it isn't on. */
+  const replace = useCallback((next: ReadonlySet<number>) => setSelection(next), []);
 
   useFocusEffect(
     useCallback(() => {
@@ -112,7 +115,7 @@ export function useSongSelection(songIds: readonly number[] | undefined) {
       ),
   };
 
-  return { selection, selecting, selected, toggle, clear, editTags, queueActions, header };
+  return { selection, selecting, selected, toggle, replace, clear, editTags, queueActions, header };
 }
 
 export type SongSelection = ReturnType<typeof useSongSelection>;

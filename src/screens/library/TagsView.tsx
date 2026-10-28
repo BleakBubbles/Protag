@@ -19,6 +19,7 @@ import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
 import { findSongs } from '../../query/run';
 import { Fab, FAB_CLEARANCE } from '../../ui/Fab';
 import { formatCount } from '../../ui/format';
+import { useDragSelect } from '../../ui/hooks/useDragSelect';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
 import type { SongSelection } from '../../ui/hooks/useSongSelection';
@@ -59,7 +60,7 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
   }, []);
   const imports = usePlaylistImport();
   const [creating, setCreating] = useState(false);
-  const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
+  const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(SONG_ROW_HEIGHT);
   // New tag is a row after the tags, and the floating button stands in for it
   // whenever it isn't wholly in view (scrolled off the top, or not yet scrolled
   // to): one New tag on screen at a time.
@@ -93,76 +94,75 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
   const tags = data?.tags ?? [];
   const looseCount = data?.loose.length ?? 0;
   const { selecting, selected, toggle } = selection;
+  const drag = useDragSelect({ ids: looseIds, rowHeight: SONG_ROW_HEIGHT, headerHeight, selection, onScroll: track });
 
   return (
     <>
-      <FlatList
-        onLayout={(e) => setViewHeight(e.nativeEvent.layout.height)}
-        data={data?.loose ?? []}
-        keyExtractor={(song) => String(song.id)}
-        getItemLayout={getItemLayout}
-        extraData={selection.selection}
-        onScroll={track}
-        scrollEventThrottle={32}
-        // Throttling can drop the event for where a short scroll stops; these always report it.
-        onScrollEndDrag={track}
-        onMomentumScrollEnd={track}
-        contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}
-        renderItem={({ item }) => (
-          <SongRow
-            id={item.id}
-            title={item.title}
-            artist={item.artist}
-            artworkUri={albumArtUri(item.album_id)}
-            tags={NO_TAGS}
-            active={current?.id === item.id}
-            selecting={selecting}
-            selected={selection.selection?.has(item.id) ?? false}
-            onPress={selecting ? toggle : playFrom}
-            onLongPress={toggle}
-          />
-        )}
-        ListHeaderComponent={
-          <View onLayout={onHeaderLayout} style={styles.top}>
-            {/* Only takes room while there's something to report or offer. */}
-            {(imports.state.kind !== 'idle' || (tags.length === 0 && imports.showPrompt)) && (
-              <View style={styles.notices}>
-                <ImportStatus state={imports.state} />
-                {tags.length === 0 && imports.showPrompt && (
-                  <ImportPrompt onChoose={imports.run} onDismiss={imports.dismissPrompt} disabled={imports.busy} />
-                )}
-              </View>
-            )}
-            {tags.map((tag) => (
-              <TagRow
-                key={tag.id}
-                name={tag.name}
-                color={tag.color}
-                songCount={tag.song_count}
-                childCount={tag.child_count}
-                onPress={() => openTag(tag.id)}
-              />
-            ))}
-            <NewTagRow
-              onPress={() => setCreating(true)}
-              disabled={selecting}
-              onLayout={(e) => {
-                const { y, height } = e.nativeEvent.layout;
-                setRow({ top: y, end: y + height });
-              }}
+      <View ref={drag.frameRef} style={styles.frame} {...drag.frameProps}>
+        <FlatList
+          {...drag.listProps}
+          onLayout={(e) => setViewHeight(e.nativeEvent.layout.height)}
+          data={data?.loose ?? []}
+          keyExtractor={(song) => String(song.id)}
+          getItemLayout={getItemLayout}
+          extraData={selection.selection}
+          contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}
+          renderItem={({ item }) => (
+            <SongRow
+              id={item.id}
+              title={item.title}
+              artist={item.artist}
+              artworkUri={albumArtUri(item.album_id)}
+              tags={NO_TAGS}
+              active={current?.id === item.id}
+              selecting={selecting}
+              selected={selection.selection?.has(item.id) ?? false}
+              onPress={selecting ? toggle : playFrom}
+              onLongPress={drag.start}
             />
-            {/* Folders first, then the loose songs, like any file browser. */}
-            {looseCount > 0 && tags.length > 0 && <View style={styles.divider} />}
-            {looseCount > 0 && (
-              <View style={styles.looseHeading}>
-                <Text style={styles.looseLabel}>
-                  {LOOSE_LABEL} · {formatCount(looseCount)}
-                </Text>
-              </View>
-            )}
-          </View>
-        }
-      />
+          )}
+          ListHeaderComponent={
+            <View onLayout={onHeaderLayout} style={styles.top}>
+              {/* Only takes room while there's something to report or offer. */}
+              {(imports.state.kind !== 'idle' || (tags.length === 0 && imports.showPrompt)) && (
+                <View style={styles.notices}>
+                  <ImportStatus state={imports.state} />
+                  {tags.length === 0 && imports.showPrompt && (
+                    <ImportPrompt onChoose={imports.run} onDismiss={imports.dismissPrompt} disabled={imports.busy} />
+                  )}
+                </View>
+              )}
+              {tags.map((tag) => (
+                <TagRow
+                  key={tag.id}
+                  name={tag.name}
+                  color={tag.color}
+                  songCount={tag.song_count}
+                  childCount={tag.child_count}
+                  onPress={() => openTag(tag.id)}
+                />
+              ))}
+              <NewTagRow
+                onPress={() => setCreating(true)}
+                disabled={selecting}
+                onLayout={(e) => {
+                  const { y, height } = e.nativeEvent.layout;
+                  setRow({ top: y, end: y + height });
+                }}
+              />
+              {/* Folders first, then the loose songs, like any file browser. */}
+              {looseCount > 0 && tags.length > 0 && <View style={styles.divider} />}
+              {looseCount > 0 && (
+                <View style={styles.looseHeading}>
+                  <Text style={styles.looseLabel}>
+                    {LOOSE_LABEL} · {formatCount(looseCount)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          }
+        />
+      </View>
       {selecting ? (
         // No Remove here: these songs aren't in any tag to remove them from.
         <SelectionBar
@@ -186,6 +186,9 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
 }
 
 const useStyles = makeStyles((colors) => StyleSheet.create({
+  frame: {
+    flex: 1,
+  },
   // With the rows' own padding, the first tile starts as far below the tabs as the other tabs' search fields.
   top: {
     paddingTop: spacing.xs,

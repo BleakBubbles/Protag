@@ -9,6 +9,7 @@ import { matchesQuery, searchKey } from '../../library/search';
 import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
 import { EmptyState } from '../../ui/EmptyState';
 import { plural } from '../../ui/format';
+import { useDragSelect } from '../../ui/hooks/useDragSelect';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
 import type { SongSelection } from '../../ui/hooks/useSongSelection';
@@ -38,7 +39,7 @@ export function SongsView({ selection, onSongs }: SongsViewProps) {
     return { songs, tags };
   }, []);
   const [query, setQuery] = useState('');
-  const { getItemLayout, onHeaderLayout } = useFixedRowLayout(SONG_ROW_HEIGHT);
+  const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(SONG_ROW_HEIGHT);
   const { playQueue } = usePlayerActions();
   const { song: current, queue } = useNowPlaying();
 
@@ -59,6 +60,7 @@ export function SongsView({ selection, onSongs }: SongsViewProps) {
   const visibleIds = useMemo(() => visible.map((s) => s.id), [visible]);
   useEffect(() => onSongs(visibleIds), [visibleIds, onSongs]);
   const { selecting, selected, toggle } = selection;
+  const drag = useDragSelect({ ids: visibleIds, rowHeight: SONG_ROW_HEIGHT, headerHeight, selection });
 
   // Plays the list as shown — filtered or not — from the tapped song, keeping
   // whatever shuffle mode the player is already in.
@@ -73,51 +75,54 @@ export function SongsView({ selection, onSongs }: SongsViewProps) {
 
   return (
     <>
-      <FlatList
-        data={visible}
-        keyExtractor={(song) => String(song.id)}
-        getItemLayout={getItemLayout}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        extraData={selection.selection}
-        contentContainerStyle={selecting ? { paddingBottom: SELECTION_BAR_HEIGHT } : undefined}
-        renderItem={({ item }) => (
-          <SongRow
-            id={item.id}
-            title={item.title}
-            artist={item.artist}
-            artworkUri={albumArtUri(item.album_id)}
-            tags={data?.tags.get(item.id) ?? NO_TAGS}
-            active={current?.id === item.id}
-            selecting={selecting}
-            selected={selection.selection?.has(item.id) ?? false}
-            onPress={selecting ? toggle : play}
-            onLongPress={toggle}
-          />
-        )}
-        ListHeaderComponent={
-          <View style={styles.header} onLayout={onHeaderLayout}>
-            <SearchField
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search songs, artists, albums"
-              returnKeyType="search"
+      <View ref={drag.frameRef} style={styles.frame} {...drag.frameProps}>
+        <FlatList
+          {...drag.listProps}
+          data={visible}
+          keyExtractor={(song) => String(song.id)}
+          getItemLayout={getItemLayout}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          extraData={selection.selection}
+          contentContainerStyle={selecting ? { paddingBottom: SELECTION_BAR_HEIGHT } : undefined}
+          renderItem={({ item }) => (
+            <SongRow
+              id={item.id}
+              title={item.title}
+              artist={item.artist}
+              artworkUri={albumArtUri(item.album_id)}
+              tags={data?.tags.get(item.id) ?? NO_TAGS}
+              active={current?.id === item.id}
+              selecting={selecting}
+              selected={selection.selection?.has(item.id) ?? false}
+              onPress={selecting ? toggle : play}
+              onLongPress={drag.start}
             />
-            {data && (
-              <Text style={styles.count}>
-                {trimmed
-                  ? `${plural(visible.length, 'match', 'matches')} of ${plural(data.songs.length, 'song')}`
-                  : plural(data.songs.length, 'song')}
-              </Text>
-            )}
-          </View>
-        }
-        ListEmptyComponent={
-          data && trimmed ? (
-            <EmptyState icon="search" title="No matches" body={`Nothing matches "${trimmed}".`} />
-          ) : undefined
-        }
-      />
+          )}
+          ListHeaderComponent={
+            <View style={styles.header} onLayout={onHeaderLayout}>
+              <SearchField
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search songs, artists, albums"
+                returnKeyType="search"
+              />
+              {data && (
+                <Text style={styles.count}>
+                  {trimmed
+                    ? `${plural(visible.length, 'match', 'matches')} of ${plural(data.songs.length, 'song')}`
+                    : plural(data.songs.length, 'song')}
+                </Text>
+              )}
+            </View>
+          }
+          ListEmptyComponent={
+            data && trimmed ? (
+              <EmptyState icon="search" title="No matches" body={`Nothing matches "${trimmed}".`} />
+            ) : undefined
+          }
+        />
+      </View>
       {selecting && (
         <SelectionBar disabled={selected.length === 0} actions={[{ label: 'Tag…', icon: 'tags', onPress: selection.editTags }, ...selection.queueActions]} />
       )}
@@ -126,6 +131,9 @@ export function SongsView({ selection, onSongs }: SongsViewProps) {
 }
 
 const useStyles = makeStyles((colors) => StyleSheet.create({
+  frame: {
+    flex: 1,
+  },
   header: {
     padding: spacing.lg,
     paddingBottom: spacing.sm,

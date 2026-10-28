@@ -28,5 +28,5 @@ export function useFixedRowLayout(rowHeight: number) {
     [rowHeight, headerHeight]
   );
 
-  return { getItemLayout, onHeaderLayout };
+  return { getItemLayout, onHeaderLayout, headerHeight };
 }
