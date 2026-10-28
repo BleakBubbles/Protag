@@ -29,7 +29,7 @@ export interface LibraryOverviewProps {
 }
 
 /**
- * The top of Manage library: what ProTag sees on this phone, when it last
+ * The top of Settings: what ProTag sees on this phone, when it last
  * looked, and the two ways to change that — rescan, or choose folders.
  */
 export function LibraryOverview({ counts, state, disabled, onScan, onChooseFolders }: LibraryOverviewProps) {

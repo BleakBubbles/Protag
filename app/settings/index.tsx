@@ -18,8 +18,8 @@ import { LibraryOverview, type LibraryCounts } from '@/ui/library/LibraryOvervie
 import { spacing } from '@/ui/theme';
 import { makeStyles, useThemeChoice, type ThemeChoice } from '@/ui/ThemeContext';
 
-/** What ProTag sees on this phone, playlists, and tag backups — the library's housekeeping. */
-export default function ManageLibraryScreen() {
+/** Settings: what ProTag sees on this phone, playlists, tag backups, and how the app looks. */
+export default function SettingsScreen() {
   const styles = useStyles();
   const { data: counts } = useLibraryQuery(async (db): Promise<LibraryCounts> => {
     const [songs, tags, folders, lastScanAt] = await Promise.all([

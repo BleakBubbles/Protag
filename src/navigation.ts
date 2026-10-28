@@ -37,7 +37,7 @@ export const openAddSongs = (tagId: number) =>
 export const openEditTags = (songIds: readonly number[]) =>
   router.push({ pathname: '/edit-tags', params: { songs: songIds.join(',') } });
 
-export const openManageLibrary = () => router.push('/settings');
+export const openSettings = () => router.push('/settings');
 
 /** Which of the phone's audio folders the library reads. */
 export const openLibraryFolders = () => router.push('/settings/folders');

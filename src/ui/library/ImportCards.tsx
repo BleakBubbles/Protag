@@ -49,7 +49,7 @@ export function ImportPrompt({
 }
 
 /**
- * Manage library's playlist card: the button, and — after an import — what
+ * Settings' playlist card: the button, and — after an import — what
  * came of each playlist, right here.
  */
 export function PlaylistsCard({

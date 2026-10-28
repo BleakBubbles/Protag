@@ -11,7 +11,7 @@ export type ScanState =
   | { kind: 'denied'; canAskAgain: boolean }
   | { kind: 'error'; message: string };
 
-/** Scan state plus the action that runs it — shared by onboarding and Manage library. */
+/** Scan state plus the action that runs it — shared by onboarding and Settings. */
 export function useLibraryScan() {
   const db = useSQLiteContext();
   const [state, setState] = useState<ScanState>({ kind: 'idle' });

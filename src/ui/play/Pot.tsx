@@ -50,7 +50,7 @@ const INSET = RING + spacing.sm - 2;
 export const POT_ROW = TILE + GAP;
 /** The tray's height for `rows` rows of tiles; more scroll. Set by the divider, otherwise fixed. */
 export const trayHeight = (rows: number) => TILE * rows + GAP * (rows - 1) + INSET * 2;
-const ACTIONS = 56;
+const ACTIONS = 48;
 /** The tray's edge: always there, only its colour changes, so lighting it never moves a tile. */
 const EDGE = 2;
 /** As long as the tags take to rise, so the pot lights up with them. */
@@ -131,7 +131,7 @@ export interface PotProps {
  *
  * Tags dropped in are ingredients, and a song plays if it's in any of them;
  * drag one onto another and they combine into one ingredient that needs both.
- * While anything is being dragged, a Keep out zone covers the buttons: drop a
+ * While anything is being dragged, a Keep out zone covers Shuffle: drop a
  * tag there and its songs never play.
  *
  * Pinned and a fixed height, so it's always there to drop into and nothing in
@@ -183,9 +183,9 @@ export function Pot({
   useEffect(() => {
     Animated.timing(lit, { toValue: building ? 1 : 0, duration: LIGHT_MS, useNativeDriver: false }).start();
   }, [building, lit]);
-  const edgeColor = lit.interpolate({ inputRange: [0, 1], outputRange: [colors.border, colors.textDim] });
+  const edgeColor = lit.interpolate({ inputRange: [0, 1], outputRange: [colors.potRecess, colors.potEdge] });
   // The empty pot's words light up with its edge, to the same colour.
-  const wellColor = lit.interpolate({ inputRange: [0, 1], outputRange: [colors.textFaint, colors.textDim] });
+  const wellColor = lit.interpolate({ inputRange: [0, 1], outputRange: [colors.potHint, colors.onPotDim] });
 
   /** Each ingredient as a screen reader says it ("kpop and chill"), for naming what to combine with. */
   const spoken = draft.ingredients.map((tags) => tags.map((ref) => look(ref).name).join(' and '));
@@ -217,128 +217,110 @@ export function Pot({
         </View>
         <View style={styles.clearSlot}>
           {!empty ? (
-            <IconButton icon="close" label="Empty the mix" size={iconSize.sm} color={colors.textDim} onPress={onClear} />
+            <>
+              <IconButton
+                icon="save-mix"
+                label={editing ? 'Save as new mix' : 'Save as mix'}
+                size={iconSize.sm}
+                color={colors.onPotDim}
+                onPress={onSave}
+              />
+              <IconButton icon="close" label="Empty the mix" size={iconSize.sm} color={colors.onPotDim} onPress={onClear} />
+            </>
           ) : (
             onRestore && (
-              <IconButton icon="restore" label="Bring back the mix" size={iconSize.sm} color={colors.textDim} onPress={onRestore} />
+              <IconButton icon="restore" label="Bring back the mix" size={iconSize.sm} color={colors.onPotDim} onPress={onRestore} />
             )
           )}
         </View>
       </View>
 
-      {/* The pot's edge, which the tiles sit inside: dashed while empty, solid once filled; faint at rest, lit while building. */}
-      <Animated.View
-        style={[
-          styles.edge,
-          { height: tray ?? trayHeight(rows), borderColor: edgeColor, borderStyle: empty ? 'dashed' : 'solid' },
-          landing && styles.landing,
-        ]}
-      >
-        {!empty ? (
-          <FadeIn>
-            <ScrollView
-              ref={shown.ref}
-              onScroll={shown.onScroll}
-              scrollEventThrottle={32}
-              scrollEnabled={active === null}
-              contentContainerStyle={styles.grow}
+      {/* The recess the tiles sit in, cut into the band; its edge shows only while building. */}
+      <Animated.View style={[styles.recess, { borderColor: edgeColor }]}>
+        <Animated.View style={[{ height: tray ?? trayHeight(rows) }, landing && styles.landing]}>
+          {!empty ? (
+            <FadeIn>
+              <ScrollView
+                ref={shown.ref}
+                onScroll={shown.onScroll}
+                scrollEventThrottle={32}
+                scrollEnabled={active === null}
+                contentContainerStyle={styles.grow}
+              >
+                {/* At rest, a tap anywhere in the pot opens the tags, between and below the tiles too.
+                    Not one button for a screen reader: each tile says what it is. */}
+                <Pressable onPress={onOpen} disabled={!onOpen} accessible={false} style={styles.tiles}>
+                  {draft.ingredients.map((tags, index) => (
+                    <Glide key={ingredientKey(tags)} onLayout={shown.onTileLayout(ingredientKey(tags))}>
+                      <IngredientTile
+                        index={index}
+                        others={spoken.flatMap((other, i) => (i === index ? [] : [{ index: i, label: other }]))}
+                        tags={tags}
+                        look={look}
+                        count={ingredientCounts.get(ingredientKey(tags)) ?? null}
+                        width={fitsHalf(tags.map(look)) ? (rowWidth - GAP) / 2 : rowWidth}
+                        resting={!!onOpen}
+                        onTap={onOpen ?? (() => onTapIngredient(index))}
+                      />
+                    </Glide>
+                  ))}
+                  {draft.exclude.map((ref) => (
+                    <Glide key={excludedKey(ref)} onLayout={shown.onTileLayout(excludedKey(ref))}>
+                      <ExcludedTile
+                        refId={ref}
+                        look={look(ref)}
+                        width={(rowWidth - GAP) / 2}
+                        resting={!!onOpen}
+                        onTap={onOpen ?? (() => onTapExcluded(ref))}
+                      />
+                    </Glide>
+                  ))}
+                </Pressable>
+              </ScrollView>
+            </FadeIn>
+          ) : (
+            <Pressable
+              onPress={onOpen ?? onWellPress}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.well, pressed && styles.dimmed]}
             >
-              {/* At rest, a tap anywhere in the pot opens the tags, between and below the tiles too.
-                  Not one button for a screen reader: each tile says what it is. */}
-              <Pressable onPress={onOpen} disabled={!onOpen} accessible={false} style={styles.tiles}>
-                {draft.ingredients.map((tags, index) => (
-                  <Glide key={ingredientKey(tags)} onLayout={shown.onTileLayout(ingredientKey(tags))}>
-                    <IngredientTile
-                      index={index}
-                      others={spoken.flatMap((other, i) => (i === index ? [] : [{ index: i, label: other }]))}
-                      tags={tags}
-                      look={look}
-                      count={ingredientCounts.get(ingredientKey(tags)) ?? null}
-                      width={fitsHalf(tags.map(look)) ? (rowWidth - GAP) / 2 : rowWidth}
-                      resting={!!onOpen}
-                      onTap={onOpen ?? (() => onTapIngredient(index))}
-                    />
-                  </Glide>
-                ))}
-                {draft.exclude.map((ref) => (
-                  <Glide key={excludedKey(ref)} onLayout={shown.onTileLayout(excludedKey(ref))}>
-                    <ExcludedTile
-                      refId={ref}
-                      look={look(ref)}
-                      width={(rowWidth - GAP) / 2}
-                      resting={!!onOpen}
-                      onTap={onOpen ?? (() => onTapExcluded(ref))}
-                    />
-                  </Glide>
-                ))}
-              </Pressable>
-            </ScrollView>
-          </FadeIn>
-        ) : (
-          <Pressable
-            onPress={onOpen ?? onWellPress}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.well, pressed && styles.dimmed]}
-          >
-            {onOpen && <Icon name="add" size={iconSize.md} color={colors.textDim} />}
-            <Animated.Text style={[styles.wellText, { color: wellColor }]}>
-              {onOpen ? 'Add tags, artists or albums' : 'Tap your tags or drag them here'}
-            </Animated.Text>
-          </Pressable>
-        )}
+              {onOpen && <Icon name="add" size={iconSize.md} color={colors.onPotDim} />}
+              <Animated.Text style={[styles.wellText, { color: wellColor }]}>
+                {onOpen ? 'Add tags, artists or albums' : 'Tap your tags or drag them here'}
+              </Animated.Text>
+            </Pressable>
+          )}
+        </Animated.View>
       </Animated.View>
 
-      <FinishButtons empty={empty} editing={editing} counted={counted} onSave={onSave} onShuffle={onShuffle}>
+      <ShuffleButton counted={counted} onShuffle={onShuffle}>
         <KeepOut shown={canKeepOut} />
-      </FinishButtons>
+      </ShuffleButton>
     </View>
   );
 }
 
-export interface FinishButtonsProps {
-  empty: boolean;
-  /** While a mix is open for editing, saving here is the other way out: as a new mix. */
-  editing: boolean;
-  counted: ShuffleCount | null;
-  onSave: () => void;
-  onShuffle: () => void;
-  /** Laid over the row, e.g. the Keep out zone while dragging. */
-  children?: ReactNode;
-}
-
 /**
- * The two ways to finish: keep it, or hear it. Equal halves, edge to edge with
- * the pot's tray; Shuffle, the usual one, stands out by being filled. The
- * song count is in the line above, not on the button.
+ * Shuffle, the way to hear what's in the pot: the one light thing on the band,
+ * under the recess. (Keeping it as a mix is the bookmark in the top line.) The
+ * song count is in that line too, not on the button.
  */
-export function FinishButtons({ empty, editing, counted, onSave, onShuffle, children }: FinishButtonsProps) {
+function ShuffleButton({ counted, onShuffle, children }: { counted: ShuffleCount | null; onShuffle: () => void; children?: ReactNode }) {
   const colors = useColors();
   const styles = useStyles();
   const shuffle = shuffleText(counted);
   return (
     <View style={styles.actions}>
       <Pressable
-        onPress={onSave}
-        disabled={empty}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: empty }}
-        style={({ pressed }) => [styles.finish, styles.save, (pressed || empty) && styles.dimmed]}
-      >
-        <Icon name="bookmark-outline" size={iconSize.sm} color={colors.accentFg} />
-        <Text style={styles.saveText} numberOfLines={1}>
-          {editing ? 'Save as new mix' : 'Save as mix'}
-        </Text>
-      </Pressable>
-      <Pressable
         onPress={onShuffle}
         disabled={shuffle.none}
         accessibilityRole="button"
         accessibilityLabel={[shuffle.title, shuffle.count].filter(Boolean).join(', ')}
         accessibilityState={{ disabled: shuffle.none }}
-        android_ripple={{ color: colors.rippleOnAccent }}
+        android_ripple={{ color: withAlpha(colors.onPotButton, 0.12) }}
         style={[styles.finish, styles.shuffle, shuffle.none && styles.dimmed]}
       >
-        <Icon name="shuffle" size={iconSize.md} color={colors.onAccent} />
+        <Icon name="shuffle" size={iconSize.md} color={colors.onPotButton} />
         <Text style={styles.shuffleText}>{shuffle.title}</Text>
       </Pressable>
       {children}
@@ -417,7 +399,7 @@ function DetailsLine({
       </Text>
       {/* Tuned: a dot, like an editor's unsaved-changes mark — it shuffles its own way. */}
       {!none && tuned && <View style={styles.tunedDot} />}
-      {!none && <Icon name="chevron-forward" size={iconSize.sm - 6} color={colors.accentFg} />}
+      {!none && <Icon name="chevron-forward" size={iconSize.sm - 6} color={colors.onPot} />}
     </Pressable>
   );
 }
@@ -589,7 +571,7 @@ function IngredientTile({ index, others, tags, look, count, width, resting, onTa
           <Fragment key={tags[i]}>
             {i > 0 && (
               <View style={styles.times} importantForAccessibility="no-hide-descendants">
-                <Join both size={SYMBOL} color={colors.text} />
+                <Join both size={SYMBOL} color={colors.onPot} />
               </View>
             )}
             <View style={[styles.share, faceStyle(l, colors, styles), i > 0 && styles.joinedLeft, !last && styles.joinedRight]}>
@@ -709,16 +691,13 @@ function KeepOut({ shown }: { shown: boolean }) {
 }
 
 const useStyles = makeStyles((colors) => StyleSheet.create({
-  // On the page's own background, like everything else: the pot is the top of
-  // the screen, set off from the tags by a line rather than as a card.
+  // The band: the top of the screen in the pot's own teal, the header above it included.
   pot: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
     gap: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.potBand,
   },
   top: {
     height: TOP,
@@ -736,7 +715,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   hint: {
     ...font.caption,
-    color: colors.textDim,
+    color: colors.onPotDim,
   },
   preview: {
     flex: 1,
@@ -752,11 +731,11 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   covers: {
     flexDirection: 'row',
   },
-  // Each cover in a ring of the pot's colour, so they read as separate when stacked.
+  // Each cover in a ring of the band's colour, so they read as separate when stacked.
   cover: {
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: colors.bg,
+    borderColor: colors.potBand,
   },
   coverTucked: {
     marginLeft: -COVER_OVERLAP,
@@ -765,15 +744,15 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.accentFg,
+    backgroundColor: colors.onPot,
   },
   previewText: {
     ...font.label,
     flexShrink: 1,
-    color: colors.textDim,
+    color: colors.onPotDim,
   },
   previewLink: {
-    color: colors.accentFg,
+    color: colors.onPot,
   },
   // The close button keeps its full touch area, overhanging this short row.
   clearSlot: {
@@ -793,16 +772,18 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // No fill: the edge alone says where the tiles go. Clips them to its corners as they scroll.
-  edge: {
+  // Cut into the band; its edge, the recess's own colour at rest, lights while building.
+  // Clips the tiles to its corners as they scroll.
+  recess: {
     borderRadius: radius.lg,
     borderWidth: EDGE,
     overflow: 'hidden',
+    backgroundColor: colors.potRecess,
   },
-  // Something held over the pot: a teal wash where it will land.
+  // Something held over the pot: a pale wash where it will land.
   landing: {
-    borderColor: colors.accentFg,
-    backgroundColor: colors.accentTint,
+    borderColor: colors.onPotDim,
+    backgroundColor: withAlpha(colors.onPot, 0.08),
   },
   wellText: {
     ...font.label,
@@ -854,7 +835,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     borderColor: 'transparent',
   },
   tileHovered: {
-    borderColor: colors.text,
+    borderColor: colors.onPot,
     transform: [{ scale: 1.04 }],
   },
   // Each tag's equal share of a tile, its name on its colour.
@@ -904,38 +885,28 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     color: colors.onTag,
     opacity: 0.75,
   },
-  // Edge to edge with the tray above, with the tiles' gap between the two.
   actions: {
     height: ACTIONS,
     flexDirection: 'row',
-    gap: GAP,
   },
-  // Squared off like the tiles and the empty well above, rather than pills.
   finish: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     overflow: 'hidden',
-  },
-  save: {
-    backgroundColor: colors.accentTint,
-  },
-  saveText: {
-    ...font.label,
-    color: colors.accentFg,
   },
   dimmed: {
     opacity: 0.4,
   },
   shuffle: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.potButton,
   },
   shuffleText: {
     ...font.listTitle,
-    color: colors.onAccent,
+    color: colors.onPotButton,
   },
   keepOut: {
     position: 'absolute',
@@ -943,8 +914,8 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    borderRadius: radius.md,
-    backgroundColor: colors.bg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.potRecess,
   },
   keepOutInner: {
     flex: 1,

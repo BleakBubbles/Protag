@@ -1,7 +1,9 @@
 import { useFocusEffect } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Animated, BackHandler, Dimensions, PanResponder, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
+import { useColors } from '../ThemeContext';
 import { FullPlayer } from './FullPlayer';
 
 /** A slow release past this fraction of the way finishes the move; short of it, springs back. */
@@ -40,6 +42,7 @@ export function usePlayerSheet(): PlayerSheetControls {
  * sheet is open or moving, so playback ticks don't re-render it while hidden.
  */
 export function PlayerSheet({ children }: { children: ReactNode }) {
+  const colors = useColors();
   const progress = useRef(new Animated.Value(0)).current;
   // progress as JS last set or aimed it; native-driven springs don't report back.
   const current = useRef(0);
@@ -146,6 +149,8 @@ export function PlayerSheet({ children }: { children: ReactNode }) {
             <FullPlayer onClose={controls.collapse} dragHandlers={closeResponder.panHandlers} />
           </Animated.View>
         )}
+        {/* Open, the player sets the status bar for its own page, over whatever the tab asked for. */}
+        {open && <StatusBar style={colors.scheme === 'dark' ? 'light' : 'dark'} />}
       </View>
     </Context.Provider>
   );

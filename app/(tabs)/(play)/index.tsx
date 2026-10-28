@@ -1,4 +1,5 @@
-import { Stack, useFocusEffect } from 'expo-router';
+import { Stack, useFocusEffect, useIsFocused } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { AndroidHaptics, performAndroidHapticsAsync } from 'expo-haptics';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -23,7 +24,7 @@ import { countSongs } from '@/db/songs';
 import { getSetting, setSetting, SettingKey } from '@/db/settings';
 import { buildDescendantMap, listAllTagsWithCounts, listTagPlays } from '@/db/tags';
 import type { TagWithCounts } from '@/db/types';
-import { openLibrary } from '@/navigation';
+import { openLibrary, openSettings } from '@/navigation';
 import { distinctAlbums, loadMixArt } from '@/library/mixArt';
 import { matchesQuery, searchKey } from '@/library/search';
 import {
@@ -497,29 +498,32 @@ function Builder({
     }, [editingMix, browsing, changed, before])
   );
   // The header turns teal for the mode, naming the mix, with its ways out.
+  // The header is the top of the pot's band, flowing into it with no line between.
+  const band = { headerStyle: { backgroundColor: colors.potBand }, headerTintColor: colors.onPot, headerShadowVisible: false };
   const header = editingMix
     ? {
+        ...band,
         title: `Editing ${editingMix.name}`,
-        headerStyle: { backgroundColor: colors.accent },
-        headerTintColor: colors.onAccent,
-        headerLeft: () => <IconButton icon="close" label="Stop editing" color={colors.onAccent} onPress={leaveEditing} />,
+        headerLeft: () => <IconButton icon="close" label="Stop editing" color={colors.onPot} onPress={leaveEditing} />,
         headerRight: () => (
           <IconButton
             icon="checkmark"
             label={`Save ${editingMix.name}`}
-            color={colors.onAccent}
+            color={colors.onPot}
             disabled={!changed || potEmpty}
             onPress={saveEditing}
           />
         ),
       }
     : {
+        ...band,
         title: 'Play',
-        headerStyle: { backgroundColor: colors.bg },
-        headerTintColor: colors.text,
         headerLeft: undefined,
-        headerRight: undefined,
+        // Not while editing, where this corner is the mix's ✓.
+        headerRight: () => <IconButton icon="settings-outline" label="Settings" color={colors.onPot} onPress={openSettings} />,
       };
+  // Light icons over the band in either scheme, while this tab is what's showing.
+  const focused = useIsFocused();
   const describeMix = (mix: Mix) => describeQuery(buildQuery(mixDraft(mix)), names);
   // Its ingredients as chips for its menu: names joined like the pot's (×), on the first tag's colour.
   const mixChips = (mix: Mix) =>
@@ -537,6 +541,7 @@ function Builder({
     <PotDragContext.Provider value={drag}>
       <View ref={drag.rootRef} style={styles.screen} onLayout={(e) => setRoom(e.nativeEvent.layout.height)}>
         <Stack.Screen options={header} />
+        {focused && <StatusBar style="light" />}
         <View
           onLayout={(e) => {
             // Only the part that never changes is kept, so dragging the tray doesn't re-render.

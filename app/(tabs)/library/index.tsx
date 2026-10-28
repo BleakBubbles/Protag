@@ -4,7 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { countSongs } from '@/db/songs';
 import { useLibraryScan } from '@/library/useLibraryScan';
-import { openLibraryFolders, openManageLibrary } from '@/navigation';
+import { openLibraryFolders, openSettings } from '@/navigation';
 import { AlbumsView } from '@/screens/library/AlbumsView';
 import { ArtistsView } from '@/screens/library/ArtistsView';
 import { SongsView } from '@/screens/library/SongsView';
@@ -24,7 +24,7 @@ const libraryHeader = {
   title: 'Library',
   headerTitle: HeaderTitle,
   headerLeft: undefined,
-  headerRight: () => <IconButton icon="settings-outline" label="Manage library" onPress={openManageLibrary} />,
+  headerRight: () => <IconButton icon="settings-outline" label="Settings" onPress={openSettings} />,
 };
 
 
