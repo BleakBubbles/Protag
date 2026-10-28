@@ -47,8 +47,6 @@ const dark = {
   potHint: '#7FA79F',
   potButton: '#0B1F1C',
   onPotButton: '#EAF4F1',
-  /** The Play tab's page under the band: the page with a breath of the band's teal, so the step between them is smaller. */
-  playBg: '#17201E',
   /** Dims the app behind something floating over it (the (i) bubble), so it stands out. */
   scrim: 'rgba(0, 0, 0, 0.4)',
 
@@ -96,7 +94,6 @@ const light: typeof dark = {
   potHint: '#8E877C',
   potButton: '#F6F2EA',
   onPotButton: '#0F5C54',
-  playBg: '#EAF0EB',
   scrim: 'rgba(40, 32, 20, 0.28)',
 
   // Soft ink rather than near-black, which reads harsh on paper, most of all in filled icons.
