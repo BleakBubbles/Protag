@@ -21,6 +21,8 @@ import { font, spacing } from '../../ui/theme';
 import { makeStyles } from '../../ui/ThemeContext';
 
 const NO_TAGS: readonly TagRow[] = [];
+/** Set in full (not just the title), so it replaces the selection header cleanly. */
+const pageHeader = { title: '', headerTitle: undefined, headerLeft: undefined, headerRight: undefined };
 const MAX_PICTURE = 220;
 
 export interface SongCollectionProps {
@@ -104,7 +106,7 @@ export function SongCollection({
 
   return (
     <>
-      <Stack.Screen options={selecting ? selection.header : { title: '' }} />
+      <Stack.Screen options={selecting ? selection.header : pageHeader} />
       <View ref={drag.frameRef} style={styles.screen} {...drag.frameProps}>
         <FlatList
           {...drag.listProps}
