@@ -805,7 +805,7 @@ function Builder({
 const useStyles = makeStyles((colors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.playBg,
   },
   centered: {
     justifyContent: 'center',
@@ -832,7 +832,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   // The tags cover the mixes as they rise, on the page's own colour.
   keyboard: {
-    backgroundColor: colors.bg,
+    backgroundColor: colors.playBg,
   },
   // A picture row runs to the screen's edges, starting in line with the grid.
   bleed: {
