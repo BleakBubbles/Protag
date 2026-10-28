@@ -35,32 +35,51 @@ export interface DividerProps {
   /** The row count it settled on after a resize, to keep. */
   onSettle: (rows: number) => void;
   /**
-   * While building: a swipe down takes the tags with the finger (`pull`) and,
-   * let go far enough on or flicked, folds them away (`onSwipeFold`). `fast`
-   * says the finger was moving, so the fold should carry on at speed.
+   * A swipe takes the tags with the finger (`pull`). While building, down:
+   * let go far enough on or flicked, they fold away (`onSwipeFold`); `fast`
+   * says the finger was moving, so the fold should carry on at speed. Put
+   * away, up, at most `riseLimit`: far enough or flicked, they rise the rest
+   * of the way from where the finger left them (`onSwipeRise`, with that offset).
    */
   pull?: Animated.Value;
   onSwipeFold?: (fast: boolean) => void;
+  onSwipeRise?: (offset: number) => void;
+  riseLimit?: number;
+  /** Hold-and-drag resizes the pot; off while the tags are down, when there's nothing between them to size. */
+  resizable?: boolean;
 }
 
 /**
- * The divider between the pot and what's below it (your mixes at rest, your
- * tags while building). One gesture, one job:
- * - Tap: switch between the two.
+ * The handle on top of your tags, which rise like a keyboard over your mixes:
+ * put away, it waits at the bottom of the page; while building, it sits under
+ * the pot. One gesture, one job:
+ * - Tap: bring the tags up, or put them away.
  * - Swipe: move the "keyboard". Down while building, the tags follow the
  *   finger and fold away (else spring back); up at rest, they come up. The
  *   pot never changes size on a swipe.
- * - Hold, then drag: resize. A tick and a brighter bar say it's picked up;
+ * - Hold, then drag (while building, `resizable`): resize. A tick and a brighter bar say it's picked up;
  *   the pot's tray follows the finger and settles on the nearest whole row,
- *   with a tick at each row on the way. The size is kept, the same in both
- *   states.
+ *   with a tick at each row on the way. The size is kept.
  * In its own strip, outside any scrolling list, so a drag is never mistaken
  * for a scroll.
  */
-export function Divider({ label, onTap, tray, rows, minRows, maxRows, onSettle, pull, onSwipeFold }: DividerProps) {
+export function Divider({
+  label,
+  onTap,
+  tray,
+  rows,
+  minRows,
+  maxRows,
+  onSettle,
+  pull,
+  onSwipeFold,
+  onSwipeRise,
+  riseLimit = 0,
+  resizable = true,
+}: DividerProps) {
   const styles = useStyles();
-  const latest = useRef({ onTap, rows, minRows, maxRows, onSettle, pull, onSwipeFold });
-  latest.current = { onTap, rows, minRows, maxRows, onSettle, pull, onSwipeFold };
+  const latest = useRef({ onTap, rows, minRows, maxRows, onSettle, pull, onSwipeFold, onSwipeRise, riseLimit, resizable });
+  latest.current = { onTap, rows, minRows, maxRows, onSettle, pull, onSwipeFold, onSwipeRise, riseLimit, resizable };
   const gesture = useRef<{ mode: Mode; from: number; tick: number; hold: ReturnType<typeof setTimeout> | null }>({
     mode: 'undecided',
     from: 0,
@@ -100,6 +119,7 @@ export function Divider({ label, onTap, tray, rows, minRows, maxRows, onSettle, 
       onPanResponderGrant: () => {
         const g = gesture.current;
         g.mode = 'undecided';
+        if (!latest.current.resizable) return;
         g.hold = setTimeout(() => {
           if (g.mode !== 'undecided') return;
           g.mode = 'resize';
@@ -121,8 +141,9 @@ export function Divider({ label, onTap, tray, rows, minRows, maxRows, onSettle, 
           if (g.hold) clearTimeout(g.hold);
         }
         if (g.mode === 'swipe') {
-          // Down while building: the tags follow the finger.
-          latest.current.pull?.setValue(Math.max(0, dy));
+          // The tags follow the finger: down while building, up while put away.
+          const { pull: pulled, onSwipeFold: folds, riseLimit: limit } = latest.current;
+          pulled?.setValue(folds ? Math.max(0, dy) : Math.min(0, Math.max(-limit, dy)));
           return;
         }
         if (g.mode !== 'resize') return;
@@ -155,8 +176,12 @@ export function Divider({ label, onTap, tray, rows, minRows, maxRows, onSettle, 
           }
           return springBack();
         }
-        // At rest: up far enough, or flicked, brings the tags up.
-        if (dy < -SWIPE || (dy < -SLOP && vy < -SWIPE_FLICK)) latest.current.onTap();
+        // Put away: up far enough, or flicked, brings the tags up; less, they drop back.
+        if (dy < -SWIPE || (dy < -SLOP && vy < -SWIPE_FLICK)) {
+          const { onSwipeRise: rise, riseLimit: limit } = latest.current;
+          return rise ? rise(Math.min(0, Math.max(-limit, dy))) : latest.current.onTap();
+        }
+        springBack();
       },
       onPanResponderTerminate: () => {
         const mode = gesture.current.mode;
@@ -176,8 +201,12 @@ export function Divider({ label, onTap, tray, rows, minRows, maxRows, onSettle, 
       accessibilityLabel={`Divider. Tap for ${label.toLowerCase()}`}
       accessibilityValue={{ text: `${rows} ${rows === 1 ? 'row' : 'rows'}` }}
       accessibilityActions={[
-        { name: 'increment', label: 'Bigger mix' },
-        { name: 'decrement', label: 'More room below' },
+        ...(resizable
+          ? [
+              { name: 'increment', label: 'Bigger mix' },
+              { name: 'decrement', label: 'More room below' },
+            ]
+          : []),
         { name: 'activate', label: `Show ${label.toLowerCase()}` },
       ]}
       onAccessibilityAction={(e) => {
