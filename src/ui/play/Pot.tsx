@@ -51,6 +51,8 @@ export const POT_ROW = TILE + GAP;
 /** The tray's height for `rows` rows of tiles; more scroll. Set by the divider, otherwise fixed. */
 export const trayHeight = (rows: number) => TILE * rows + GAP * (rows - 1) + INSET * 2;
 const ACTIONS = 48;
+/** The band's rounded bottom corners. */
+const BAND_CORNER = 24;
 /** The tray's edge: always there, only its colour changes, so lighting it never moves a tile. */
 const EDGE = 2;
 /** As long as the tags take to rise, so the pot lights up with them. */
@@ -692,12 +694,15 @@ function KeepOut({ shown }: { shown: boolean }) {
 
 const useStyles = makeStyles((colors) => StyleSheet.create({
   // The band: the top of the screen in the pot's own teal, the header above it included.
+  // Its bottom corners round off, so it sits over the page like a shelf rather than cutting across it.
   pot: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
     gap: spacing.sm,
     backgroundColor: colors.potBand,
+    borderBottomLeftRadius: BAND_CORNER,
+    borderBottomRightRadius: BAND_CORNER,
   },
   top: {
     height: TOP,
