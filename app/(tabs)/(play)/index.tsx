@@ -525,7 +525,7 @@ function Builder({
         title: 'Play',
         headerLeft: undefined,
         // The Settings gear, as the layout sets it; while editing, this corner is the mix's ✓.
-        headerRight: () => <IconButton icon="settings-outline" label="Settings" color={colors.onPot} onPress={openSettings} />,
+        headerRight: () => <IconButton icon="settings" label="Settings" color={colors.onPot} onPress={openSettings} />,
       };
   const describeMix = (mix: Mix) => describeQuery(buildQuery(mixDraft(mix)), names);
   // Its ingredients as chips for its menu: names joined like the pot's (×), on the first tag's colour.

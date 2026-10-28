@@ -24,7 +24,7 @@ const libraryHeader = {
   title: 'Library',
   headerTitle: HeaderTitle,
   headerLeft: undefined,
-  headerRight: () => <IconButton icon="settings-outline" label="Settings" onPress={openSettings} />,
+  headerRight: () => <IconButton icon="settings" label="Settings" onPress={openSettings} />,
 };
 
 
