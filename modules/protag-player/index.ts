@@ -22,11 +22,18 @@ export interface NativeStatus {
   error: string | null;
 }
 
+/** The sleep timer: off, pausing in `remainingMs`, or pausing when the song playing ends. */
+export interface NativeSleep {
+  mode: 'off' | 'timer' | 'end-of-song';
+  remainingMs: number | null;
+}
+
 type Events = {
   onStatus(status: NativeStatus): void;
   /** Playback moved by itself; `repeated` is repeat-one going round the same song. */
   onMoved(event: { index: number; repeated: boolean }): void;
   onEnded(): void;
+  onSleep(sleep: NativeSleep): void;
 };
 
 declare class ProTagPlayerModule extends NativeModule<Events> {
@@ -48,6 +55,10 @@ declare class ProTagPlayerModule extends NativeModule<Events> {
   pause(): Promise<void>;
   seekTo(positionMs: number): Promise<void>;
   setRepeat(repeat: NativeRepeat): Promise<void>;
+  setSleep(mode: NativeSleep['mode'], ms: number): Promise<void>;
+  getSleep(): Promise<NativeSleep>;
+  hasEqualizer(): Promise<boolean>;
+  openEqualizer(): Promise<void>;
 }
 
 /** ProTag's playback engine (Media3), modules/protag-player. */

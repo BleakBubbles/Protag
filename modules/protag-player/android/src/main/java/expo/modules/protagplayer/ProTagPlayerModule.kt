@@ -106,10 +106,15 @@ class ProTagPlayerModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ProTagPlayer")
 
-    Events("onStatus", "onMoved", "onEnded")
+    Events("onStatus", "onMoved", "onEnded", "onSleep")
+
+    OnCreate {
+      Sleep.onChange = { sendEvent("onSleep", sleepState()) }
+    }
 
     OnDestroy {
       main.post {
+        Sleep.onChange = null
         main.removeCallbacks(tick)
         player?.removeListener(listener)
         controller?.let { MediaController.releaseFuture(it) }
@@ -242,6 +247,31 @@ class ProTagPlayerModule : Module() {
     AsyncFunction("setRepeat") { repeat: String ->
       player?.repeatMode = repeatMode(repeat)
     }.runOnQueue(Queues.MAIN)
+
+    /** The sleep timer: `"timer"` pauses in `ms` (fading out), `"end-of-song"` after the song playing, `"off"` cancels. */
+    AsyncFunction("setSleep") { mode: String, ms: Double ->
+      ready()
+      when (mode) {
+        "timer" -> Sleep.timer(ms.toLong())
+        "end-of-song" -> Sleep.endOfSong()
+        else -> Sleep.off()
+      }
+    }.runOnQueue(Queues.MAIN)
+
+    AsyncFunction("getSleep") {
+      sleepState()
+    }.runOnQueue(Queues.MAIN)
+
+    /** Whether the phone has an equalizer ProTag can open. */
+    AsyncFunction("hasEqualizer") {
+      val p = ready()
+      Equalizer.available(p, p.context())
+    }.runOnQueue(Queues.MAIN)
+
+    AsyncFunction("openEqualizer") {
+      val activity = appContext.currentActivity ?: throw Exceptions.MissingActivity()
+      Equalizer.open(ready(), activity)
+    }.runOnQueue(Queues.MAIN)
   }
 
   /**
@@ -292,6 +322,15 @@ class ProTagPlayerModule : Module() {
       )
     )
   }
+
+  private fun sleepState() = mapOf(
+    "mode" to when {
+      Sleep.atEndOfSong -> "end-of-song"
+      Sleep.remainingMs() != null -> "timer"
+      else -> "off"
+    },
+    "remainingMs" to Sleep.remainingMs()?.toDouble()
+  )
 
   private fun repeatMode(repeat: String) = when (repeat) {
     "all" -> Player.REPEAT_MODE_ALL

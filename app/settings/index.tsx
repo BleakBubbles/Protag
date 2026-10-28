@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { getSetting, SettingKey } from '@/db/settings';
@@ -8,6 +9,7 @@ import { useBackup } from '@/library/useBackup';
 import { useLibraryScan } from '@/library/useLibraryScan';
 import { usePlaylistImport } from '@/library/usePlaylistImport';
 import { openLibraryFolders } from '@/navigation';
+import { hasEqualizer, openEqualizer } from '@/player/equalizer';
 import { Button } from '@/ui/Button';
 import { Card, CardActions, CardStatus, CardText } from '@/ui/Card';
 import { formatDaysAgo } from '@/ui/format';
@@ -18,7 +20,7 @@ import { LibraryOverview, type LibraryCounts } from '@/ui/library/LibraryOvervie
 import { spacing } from '@/ui/theme';
 import { makeStyles, useThemeChoice, type ThemeChoice } from '@/ui/ThemeContext';
 
-/** Settings: what ProTag sees on this phone, playlists, tag backups, and how the app looks. */
+/** Settings: what ProTag sees on this phone, playlists, tag backups, sound, and how the app looks. */
 export default function SettingsScreen() {
   const styles = useStyles();
   const { data: counts } = useLibraryQuery(async (db): Promise<LibraryCounts> => {
@@ -80,8 +82,26 @@ export default function SettingsScreen() {
         </CardActions>
       </Card>
 
+      <SoundCard />
       <AppearanceCard />
     </ScrollView>
+  );
+}
+
+/** The phone's own equalizer, when it has one: ProTag doesn't keep a second. */
+function SoundCard() {
+  const [available, setAvailable] = useState<boolean | null>(null);
+  useEffect(() => {
+    hasEqualizer().then(setAvailable);
+  }, []);
+  if (available === null) return null;
+  return (
+    <Card title="Sound">
+      {!available && <CardText>This phone has no equalizer to open. Equalizer apps show up here once installed.</CardText>}
+      <CardActions>
+        <Button label="Equalizer" icon="options-outline" variant="secondary" onPress={openEqualizer} disabled={!available} />
+      </CardActions>
+    </Card>
   );
 }
 

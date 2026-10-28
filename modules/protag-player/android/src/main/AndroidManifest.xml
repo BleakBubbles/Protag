@@ -3,6 +3,13 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+  <!-- Lets the app see whether the phone has an equalizer to open (Android 11+ hides other apps otherwise). -->
+  <queries>
+    <intent>
+      <action android:name="android.media.action.DISPLAY_AUDIO_EFFECT_CONTROL_PANEL" />
+    </intent>
+  </queries>
+
   <application>
     <!-- Exported so the lock screen, Bluetooth, Android Auto and other media controllers can reach it. -->
     <service

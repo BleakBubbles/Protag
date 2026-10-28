@@ -15,6 +15,7 @@ import { makeStyles } from '@/ui/ThemeContext';
 import { ArtworkSlot } from './ArtworkSlot';
 import { QueueList } from './QueueList';
 import { SeekBar } from './SeekBar';
+import { SleepButton } from './SleepButton';
 import { SongTagsRow } from './SongTagsRow';
 import { SourceLine } from './SourceLine';
 import { TrackInfo } from './TrackInfo';
@@ -85,6 +86,7 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
         <View style={styles.topRow}>
           <IconButton icon="chevron-down" label="Close player" onPress={onClose} />
           <SourceLine queue={queue} />
+          <SleepButton />
           <IconButton
             icon="queue"
             label={showQueue ? 'Hide queue' : 'Show queue'}

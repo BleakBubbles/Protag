@@ -45,6 +45,8 @@ object Playback {
       .also { p ->
         player = p
         p.addListener(SavedQueue.placeKeeper(context.applicationContext, p))
+        Sleep.attach(p)
+        Equalizer.announce(p, context.applicationContext)
       }
 }
 
