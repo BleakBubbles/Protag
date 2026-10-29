@@ -61,22 +61,30 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
   useEffect(() => onBusy?.(slide.dragging || drag !== null), [onBusy, slide.dragging, drag]);
 
   const arrange = async (next: number[]) => {
-    setOrder(next);
     await setTagOrder(db, next);
     // Arranged by hand: the Play tab follows it, unless another order was picked there.
     const sorts = parseSorts(await getSetting(db, SettingKey.shuffleSorts));
-    if (sorts.tags === 'name') await setSetting(db, SettingKey.shuffleSorts, JSON.stringify({ ...sorts, tags: 'custom' }));
+    if (sorts.tags === 'name') {
+      await setSetting(db, SettingKey.shuffleSorts, JSON.stringify({ ...sorts, tags: 'custom' }));
+    }
     notifyLibraryChanged();
   };
-  const move = (from: number, to: number) => {
-    if (to === from || to < 0 || to >= ids.length) return;
+  const moved = (from: number, to: number) => {
     const next = [...ids];
     next.splice(to, 0, ...next.splice(from, 1));
+    return next;
+  };
+  /** TalkBack's one place up or down: straight in, the rows sliding to their new places. */
+  const nudge = (from: number, to: number) => {
+    if (to < 0 || to >= ids.length) return;
+    const next = moved(from, to);
+    setOrder(next);
     arrange(next);
   };
 
   const dragging = {
     begin(i: number) {
+      if (dragRef.current) return;
       feelHold();
       dy.setValue(0);
       setDrag({ from: i, target: i });
@@ -88,28 +96,54 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
       const target = Math.min(ids.length - 1, Math.max(0, current.from + Math.round(distance / TAG_ROW_HEIGHT)));
       if (target !== current.target) setDrag({ ...current, target });
     },
-    /** `drop`: false when something else took the touch over: nothing moves. */
+    /**
+     * The floating tag glides into the place it was let go over, and only then
+     * does the order change: by then every row already stands where the new
+     * order puts it, so nothing on screen moves. `drop`: false when something
+     * else took the touch over, and it glides back.
+     */
     end(drop = true) {
       const current = dragRef.current;
-      if (drop && current) move(current.from, current.target);
-      setDrag(null);
-      dy.setValue(0);
+      if (!current) return;
+      const to = drop ? current.target : current.from;
+      if (to !== current.target) setDrag({ ...current, target: to });
+      Animated.timing(dy, {
+        toValue: (to - current.from) * TAG_ROW_HEIGHT,
+        duration: SHIFT_MS,
+        useNativeDriver: false,
+      }).start(() => {
+        if (to !== current.from) {
+          const next = moved(current.from, to);
+          setOrder(next);
+          arrange(next);
+        }
+        setDrag(null);
+      });
     },
   };
 
-  const shiftOf = (i: number) => {
-    if (!drag || i === drag.from) return 0;
-    if (drag.from < drag.target && i > drag.from && i <= drag.target) return -TAG_ROW_HEIGHT;
-    if (drag.target < drag.from && i >= drag.target && i < drag.from) return TAG_ROW_HEIGHT;
-    return 0;
+  /** Where each row stands: its place in the order, or, while one is dragged past, a place up or down. */
+  const slotOf = (i: number) => {
+    if (!drag) return i;
+    if (i === drag.from) return drag.target;
+    if (drag.from < drag.target && i > drag.from && i <= drag.target) return i - 1;
+    if (drag.target < drag.from && i >= drag.target && i < drag.from) return i + 1;
+    return i;
   };
 
   const dragged = drag ? shown[drag.from] : undefined;
 
   return (
-    <View ref={slide.frameRef} collapsable={false} {...slide.frameProps}>
+    // Rows stand by place rather than in a column, so a new order that matches
+    // where they already are changes nothing on screen.
+    <View
+      ref={slide.frameRef}
+      collapsable={false}
+      style={{ height: shown.length * TAG_ROW_HEIGHT }}
+      {...slide.frameProps}
+    >
       {shown.map((tag, i) => (
-        <Shifting key={tag.id} shift={shiftOf(i)} settling={drag !== null} hidden={drag?.from === i}>
+        <Placed key={tag.id} slot={slotOf(i)} hidden={drag?.from === i}>
           <HandledTagRow
             tag={tag}
             selection={selection}
@@ -119,9 +153,9 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
             onDragStart={() => dragging.begin(i)}
             onDragMove={dragging.move}
             onDragEnd={dragging.end}
-            onNudge={(step) => move(i, i + step)}
+            onNudge={(step) => nudge(i, i + step)}
           />
-        </Shifting>
+        </Placed>
       ))}
       {/* The dragged tag floats over the list, following the finger; its row keeps
           the place (and the touch, on its handle) unseen underneath. */}
@@ -145,25 +179,15 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
   );
 }
 
-/** A row that steps aside for one being dragged past it; `hidden` while its floating copy is what's seen. */
-function Shifting({
-  shift,
-  settling,
-  hidden,
-  children,
-}: {
-  shift: number;
-  settling: boolean;
-  hidden: boolean;
-  children: ReactNode;
-}) {
-  const offset = useRef(new Animated.Value(0)).current;
+/** A row at its place in the list, sliding when its place changes; `hidden` while its floating copy is what's seen. */
+function Placed({ slot, hidden, children }: { slot: number; hidden: boolean; children: ReactNode }) {
+  const styles = useStyles();
+  const y = useRef(new Animated.Value(slot * TAG_ROW_HEIGHT)).current;
   useEffect(() => {
-    if (settling) Animated.timing(offset, { toValue: shift, duration: SHIFT_MS, useNativeDriver: true }).start();
-    else offset.setValue(shift);
-  }, [offset, shift, settling]);
+    Animated.timing(y, { toValue: slot * TAG_ROW_HEIGHT, duration: SHIFT_MS, useNativeDriver: true }).start();
+  }, [y, slot]);
   return (
-    <Animated.View style={{ opacity: hidden ? 0 : 1, transform: [{ translateY: offset }] }}>
+    <Animated.View style={[styles.placed, { opacity: hidden ? 0 : 1, transform: [{ translateY: y }] }]}>
       {children}
     </Animated.View>
   );
@@ -221,6 +245,12 @@ function HandledTagRow(props: HandledTagRowProps) {
 }
 
 const useStyles = makeStyles((colors) => StyleSheet.create({
+  placed: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
   // The dragged row, standing over the others it passes.
   floating: {
     position: 'absolute',
