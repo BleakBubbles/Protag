@@ -48,6 +48,9 @@ test("on a tag's page, that tag and what's above it are a given", () => {
   // kpop's page: subtags read on their own, other tags as anywhere else.
   assert.deepEqual(read([GEN4, CHILL], [2, 5], KPOP.id), ['chill', 'gen 4']);
   assert.deepEqual(read([ROOKIES], [2, 4], KPOP.id), ['gen 4 › rookies']);
+  // A subtag in between that's only there to organise stays hidden on the page too:
+  // on kpop's page, rookies reads on its own while gen 4 holds no songs.
+  assert.deepEqual(read([ROOKIES], [4], KPOP.id), ['rookies']);
   // gen 4's page: gen 4 itself, and kpop above it, don't show.
   assert.deepEqual(read([GEN4], [2], GEN4.id), []);
   assert.deepEqual(read([KPOP, ROOKIES], [1, 4], GEN4.id), ['rookies']);

@@ -15,9 +15,10 @@ export interface SongChip {
  * How a song's tags read on its chips. A subtag means something only inside
  * its parent ("gen 4" is kpop's gen 4), so it carries the names above it:
  *
- * - The top of the chain always shows, and the tag itself.
+ * - A top-level tag always shows, and the tag itself.
  * - Subtags in between show only if some song is tagged with them directly; one
- *   that holds no songs of its own is there to organise, and is skipped.
+ *   that holds no songs of its own is there to organise, and is skipped, on a
+ *   tag's page too ("rookies" on kpop's page, not "generation › rookies").
  * - A tag another of the song's tags sits under is dropped: "kpop › gen 4" says kpop.
  * - On a tag's page (`context`), that tag and what's above it are a given: they
  *   don't show, and a chain starts below them ("gen 4" on kpop's page).
@@ -43,7 +44,9 @@ export function chipsFor(
     // Below the page's tag, the chain starts under it.
     const at = context === null ? -1 : path.findIndex((t) => t.id === context);
     const chain = path.slice(at + 1);
-    const prefix = chain.slice(0, -1).filter((t, i) => i === 0 || held.has(t.id));
+    // A top-level tag always shows; a subtag in between only if it holds songs of its own,
+    // also when it's first in what's left on a tag's page (kpop's page: "generation" isn't top-level).
+    const prefix = chain.slice(0, -1).filter((t) => t.parent_id === null || held.has(t.id));
     chips.push({ tag, prefix: prefix.map((t) => t.name) });
   }
   const reads = (chip: SongChip) => [...chip.prefix, chip.tag.name].join(' ');
