@@ -20,8 +20,9 @@ export interface ButtonProps {
   onPress: () => void;
   disabled?: boolean;
   variant?: ButtonVariant;
-  /** Shown before the label. */
+  /** Shown before the label, or after it with `iconAfter` (an arrow onwards: Next). */
   icon?: IconName;
+  iconAfter?: boolean;
   /** `small` fits beside a section heading; its touch area still meets the minimum. */
   size?: 'regular' | 'small';
   style?: StyleProp<ViewStyle>;
@@ -47,6 +48,7 @@ export function Button({
   disabled,
   variant = 'primary',
   icon,
+  iconAfter = false,
   size = 'regular',
   style,
 }: ButtonProps) {
@@ -71,10 +73,11 @@ export function Button({
         style,
       ]}
     >
-      {icon && <Icon name={icon} size={size === 'small' ? iconSize.sm - 4 : iconSize.sm} color={color} />}
+      {icon && !iconAfter && <Icon name={icon} size={size === 'small' ? iconSize.sm - 4 : iconSize.sm} color={color} />}
       <Text style={[styles.label, { color }]} numberOfLines={1}>
         {label}
       </Text>
+      {icon && iconAfter && <Icon name={icon} size={size === 'small' ? iconSize.sm - 4 : iconSize.sm} color={color} />}
     </Pressable>
   );
 }

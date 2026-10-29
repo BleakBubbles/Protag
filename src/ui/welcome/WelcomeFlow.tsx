@@ -21,10 +21,9 @@ import { openLibrary } from '../../navigation';
 import { Button } from '../Button';
 import { FilterChip } from '../FilterChip';
 import { formatCount, plural } from '../format';
-import { LogoMark } from '../LogoMark';
 import { font, spacing } from '../theme';
 import { makeStyles, useColors } from '../ThemeContext';
-import { MiniPot, NestedTags, SongWithTags } from './WelcomeArt';
+import { MiniPot, MusicFolder, NestedTags, SongWithTags } from './WelcomeArt';
 
 /** Tags most people would use somewhere, to start from on day one; none picked until tapped. */
 const STARTER_TAGS = ['chill', 'workout', 'driving', 'focus', 'party', 'sleep', 'sad', 'happy'];
@@ -54,7 +53,7 @@ const SLIDES: Slide[] = [
   {
     title: 'Your music, your tags',
     body: 'ProTag plays the music files on this phone, and your tags stay on it too.',
-    art: () => <LogoMark width={72} />,
+    art: () => <MusicFolder />,
   },
 ];
 
@@ -125,7 +124,7 @@ export function WelcomeFlow({ hasSongs, onClose }: WelcomeFlowProps) {
   const statusBar = <StatusBar style={colors.scheme === 'dark' ? 'light' : 'dark'} />;
   const top = (
     <View style={[styles.top, { paddingTop: insets.top + spacing.sm }]}>
-      <Button label="Skip" variant="secondary" size="small" onPress={onClose} />
+      <Button label="Skip" icon="play-skip-forward" iconAfter variant="secondary" size="small" onPress={onClose} />
     </View>
   );
 
@@ -202,9 +201,9 @@ export function WelcomeFlow({ hasSongs, onClose }: WelcomeFlowProps) {
           ))}
         </View>
         {!last ? (
-          <Button label="Next" onPress={() => goTo(page + 1)} style={styles.wide} />
+          <Button label="Next" icon="arrow-forward" iconAfter onPress={() => goTo(page + 1)} style={styles.wide} />
         ) : hasSongs ? (
-          <Button label="Done" onPress={onClose} style={styles.wide} />
+          <Button label="Done" icon="checkmark" onPress={onClose} style={styles.wide} />
         ) : scanning ? (
           <View style={styles.progress}>
             <ActivityIndicator color={colors.accentFg} />
