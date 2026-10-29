@@ -35,6 +35,7 @@ export interface TagListProps {
  * is kept, here and as "Your order" on the Play tab.
  */
 export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListProps) {
+  const styles = useStyles();
   const db = useSQLiteContext();
 
   // A drop shows at once; the stored order catches up when the library reloads.
@@ -103,10 +104,12 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
     return 0;
   };
 
+  const dragged = drag ? shown[drag.from] : undefined;
+
   return (
     <View ref={slide.frameRef} collapsable={false} {...slide.frameProps}>
       {shown.map((tag, i) => (
-        <Shifting key={tag.id} shift={shiftOf(i)} settling={drag !== null} lifted={drag?.from === i ? dy : null}>
+        <Shifting key={tag.id} shift={shiftOf(i)} settling={drag !== null} hidden={drag?.from === i}>
           <HandledTagRow
             tag={tag}
             selection={selection}
@@ -120,30 +123,47 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
           />
         </Shifting>
       ))}
+      {/* The dragged tag floats over the list, following the finger; its row keeps
+          the place (and the touch, on its handle) unseen underneath. */}
+      {drag && dragged && (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.floating, { top: drag.from * TAG_ROW_HEIGHT, transform: [{ translateY: dy }] }]}
+        >
+          <TagRow
+            name={dragged.name}
+            color={dragged.color}
+            songCount={dragged.song_count}
+            childCount={dragged.child_count}
+            onPress={() => {}}
+            selecting
+            selected={selection.selection?.has(dragged.id) ?? false}
+          />
+        </Animated.View>
+      )}
     </View>
   );
 }
 
-/** A row that steps aside for one being dragged past it, or, being dragged, follows the finger above the rest. */
+/** A row that steps aside for one being dragged past it; `hidden` while its floating copy is what's seen. */
 function Shifting({
   shift,
   settling,
-  lifted,
+  hidden,
   children,
 }: {
   shift: number;
   settling: boolean;
-  lifted: Animated.Value | null;
+  hidden: boolean;
   children: ReactNode;
 }) {
-  const styles = useStyles();
   const offset = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (settling) Animated.timing(offset, { toValue: shift, duration: SHIFT_MS, useNativeDriver: true }).start();
     else offset.setValue(shift);
   }, [offset, shift, settling]);
   return (
-    <Animated.View style={[lifted ? styles.lifted : null, { transform: [{ translateY: lifted ?? offset }] }]}>
+    <Animated.View style={{ opacity: hidden ? 0 : 1, transform: [{ translateY: offset }] }}>
       {children}
     </Animated.View>
   );
@@ -201,9 +221,11 @@ function HandledTagRow(props: HandledTagRowProps) {
 }
 
 const useStyles = makeStyles((colors) => StyleSheet.create({
-  // The dragged row stands over the others it passes.
-  lifted: {
-    zIndex: 1,
+  // The dragged row, standing over the others it passes.
+  floating: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     elevation: 8,
     backgroundColor: colors.surfaceAlt,
   },
