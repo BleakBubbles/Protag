@@ -37,17 +37,17 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     title: 'Tags, not playlists',
-    body: 'Give a song as many tags as fit it: a mood, a moment, a genre. One song can be in any number of them.',
+    body: 'Tag songs with whatever fits them: a mood, a moment, a genre. Each song can have any number of tags.',
     art: (active) => <SongWithTags active={active} />,
   },
   {
     title: 'Tags can hold tags',
-    body: 'Tags are also folders, so you can nest them. A song in a subtag counts as part of its parent tag too.',
+    body: 'Tags are also folders, which means you can nest them. A song in a subtag counts as part of its parent tag too.',
     art: (active) => <NestedTags active={active} />,
   },
   {
     title: 'Mix them into a shuffle',
-    body: 'Put tags in the pot to shuffle them together. Join two for songs that are both, or keep one out.',
+    body: 'Add tags to the pot to hear their songs mixed together. Drop one tag on another for only songs with both, or keep a tag out entirely.',
     art: (active) => <MiniPot active={active} />,
   },
   {
