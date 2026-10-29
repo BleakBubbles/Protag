@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { TagRow as Tag } from '../../db/types';
+import type { SongChip } from '../../library/songChips';
 import { feelHold, HOLD_MS } from '../haptics';
 import { Artwork, artworkRadius } from '../player/Artwork';
 import { TagChip } from '../TagChip';
@@ -22,7 +22,8 @@ export interface SongRowProps {
   title: string;
   artist: string | null;
   artworkUri: string | null;
-  tags: readonly Tag[];
+  /** Its tags as chips read (`listSongChips`). */
+  chips: readonly SongChip[];
   /** Highlights the row, e.g. the song currently playing. */
   active?: boolean;
   /**
@@ -45,7 +46,7 @@ export const SongRow = memo(function SongRow({
   title,
   artist,
   artworkUri,
-  tags,
+  chips,
   active,
   selecting,
   selected,
@@ -54,7 +55,7 @@ export const SongRow = memo(function SongRow({
 }: SongRowProps) {
   const colors = useColors();
   const styles = useStyles();
-  const hidden = tags.length - MAX_CHIPS;
+  const hidden = chips.length - MAX_CHIPS;
 
   return (
     // One touch area for the whole row. While selecting, the selection colour
@@ -101,8 +102,8 @@ export const SongRow = memo(function SongRow({
         </Text>
         {/* Always present, so every row is the same height whether tagged or not. */}
         <View style={styles.chips}>
-          {tags.slice(0, MAX_CHIPS).map((tag) => (
-            <TagChip key={tag.id} name={tag.name} color={tag.color} compact />
+          {chips.slice(0, MAX_CHIPS).map(({ tag, prefix }) => (
+            <TagChip key={tag.id} name={tag.name} prefix={prefix} color={tag.color} compact />
           ))}
           {hidden > 0 && <Text style={styles.more}>+{hidden}</Text>}
         </View>

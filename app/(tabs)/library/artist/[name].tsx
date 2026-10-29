@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { getArtist, listArtistAlbums, listArtistSongs } from '@/db/albums';
 import { listAllSongTags } from '@/db/tags';
+import { listSongChips } from '@/library/songChips';
 import { openAlbum, useFromPlayer } from '@/navigation';
 import { CollectionSection, SongCollection } from '@/screens/library/SongCollection';
 import { EmptyState } from '@/ui/EmptyState';
@@ -22,13 +23,14 @@ export default function ArtistScreen() {
   const fromPlayer = useFromPlayer();
   const { data } = useLibraryQuery(
     async (db) => {
-      const [artist, albums, songs, tags] = await Promise.all([
+      const [artist, albums, songs, tags, chips] = await Promise.all([
         getArtist(db, name),
         listArtistAlbums(db, name),
         listArtistSongs(db, name),
         listAllSongTags(db),
+        listSongChips(db),
       ]);
-      return { artist, albums, songs, tags };
+      return { artist, albums, songs, tags, chips };
     },
     [name]
   );
@@ -41,7 +43,7 @@ export default function ArtistScreen() {
       </View>
     );
   }
-  const { artist, albums, songs, tags } = data;
+  const { artist, albums, songs, tags, chips } = data;
   if (!artist) {
     return (
       <View style={styles.screen}>
@@ -60,6 +62,7 @@ export default function ArtistScreen() {
         .join(' · ')}
       songs={songs}
       tags={tags}
+      chips={chips}
       label={artist.name}
       inOrder={false}
       tagPrompt={`Tag songs by ${artist.name}`}

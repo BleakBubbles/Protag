@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { getTagsForSong } from '../../db/tags';
+import { getSongChips } from '../../library/songChips';
 import { openSongTags } from '../../navigation';
 import { useLibraryQuery } from '../hooks/useLibraryQuery';
 import { NoTags, TagButton } from '../TagButton';
@@ -16,7 +16,7 @@ import { spacing, touchTarget } from '../theme';
  */
 export function SongTagsRow({ songId, onOpenTag }: { songId: number; onOpenTag: (tagId: number) => void }) {
   // Reloads after tagging, like every library view.
-  const { data: tags } = useLibraryQuery((db) => getTagsForSong(db, songId), [songId]);
+  const { data: tags } = useLibraryQuery((db) => getSongChips(db, songId), [songId]);
   const edit = () => openSongTags(songId);
 
   return (
@@ -34,8 +34,8 @@ export function SongTagsRow({ songId, onOpenTag }: { songId: number; onOpenTag: 
             style={styles.scroller}
             contentContainerStyle={styles.chips}
           >
-            {tags.map((tag) => (
-              <TagChip key={tag.id} name={tag.name} color={tag.color} onPress={() => onOpenTag(tag.id)} />
+            {tags.map(({ tag, prefix }) => (
+              <TagChip key={tag.id} name={tag.name} prefix={prefix} color={tag.color} onPress={() => onOpenTag(tag.id)} />
             ))}
           </ScrollView>
         </View>

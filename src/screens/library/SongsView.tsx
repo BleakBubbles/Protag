@@ -2,10 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { listAllSongs } from '../../db/songs';
-import { listAllSongTags } from '../../db/tags';
-import type { TagRow } from '../../db/types';
 import { albumArtUri } from '../../library/assets';
 import { matchesQuery, searchKey } from '../../library/search';
+import { listSongChips, type SongChip } from '../../library/songChips';
 import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
 import { EmptyState } from '../../ui/EmptyState';
 import { plural } from '../../ui/format';
@@ -19,7 +18,7 @@ import { SearchField } from '../../ui/SearchField';
 import { font, spacing } from '../../ui/theme';
 import { makeStyles } from '../../ui/ThemeContext';
 
-const NO_TAGS: readonly TagRow[] = [];
+const NO_CHIPS: readonly SongChip[] = [];
 
 export interface SongsViewProps {
   /** Owned by the Library screen, which shows its header while selecting. */
@@ -35,8 +34,8 @@ export interface SongsViewProps {
 export function SongsView({ selection, onSongs }: SongsViewProps) {
   const styles = useStyles();
   const { data } = useLibraryQuery(async (db) => {
-    const [songs, tags] = await Promise.all([listAllSongs(db), listAllSongTags(db)]);
-    return { songs, tags };
+    const [songs, chips] = await Promise.all([listAllSongs(db), listSongChips(db)]);
+    return { songs, chips };
   }, []);
   const [query, setQuery] = useState('');
   const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(SONG_ROW_HEIGHT);
@@ -91,7 +90,7 @@ export function SongsView({ selection, onSongs }: SongsViewProps) {
               title={item.title}
               artist={item.artist}
               artworkUri={albumArtUri(item.album_id)}
-              tags={data?.tags.get(item.id) ?? NO_TAGS}
+              chips={data?.chips.get(item.id) ?? NO_CHIPS}
               active={current?.id === item.id}
               selecting={selecting}
               selected={selection.selection?.has(item.id) ?? false}

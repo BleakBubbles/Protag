@@ -11,8 +11,8 @@ import {
 
 import { notifyLibraryChanged } from '../../db/changes';
 import { ensureTagPath, listTagsWithCounts, parseTagPath } from '../../db/tags';
-import type { TagRow as Tag } from '../../db/types';
 import { albumArtUri } from '../../library/assets';
+import type { SongChip } from '../../library/songChips';
 import { usePlaylistImport } from '../../library/usePlaylistImport';
 import { openTag } from '../../navigation';
 import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
@@ -31,7 +31,7 @@ import { PromptDialog } from '../../ui/PromptDialog';
 import { font, spacing } from '../../ui/theme';
 import { makeStyles } from '../../ui/ThemeContext';
 
-const NO_TAGS: readonly Tag[] = [];
+const NO_CHIPS: readonly SongChip[] = [];
 const LOOSE_LABEL = 'Not tagged yet';
 
 export interface TagsViewProps {
@@ -113,7 +113,7 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
               title={item.title}
               artist={item.artist}
               artworkUri={albumArtUri(item.album_id)}
-              tags={NO_TAGS}
+              chips={NO_CHIPS}
               active={current?.id === item.id}
               selecting={selecting}
               selected={selection.selection?.has(item.id) ?? false}

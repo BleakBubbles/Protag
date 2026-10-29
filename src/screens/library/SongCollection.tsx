@@ -4,6 +4,7 @@ import { FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions,
 
 import type { SongRow as Song, TagRow } from '../../db/types';
 import { albumArtUri } from '../../library/assets';
+import type { SongChip } from '../../library/songChips';
 import { openEditTags, openTag, useFromPlayer } from '../../navigation';
 import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
 import { ARTIST_MODES } from '../../player/queue';
@@ -21,6 +22,7 @@ import { font, spacing } from '../../ui/theme';
 import { makeStyles } from '../../ui/ThemeContext';
 
 const NO_TAGS: readonly TagRow[] = [];
+const NO_CHIPS: readonly SongChip[] = [];
 /** Set in full (not just the title), so it replaces the selection header cleanly. */
 const pageHeader = { title: '', headerTitle: undefined, headerLeft: undefined, headerRight: undefined };
 const MAX_PICTURE = 220;
@@ -34,6 +36,8 @@ export interface SongCollectionProps {
   meta: string;
   songs: readonly Song[];
   tags: ReadonlyMap<number, readonly TagRow[]>;
+  /** Each song's tags as its chips read (`listSongChips`). */
+  chips: ReadonlyMap<number, readonly SongChip[]>;
   /** How the player names what's playing: "Playing · New Jeans". */
   label: string;
   /** What the tag button does, for screen readers: "Tag songs in New Jeans", "Tag songs by NewJeans". */
@@ -67,6 +71,7 @@ export function SongCollection({
   meta,
   songs,
   tags,
+  chips,
   label,
   tagPrompt,
   children,
@@ -121,7 +126,7 @@ export function SongCollection({
               title={item.title}
               artist={item.artist}
               artworkUri={albumArtUri(item.album_id)}
-              tags={tags.get(item.id) ?? NO_TAGS}
+              chips={chips.get(item.id) ?? NO_CHIPS}
               active={current?.id === item.id}
               selecting={selecting}
               selected={selection.selection?.has(item.id) ?? false}

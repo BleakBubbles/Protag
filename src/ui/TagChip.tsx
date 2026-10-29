@@ -1,12 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { PATH_SEPARATOR } from '../library/tagTree';
 import { formatCount } from './format';
 import { font, iconSize, radius, spacing, touchTarget } from './theme';
 import { makeStyles, useColors } from './ThemeContext';
 
 export interface TagChipProps {
   name: string;
+  /** Names that place a subtag, top first ("kpop" before "gen 4"), shown fainter before its own. */
+  prefix?: readonly string[];
   /** The tag's stored colour name. */
   color?: string | null;
   /** Shown after the name when given. */
@@ -24,14 +27,15 @@ export interface TagChipProps {
   isNew?: boolean;
 }
 
-export function TagChip({ name, color, count, onPress, onRemove, disabled, compact, isNew }: TagChipProps) {
+export function TagChip({ name, prefix, color, count, onPress, onRemove, disabled, compact, isNew }: TagChipProps) {
   const colors = useColors();
   const styles = useStyles();
   const handler = onRemove ?? onPress;
-  let label = name;
-  if (onRemove) label = `Remove ${name}`;
-  else if (isNew) label = `Create tag ${name}`;
-  else if (count !== undefined) label = `${name}, ${count} songs`;
+  const placed = prefix?.length ? `${prefix.join(PATH_SEPARATOR)}${PATH_SEPARATOR}` : '';
+  let label = placed + name;
+  if (onRemove) label = `Remove ${label}`;
+  else if (isNew) label = `Create tag ${label}`;
+  else if (count !== undefined) label = `${label}, ${count} songs`;
 
   return (
     <Pressable
@@ -52,6 +56,7 @@ export function TagChip({ name, color, count, onPress, onRemove, disabled, compa
         <View style={[styles.dot, compact && styles.dotCompact, { backgroundColor: colors.tag(color) }]} />
       )}
       <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={1}>
+        {placed && <Text style={styles.prefix}>{placed}</Text>}
         {name}
       </Text>
       {count !== undefined && <Text style={styles.count}>{formatCount(count)}</Text>}
@@ -105,6 +110,9 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   nameCompact: {
     ...font.caption,
     color: colors.textDim,
+  },
+  prefix: {
+    color: colors.textFaint,
   },
   count: {
     ...font.numeric,

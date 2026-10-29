@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { getAlbum, listAlbumSongs } from '@/db/albums';
 import { listAllSongTags } from '@/db/tags';
+import { listSongChips } from '@/library/songChips';
 import { openArtist, useFromPlayer } from '@/navigation';
 import { SongCollection } from '@/screens/library/SongCollection';
 import { EmptyState } from '@/ui/EmptyState';
@@ -18,8 +19,8 @@ export default function AlbumScreen() {
   const fromPlayer = useFromPlayer();
   const { data } = useLibraryQuery(
     async (db) => {
-      const [album, songs, tags] = await Promise.all([getAlbum(db, id), listAlbumSongs(db, id), listAllSongTags(db)]);
-      return { album, songs, tags };
+      const [album, songs, tags, chips] = await Promise.all([getAlbum(db, id), listAlbumSongs(db, id), listAllSongTags(db), listSongChips(db)]);
+      return { album, songs, tags, chips };
     },
     [id]
   );
@@ -32,7 +33,7 @@ export default function AlbumScreen() {
       </View>
     );
   }
-  const { album, songs, tags } = data;
+  const { album, songs, tags, chips } = data;
   if (!album) {
     return (
       <View style={styles.screen}>
@@ -51,6 +52,7 @@ export default function AlbumScreen() {
       meta={plural(songs.length, 'song')}
       songs={songs}
       tags={tags}
+      chips={chips}
       label={album.title}
       tagPrompt={`Tag songs in ${album.title}`}
     />

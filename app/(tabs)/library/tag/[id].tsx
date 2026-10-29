@@ -9,7 +9,6 @@ import {
   deleteTag,
   ensureTagPath,
   getTagDeletionImpact,
-  listAllSongTags,
   listTags,
   listSongsInTag,
   listTagsWithCounts,
@@ -19,8 +18,8 @@ import {
   reparentTag,
   setTagColor,
 } from '@/db/tags';
-import type { TagRow as Tag } from '@/db/types';
 import { albumArtUri } from '@/library/assets';
+import { listSongChips, type SongChip } from '@/library/songChips';
 import { buildTagIndex } from '@/library/tagTree';
 import { openAddSongs, openTag, useFromPlayer } from '@/navigation';
 import { useNowPlaying, usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
@@ -48,7 +47,7 @@ import { headerTitleText } from '@/ui/stackOptions';
 import { font, iconSize, spacing } from '@/ui/theme';
 import { makeStyles, useColors } from '@/ui/ThemeContext';
 
-const NO_TAGS: readonly Tag[] = [];
+const NO_CHIPS: readonly SongChip[] = [];
 const SHUFFLE_SIZE = 52;
 
 type Dialog = 'rename' | 'move' | 'add-subtag' | null;
@@ -74,13 +73,13 @@ export default function TagScreen() {
 
   const { data } = useLibraryQuery(
     async (db) => {
-      const [tags, children, songs, songTags] = await Promise.all([
+      const [tags, children, songs, chips] = await Promise.all([
         listTags(db),
         listTagsWithCounts(db, id),
         listSongsInTag(db, id),
-        listAllSongTags(db),
+        listSongChips(db, id),
       ]);
-      return { index: buildTagIndex(tags), children, songs, songTags };
+      return { index: buildTagIndex(tags), children, songs, chips };
     },
     [id]
   );
@@ -250,7 +249,7 @@ export default function TagScreen() {
               title={item.title}
               artist={item.artist}
               artworkUri={albumArtUri(item.album_id)}
-              tags={data?.songTags.get(item.id) ?? NO_TAGS}
+              chips={data?.chips.get(item.id) ?? NO_CHIPS}
               active={current?.id === item.id}
               selecting={selecting}
               selected={selection?.has(item.id) ?? false}
