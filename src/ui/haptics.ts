@@ -11,3 +11,8 @@ export function feelHold(): void {
 
 /** How long a press-and-hold takes: quicker than Android's default half second, which felt sluggish. */
 export const HOLD_MS = 350;
+
+/** The tick for a slider landing on a new stop as it's dragged: the sleep timer's bar. */
+export function feelStep(): void {
+  performAndroidHapticsAsync(AndroidHaptics.Clock_Tick).catch(() => {});
+}
