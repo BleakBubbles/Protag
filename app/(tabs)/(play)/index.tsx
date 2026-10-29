@@ -612,6 +612,12 @@ function Builder({
             style={[
               styles.below,
               styles.keyboard,
+              // Anchored to the bottom at the height last measured, so put away
+              // it rests with just its handle showing even in the frame where
+              // the area has changed size and the measurement hasn't caught up
+              // (the mini-player swiped away): from the bottom, "its own height
+              // less the handle" is right whatever that height is.
+              below > 0 && { top: undefined, height: below },
               {
                 transform: [
                   // Down, all but the handle is below the bottom edge.
