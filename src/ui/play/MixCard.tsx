@@ -2,12 +2,14 @@ import { useRef } from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewInstance } from 'react-native';
 
 import { feelHold, HOLD_MS } from '../haptics';
+import { Icon } from '../Icon';
 import type { Rect } from '../Popover';
 import { font, radius, spacing } from '../theme';
-import { makeStyles } from '../ThemeContext';
+import { makeStyles, useColors } from '../ThemeContext';
 import { ArtMosaic } from './ArtMosaic';
 
 const RING_GAP = 2;
+const PIN_SIZE = 16;
 const RING_WIDTH = 2;
 /** How far the ring stands out from the artwork. */
 const RING_OUT = RING_GAP + RING_WIDTH;
@@ -27,6 +29,8 @@ export interface MixCardProps {
   onLongPress: (at: Rect) => void;
   /** Its menu is open: ringed like a tile in the mix, so it's clear which mix it's for. */
   held?: boolean;
+  /** Pinned to the front of the shelf: a pin before its name says why it's there. */
+  pinned?: boolean;
 }
 
 /**
@@ -34,7 +38,8 @@ export interface MixCardProps {
  * shuffles it; held, it opens a menu (edit, rename, delete) under its
  * artwork. Fixed height, so cards line up whatever their text.
  */
-export function MixCard({ name, description, albumIds, color, width, onPress, onLongPress, held }: MixCardProps) {
+export function MixCard({ name, description, albumIds, color, width, onPress, onLongPress, held, pinned }: MixCardProps) {
+  const colors = useColors();
   const styles = useStyles();
   const art = useRef<ViewInstance>(null);
   return (
@@ -49,7 +54,7 @@ export function MixCard({ name, description, albumIds, color, width, onPress, on
         );
       }}
       accessibilityRole="button"
-      accessibilityLabel={`Shuffle ${name}: ${description}`}
+      accessibilityLabel={`Shuffle ${name}${pinned ? ', pinned' : ''}: ${description}`}
       accessibilityHint="Long press for more options"
       style={({ pressed }) => [styles.card, { width }, pressed && styles.pressed]}
     >
@@ -59,9 +64,12 @@ export function MixCard({ name, description, albumIds, color, width, onPress, on
         </View>
         {held && <View pointerEvents="none" style={styles.ring} />}
       </View>
-      <Text style={styles.name} numberOfLines={1}>
-        {name}
-      </Text>
+      <View style={styles.nameRow}>
+        {pinned && <Icon name="pin-filled" size={PIN_SIZE} color={colors.textDim} />}
+        <Text style={styles.name} numberOfLines={1}>
+          {name}
+        </Text>
+      </View>
       <Text style={styles.description} numberOfLines={1}>
         {description}
       </Text>
@@ -95,9 +103,15 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     borderWidth: RING_WIDTH,
     borderColor: colors.text,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
   name: {
     ...font.listTitle,
     color: colors.text,
+    flexShrink: 1,
   },
   description: {
     ...font.caption,

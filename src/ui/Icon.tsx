@@ -22,11 +22,14 @@ const OWN = {
   'add-to-queue': 'playlist-plus',
   queue: 'playlist-music-outline',
   cog: 'cog',
+  pin: 'pin-outline',
+  'pin-filled': 'pin',
+  unpin: 'pin-off-outline',
 } as const satisfies Record<string, ComponentProps<typeof MaterialCommunityIcons>['name']>;
 
 type OwnIconName = keyof typeof OWN;
 
-/** Any Ionicons name, or one of ProTag's own (`tag`, `tags` and their `-filled` forms; the menu actions; the queue; the settings cog). */
+/** Any Ionicons name, or one of ProTag's own (`tag`, `tags` and their `-filled` forms; the menu actions; the queue; the settings cog; pins). */
 export type IconName = ComponentProps<typeof Ionicons>['name'] | OwnIconName;
 
 export interface IconProps {

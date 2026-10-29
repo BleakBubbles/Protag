@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { notifyLibraryChanged } from '../../db/changes';
-import { deleteMix, renameMix, type Mix } from '../../db/mixes';
+import { deleteMix, pinMix, renameMix, type Mix } from '../../db/mixes';
 import type { Rect } from '../Popover';
 import { PopupMenu } from '../PopupMenu';
 import { PromptDialog } from '../PromptDialog';
@@ -44,7 +44,8 @@ export interface MixShelfProps {
  * Saved mixes, under the pot on the Play tab: what you've made before, below
  * what you're making now (a mix is a saved pot). Tap one to shuffle it; hold
  * it for a menu under its artwork, headed by the mix itself (artwork, name,
- * its tags as chips): Edit (into the pot), Rename, Delete.
+ * its tags as chips): Pin (to the front, ahead of any pinned before), Edit
+ * (into the pot), Rename, Delete.
  */
 export function MixShelf({ mixes, art, describe, colorOf, chipsOf, onPlay, onEdit, scrollEnabled }: MixShelfProps) {
   const styles = useStyles();
@@ -54,6 +55,11 @@ export function MixShelf({ mixes, art, describe, colorOf, chipsOf, onPlay, onEdi
   /** The mix whose menu is open (and where its artwork is), and the one being renamed. */
   const [menu, setMenu] = useState<{ mix: Mix; at: Rect } | null>(null);
   const [renaming, setRenaming] = useState<Mix | null>(null);
+
+  const setPinned = async (mix: Mix, pinned: boolean) => {
+    await pinMix(db, mix.id, pinned);
+    notifyLibraryChanged();
+  };
 
   const confirmDelete = (mix: Mix) =>
     Alert.alert(`Delete "${mix.name}"?`, 'The mix goes; its tags and songs stay.', [
@@ -91,6 +97,7 @@ export function MixShelf({ mixes, art, describe, colorOf, chipsOf, onPlay, onEdi
             onPress={() => onPlay(item)}
             onLongPress={(at) => setMenu({ mix: item, at })}
             held={menu?.mix.id === item.id}
+            pinned={item.pinned}
           />
         )}
       />
@@ -102,6 +109,9 @@ export function MixShelf({ mixes, art, describe, colorOf, chipsOf, onPlay, onEdi
         actions={
           menu
             ? [
+                menu.mix.pinned
+                  ? { label: 'Unpin', icon: 'unpin', onPress: () => setPinned(menu.mix, false) }
+                  : { label: 'Pin', icon: 'pin', onPress: () => setPinned(menu.mix, true) },
                 { label: 'Edit', icon: 'edit', onPress: () => onEdit(menu.mix) },
                 { label: 'Rename', icon: 'rename', onPress: () => setRenaming(menu.mix) },
                 { label: 'Delete', icon: 'delete', destructive: true, onPress: () => confirmDelete(menu.mix) },

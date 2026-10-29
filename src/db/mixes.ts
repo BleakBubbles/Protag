@@ -3,6 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { isRef, type Ref } from '../query/refs';
 import { parseTuning } from '../query/tuning';
 import { EMPTY_DRAFT, type QueryDraft } from '../query/types';
+import { getSetting, setSetting, SettingKey } from './settings';
 
 /**
  * A mix: a named, saved tag combination. Like a smart playlist, it's a rule
@@ -16,6 +17,8 @@ export interface Mix {
   name: string;
   draft: QueryDraft;
   createdAt: number;
+  /** Pinned to the front of the shelf. */
+  pinned: boolean;
 }
 
 /** Thrown for mix operations the user could plausibly trigger; the message is for the user. */
@@ -78,11 +81,42 @@ function legacyIngredients(include: Ref[], mode: unknown): Ref[][] {
   return mode === 'or' ? include.map((id) => [id]) : [include];
 }
 
+/** Pinned mixes first, the most recently pinned leading; then the rest, oldest first. */
 export async function listMixes(db: SQLiteDatabase): Promise<Mix[]> {
-  const rows = await db.getAllAsync<{ id: number; name: string; query_json: string; created_at: number }>(
-    'SELECT id, name, query_json, created_at FROM saved_queries ORDER BY created_at'
-  );
-  return rows.map((r) => ({ id: r.id, name: r.name, draft: parseDraft(r.query_json), createdAt: r.created_at }));
+  const [rows, pins] = await Promise.all([
+    db.getAllAsync<{ id: number; name: string; query_json: string; created_at: number }>(
+      'SELECT id, name, query_json, created_at FROM saved_queries ORDER BY created_at'
+    ),
+    readPins(db),
+  ]);
+  const mixes = rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    draft: parseDraft(r.query_json),
+    createdAt: r.created_at,
+    pinned: pins.includes(r.id),
+  }));
+  const pinRank = (mix: Mix) => (mix.pinned ? pins.indexOf(mix.id) : pins.length);
+  return mixes.sort((a, b) => pinRank(a) - pinRank(b));
+}
+
+/**
+ * Pins a mix to the front of the shelf (ahead of any pinned before it), or
+ * lets it back into its place. Kept as a setting, a list of ids: a deleted
+ * mix's id is just never matched.
+ */
+export async function pinMix(db: SQLiteDatabase, id: number, pinned: boolean): Promise<void> {
+  const pins = (await readPins(db)).filter((pin) => pin !== id);
+  await setSetting(db, SettingKey.pinnedMixes, JSON.stringify(pinned ? [id, ...pins] : pins));
+}
+
+async function readPins(db: SQLiteDatabase): Promise<number[]> {
+  try {
+    const pins = JSON.parse((await getSetting(db, SettingKey.pinnedMixes)) ?? '[]');
+    return Array.isArray(pins) ? pins.filter((pin): pin is number => typeof pin === 'number') : [];
+  } catch {
+    return [];
+  }
 }
 
 /**

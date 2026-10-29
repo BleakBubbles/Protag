@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { freshDatabase } from './helpers/db.ts';
-import { deleteMix, keepPot, listMixes, MixError, parseDraft, parseKeptPot, renameMix, saveMix, saveMixAs } from '../src/db/mixes.ts';
+import { deleteMix, keepPot, listMixes, MixError, parseDraft, parseKeptPot, pinMix, renameMix, saveMix, saveMixAs } from '../src/db/mixes.ts';
 import { EMPTY_DRAFT, sameDraft, type QueryDraft } from '../src/query/types.ts';
 
 const driving = { ...EMPTY_DRAFT, ingredients: [[1]], exclude: [2] };
@@ -85,4 +85,26 @@ test('mixes saved before the pot open as ingredients', () => {
   assert.deepEqual(parseDraft(all), { ...EMPTY_DRAFT, ingredients: [[1, 2]], exclude: [3] });
   assert.deepEqual(parseDraft('{"include":[1,2],"mode":"or"}'), { ...EMPTY_DRAFT, ingredients: [[1], [2]] });
   assert.deepEqual(parseDraft('{"include":[1,"x"],"mode":"weird"}'), { ...EMPTY_DRAFT, ingredients: [[1]] });
+});
+
+test('pinned mixes come first, the most recently pinned leading; unpinned ones go back to their place', async () => {
+  const db = await freshDatabase();
+  await saveMix(db as never, 'A', driving);
+  const b = await saveMix(db as never, 'B', driving);
+  const c = await saveMix(db as never, 'C', driving);
+  const names = async () => (await listMixes(db as never)).map((m) => `${m.name}${m.pinned ? '*' : ''}`);
+
+  assert.deepEqual(await names(), ['A', 'B', 'C']);
+  await pinMix(db as never, b, true);
+  await pinMix(db as never, c, true);
+  assert.deepEqual(await names(), ['C*', 'B*', 'A']);
+  // Pinning again brings it to the very front.
+  await pinMix(db as never, b, true);
+  assert.deepEqual(await names(), ['B*', 'C*', 'A']);
+  await pinMix(db as never, b, false);
+  assert.deepEqual(await names(), ['C*', 'A', 'B']);
+  // A deleted mix's pin is simply never matched.
+  await deleteMix(db as never, c);
+  assert.deepEqual(await names(), ['A', 'B']);
+  db.close();
 });

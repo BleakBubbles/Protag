@@ -24,6 +24,8 @@ export const SettingKey = {
   pot: 'shuffle.pot',
   /** Id of the tag the Play tab's tags were last gone in to, to come back there; empty at the top. */
   tagsAt: 'shuffle.tagsAt',
+  /** JSON array of pinned mix ids, most recently pinned first (db/mixes.ts). */
+  pinnedMixes: 'mixes.pinned',
   /** 'system' (follow the phone), 'dark' or 'light'. */
   theme: 'app.theme',
 } as const;
