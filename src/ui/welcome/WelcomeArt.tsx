@@ -11,7 +11,6 @@ import { SongRow } from '../library/SongRow';
 import { TagRow } from '../library/TagRow';
 import { reduceMotion, timing } from '../motion';
 import { Join } from '../play/PotDrag';
-import { TagChip } from '../TagChip';
 import { font, radius, spacing } from '../theme';
 import { makeStyles, useColors } from '../ThemeContext';
 
@@ -80,21 +79,23 @@ export function SongWithTags({ active }: { active: boolean }) {
   );
 }
 
-/** Slide 2: a tag with subtags, as folders, and a song's chip naming both. */
+/** Slide 2: a tag holding subtags, one of them open to show a song in it, whose chip names both. */
+const NESTED_SONG: SongChip[] = [{ tag: tag(12, 'running', 'orange', 11), prefix: ['workout'] }];
+
 export function NestedTags({ active }: { active: boolean }) {
   const styles = useStyles();
   return (
     <View style={styles.stretch} pointerEvents="none">
-      <TagRow name="kpop" color="pink" songCount={240} childCount={2} onPress={() => {}} />
+      <TagRow name="workout" color="red" songCount={86} childCount={2} onPress={() => {}} open />
       <Appear active={active} delay={150}>
         <View style={styles.indent}>
-          <TagRow name="gen 4" color="purple" songCount={130} childCount={0} onPress={() => {}} />
-          <TagRow name="gen 5" color="blue" songCount={90} childCount={0} onPress={() => {}} />
-        </View>
-      </Appear>
-      <Appear active={active} delay={450}>
-        <View style={styles.chipLine}>
-          <TagChip name="gen 4" prefix={['kpop']} color="purple" />
+          <TagRow name="running" color="orange" songCount={42} childCount={0} onPress={() => {}} open />
+          <Appear active={active} delay={400}>
+            <View style={styles.indent}>
+              <SongRow id={0} title="Eye of the Tiger" artist="Survivor" artworkUri={null} chips={NESTED_SONG} onPress={() => {}} />
+            </View>
+          </Appear>
+          <TagRow name="lifting" color="yellow" songCount={31} childCount={0} onPress={() => {}} />
         </View>
       </Appear>
     </View>
@@ -103,7 +104,7 @@ export function NestedTags({ active }: { active: boolean }) {
 
 /** Slide 3's tags, by id. */
 const POT_TAGS = new Map(
-  [tag(1, 'chill', 'teal'), tag(2, 'rain', 'cyan'), tag(3, 'kpop', 'pink'), tag(4, 'driving', 'orange'), tag(5, 'sad', 'gray')].map(
+  [tag(1, 'chill', 'teal'), tag(2, 'rain', 'cyan'), tag(3, 'pop', 'pink'), tag(4, 'driving', 'orange'), tag(5, 'sad', 'gray')].map(
     (t) => [t.id, t]
   )
 );
@@ -122,7 +123,7 @@ const BADGE = 18;
 /**
  * Slide 3: the pot filling up as it does on the Play tab, tiles and all, with
  * the mix's name above it worked out from what's in it, the way the player
- * names what it's shuffling: "chill + rain + kpop × driving, not sad".
+ * names what it's shuffling: "chill + rain + pop × driving, not sad".
  */
 export function MiniPot({ active }: { active: boolean }) {
   const colors = useColors();
@@ -190,14 +191,24 @@ export function MiniPot({ active }: { active: boolean }) {
   );
 }
 
-/** Slide 4: the music files on the phone, as a big folder. */
+/**
+ * Slide 4: the music on the phone, as a folder drawn in a little depth: a
+ * back with its tab, papers standing in it, and the front cover tipped open,
+ * the whole thing turned slightly away. The papers are always light, like
+ * paper; the folder is the band's teal, its front a shade lighter.
+ */
 export function MusicFolder() {
   const colors = useColors();
   const styles = useStyles();
   return (
-    <View style={styles.folder}>
-      <Ionicons name="folder" size={88} color={colors.accentFg} />
-      <Ionicons name="musical-notes" size={30} color={colors.bg} style={styles.folderNotes} />
+    <View style={styles.folderStage}>
+      <View style={styles.folder}>
+        <View style={[styles.folderTab, { backgroundColor: colors.potBand }]} />
+        <View style={[styles.folderBack, { backgroundColor: colors.potBand }]} />
+        <View style={[styles.paper, styles.paperBack, { backgroundColor: colors.onPotDim }]} />
+        <View style={[styles.paper, styles.paperFront, { backgroundColor: colors.onPot }]} />
+        <View style={[styles.folderFront, { backgroundColor: colors.tag('teal') }]} />
+      </View>
     </View>
   );
 }
@@ -208,11 +219,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   indent: {
     marginLeft: spacing.xl,
-  },
-  chipLine: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.sm,
   },
   band: {
     alignSelf: 'stretch',
@@ -286,13 +292,60 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.exclude,
   },
-  folder: {
+  // Turned a little away and tipped back, for depth.
+  folderStage: {
+    width: 180,
+    height: 170,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // On the folder's face, a little below centre (its tab takes the top).
-  folderNotes: {
+  folder: {
+    width: 150,
+    height: 116,
+    transform: [{ perspective: 600 }, { rotateY: '-24deg' }, { rotateX: '14deg' }],
+  },
+  folderTab: {
     position: 'absolute',
-    top: 36,
+    top: 0,
+    left: 0,
+    width: 58,
+    height: 22,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+  },
+  folderBack: {
+    position: 'absolute',
+    top: 12,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 12,
+    borderTopLeftRadius: 0,
+  },
+  paper: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    height: 80,
+    borderRadius: 6,
+  },
+  paperBack: {
+    top: 6,
+    transform: [{ rotate: '-4deg' }],
+  },
+  paperFront: {
+    top: 14,
+    transform: [{ rotate: '3deg' }],
+  },
+  // Hinged at the bottom and tipped towards you, so the papers show above it.
+  folderFront: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 76,
+    borderRadius: 12,
+    transformOrigin: 'bottom',
+    transform: [{ perspective: 400 }, { rotateX: '-34deg' }],
   },
 }));

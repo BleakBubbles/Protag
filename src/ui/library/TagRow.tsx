@@ -35,6 +35,8 @@ export interface TagRowProps {
   onNudge?: (step: 1 | -1) => void;
   /** Dimmed and untappable, keeping its place (while selecting songs). */
   disabled?: boolean;
+  /** Shown opened, its contents below it (the welcome's example): the arrow points down. */
+  open?: boolean;
 }
 
 /**
@@ -42,7 +44,8 @@ export interface TagRowProps {
  * pattern people already know. A folder icon on the tag's own colour.
  */
 export function TagRow(props: TagRowProps) {
-  const { name, color, songCount, childCount, onPress, onLongPress, selecting, selected, handle, onNudge, disabled } = props;
+  const { name, color, songCount, childCount, onPress, onLongPress, selecting, selected, handle, onNudge, disabled, open } =
+    props;
   const colors = useColors();
   const styles = useStyles();
   const height = useTagRowHeight();
@@ -106,7 +109,7 @@ export function TagRow(props: TagRowProps) {
           <Icon name="reorder-three" size={iconSize.sm} color={colors.textDim} />
         </View>
       ) : (
-        <Ionicons name="chevron-forward" size={iconSize.sm} color={colors.textFaint} />
+        <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={iconSize.sm} color={colors.textFaint} />
       )}
     </Pressable>
   );

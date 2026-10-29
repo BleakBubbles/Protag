@@ -42,7 +42,7 @@ const SLIDES: Slide[] = [
   },
   {
     title: 'Tags can hold tags',
-    body: 'Sort tags inside others, like folders. A song in gen 4 is in kpop too, so shuffling kpop plays both.',
+    body: 'Tags are also folders, so you can nest them. A song in a subtag counts as part of its parent tag too.',
     art: (active) => <NestedTags active={active} />,
   },
   {
@@ -266,7 +266,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   // One height for every slide's picture, so the words under it don't jump from slide to slide.
   art: {
     alignItems: 'center',
-    height: 300,
+    height: 320,
     justifyContent: 'center',
   },
   words: {
