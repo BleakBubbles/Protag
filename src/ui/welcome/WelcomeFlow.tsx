@@ -37,7 +37,7 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     title: 'Tags, not playlists',
-    body: 'Tag songs with whatever fits them: a mood, a moment, a genre. Each song can have any number of tags.',
+    body: 'Tag songs with whatever fits them best: a mood, a moment, a genre. Each song can have any number of tags.',
     art: (active) => <SongWithTags active={active} />,
   },
   {
@@ -47,12 +47,12 @@ const SLIDES: Slide[] = [
   },
   {
     title: 'Mix them into a shuffle',
-    body: 'Add tags to the pot to hear their songs mixed together. Drop one tag on another for only songs with both, or keep a tag out entirely.',
+    body: 'Add tags to the pot to hear a combination of their songs. Drag and drop tags onto each other for songs that match both, or exclude a tag\'s songs entirely.',
     art: (active) => <MiniPot active={active} />,
   },
   {
     title: 'Your music, your tags',
-    body: 'ProTag plays the music files on this phone, and your tags stay on it too.',
+    body: 'ProTag plays the music files on this device, and your tags stay on it too.',
     art: () => <MusicFolder />,
   },
 ];
