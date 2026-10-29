@@ -6,7 +6,7 @@ import type { TagRow as Tag } from '../../db/types';
 import type { SongChip } from '../../library/songChips';
 import { describeQuery } from '../../query/describe';
 import type { Ref } from '../../query/refs';
-import { buildQuery, EMPTY_DRAFT } from '../../query/types';
+import { buildQuery, EMPTY_DRAFT, type QueryDraft } from '../../query/types';
 import { SongRow } from '../library/SongRow';
 import { TagRow } from '../library/TagRow';
 import { reduceMotion, timing } from '../motion';
@@ -109,12 +109,14 @@ const POT_TAGS = new Map(
   )
 );
 const POT_NAMES = new Map([...POT_TAGS].map(([id, t]) => [id, t.name]));
-/** The mix filling up, a tile at a time: two tags, then two joined, then one kept out. */
-const POT_STEPS = [
-  { ...EMPTY_DRAFT, ingredients: [[1]] },
-  { ...EMPTY_DRAFT, ingredients: [[1], [2]] },
-  { ...EMPTY_DRAFT, ingredients: [[1], [2], [3, 4]] },
-  { ...EMPTY_DRAFT, ingredients: [[1], [2], [3, 4]], exclude: [5] },
+/** The mix filling up, a tile at a time: two tags, then two joined, then one kept out; then saved, by name. */
+const FULL: QueryDraft = { ...EMPTY_DRAFT, ingredients: [[1], [2], [3, 4]], exclude: [5] };
+const POT_STEPS: { draft: QueryDraft; saved?: string }[] = [
+  { draft: { ...EMPTY_DRAFT, ingredients: [[1]] } },
+  { draft: { ...EMPTY_DRAFT, ingredients: [[1], [2]] } },
+  { draft: { ...EMPTY_DRAFT, ingredients: [[1], [2], [3, 4]] } },
+  { draft: FULL },
+  { draft: FULL, saved: 'Rainy commute' },
 ];
 const TILE = 40;
 const GAP = spacing.md;
@@ -123,14 +125,15 @@ const BADGE = 18;
 /**
  * Slide 3: the pot filling up as it does on the Play tab, tiles and all, with
  * the mix's name above it worked out from what's in it, the way the player
- * names what it's shuffling: "chill + rain + pop × driving, not sad".
+ * names what it's shuffling: "chill + rain + pop × driving, not sad". Last, it's
+ * saved as a mix, and goes by the name it was given.
  */
 export function MiniPot({ active }: { active: boolean }) {
   const colors = useColors();
   const styles = useStyles();
   const { width } = useWindowDimensions();
   const step = useSteps(active, POT_STEPS.length, 700);
-  const draft = step > 0 ? POT_STEPS[step - 1] : EMPTY_DRAFT;
+  const { draft, saved } = step > 0 ? POT_STEPS[step - 1] : { draft: EMPTY_DRAFT, saved: undefined };
   const row = width - spacing.lg * 2 - spacing.md * 2 - spacing.md * 2;
   const half = (row - GAP) / 2;
   // Every ref here is one of POT_TAGS' ids.
@@ -153,9 +156,16 @@ export function MiniPot({ active }: { active: boolean }) {
   };
   return (
     <View style={styles.band}>
-      <Text style={styles.potTitle} numberOfLines={1}>
-        {step > 0 ? describeQuery(buildQuery(draft), POT_NAMES) : 'Your mix'}
-      </Text>
+      <View style={styles.potTop}>
+        {saved && (
+          <Appear>
+            <Ionicons name="bookmark" size={16} color={colors.onPot} />
+          </Appear>
+        )}
+        <Text style={styles.potTitle} numberOfLines={1}>
+          {saved ?? (step > 0 ? describeQuery(buildQuery(draft), POT_NAMES) : 'Your mix')}
+        </Text>
+      </View>
       <View style={styles.recess}>
         <View style={styles.tiles}>
           {draft.ingredients.map((ids) => (
@@ -228,7 +238,13 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: colors.potBand,
   },
+  potTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   potTitle: {
+    flexShrink: 1,
     ...font.label,
     color: colors.onPot,
   },
