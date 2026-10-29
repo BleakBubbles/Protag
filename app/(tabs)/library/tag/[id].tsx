@@ -344,7 +344,7 @@ export default function TagScreen() {
             // One place for adding, moving and removing other tags: moving is
             // "uncheck this tag, check that one".
             {
-              label: 'Tags…',
+              label: 'Tag…',
               icon: 'tags',
               onPress: editTags,
             },

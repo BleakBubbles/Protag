@@ -318,7 +318,9 @@ class ProTagPlayerModule : Module() {
         "positionMs" to p.currentPosition.toDouble(),
         "durationMs" to (if (duration == C.TIME_UNSET) 0.0 else duration.toDouble()),
         "index" to p.currentMediaItemIndex,
-        "error" to p.playerError?.let { it.message ?: it.errorCodeName }
+        "error" to p.playerError?.let { it.message ?: it.errorCodeName },
+        // Stable, unlike the message: what JS says to the listener is chosen from this.
+        "errorCode" to p.playerError?.errorCodeName
       )
     )
   }

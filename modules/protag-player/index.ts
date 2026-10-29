@@ -19,7 +19,10 @@ export interface NativeStatus {
   positionMs: number;
   durationMs: number;
   index: number;
+  /** The engine's own words, for the log. */
   error: string | null;
+  /** Media3's error code name ("ERROR_CODE_IO_FILE_NOT_FOUND"), what the listener is told is chosen from. */
+  errorCode?: string | null;
 }
 
 /** The sleep timer: off, pausing in `remainingMs`, or pausing when the song playing ends. */

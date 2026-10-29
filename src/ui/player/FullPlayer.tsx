@@ -119,7 +119,7 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
         onCycleRepeat={actions.cycleRepeat}
       />
 
-      {status.error && <Text style={styles.error}>Couldn't play this song: {status.error}</Text>}
+      {status.error && <Text style={styles.error}>{status.error}</Text>}
     </View>
   );
 }

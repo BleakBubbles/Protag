@@ -22,6 +22,7 @@ export interface EngineStatus {
   buffering: boolean;
   positionSec: number;
   durationSec: number;
+  /** Why the song won't play, in words for the listener; null while all is well. */
   error: string | null;
 }
 

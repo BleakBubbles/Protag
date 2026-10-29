@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import ProTagPlayer, { type NativeStatus, type NativeTrack } from '../../modules/protag-player';
 import type { AudioEngine, EngineCallbacks, EngineRepeat, EngineStatus, Track } from './engine';
+import { playbackErrorMessage } from './playbackErrors';
 
 const IDLE: EngineStatus = {
   loaded: false,
@@ -27,7 +28,7 @@ const toStatus = (s: NativeStatus): EngineStatus => ({
   buffering: s.buffering,
   positionSec: s.positionMs / 1000,
   durationSec: s.durationMs / 1000,
-  error: s.error,
+  error: s.error ? playbackErrorMessage(s.errorCode ?? null) : null,
 });
 
 /** Native calls only fail if the app is going away; nothing to do but say so. */
@@ -47,8 +48,13 @@ export const useNativeEngine = ({ onEnded, onMoved }: EngineCallbacks): AudioEng
   callbacks.current = { onEnded, onMoved };
 
   useEffect(() => {
+    let lastError: string | null = null;
     const subs = [
-      ProTagPlayer.addListener('onStatus', (s) => setStatus(toStatus(s))),
+      ProTagPlayer.addListener('onStatus', (s) => {
+        if (s.error && s.error !== lastError) console.warn('[audio] playback error', s.errorCode, s.error);
+        lastError = s.error;
+        setStatus(toStatus(s));
+      }),
       ProTagPlayer.addListener('onMoved', ({ index, repeated }) => callbacks.current.onMoved(index, repeated)),
       ProTagPlayer.addListener('onEnded', () => callbacks.current.onEnded()),
     ];
