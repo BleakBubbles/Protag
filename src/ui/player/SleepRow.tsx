@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { PanResponder, StyleSheet, Text, View } from 'react-native';
+import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useSleepTimer, type Sleep } from '@/player/sleepTimer';
 import { feelStep } from '@/ui/haptics';
 import { Icon } from '@/ui/Icon';
+import { timing } from '@/ui/motion';
 import { font, iconSize, radius, spacing, touchTarget } from '@/ui/theme';
 import { makeStyles, useColors } from '@/ui/ThemeContext';
 
@@ -46,7 +47,8 @@ function placeOf(sleep: Sleep): number {
 
 /**
  * The sleep timer, at the top of the queue: when the music stops is part of
- * what's coming up. A bar to drag or tap, snapping to its stops (off, a
+ * what's coming up. One line until it's tapped, as the queue is what's mostly
+ * looked at here; then it opens in place to a bar to drag or tap, snapping to its stops (off, a
  * quarter hour at a time to an hour, the end of the song), set on letting go.
  * While a timer runs, the thumb slides back towards Off as it counts down.
  * The player's queue button wears a moon meanwhile, so it shows with the
@@ -56,7 +58,13 @@ export function SleepRow() {
   const colors = useColors();
   const styles = useStyles();
   const { sleep, sleepIn, sleepAtEndOfSong, cancel } = useSleepTimer();
+  const [open, setOpen] = useState(false);
   const on = sleep.kind !== 'off';
+
+  const shown = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    timing(shown, { toValue: open ? 1 : 0, duration: 180, useNativeDriver: true }).start();
+  }, [open, shown]);
 
   // The minutes left tick down, and the thumb with them, while it shows.
   const [, tick] = useState(0);
@@ -113,7 +121,13 @@ export function SleepRow() {
 
   return (
     <View style={styles.box}>
-      <View style={styles.top}>
+      <Pressable
+        onPress={() => setOpen((o) => !o)}
+        accessibilityRole="button"
+        accessibilityLabel={`Sleep timer, ${status(sleep)}`}
+        accessibilityState={{ expanded: open }}
+        style={({ pressed }) => [styles.top, pressed && styles.pressed]}
+      >
         <Icon name={on ? 'moon' : 'moon-outline'} size={iconSize.sm} color={on ? colors.accentFg : colors.textDim} />
         <Text style={styles.label} numberOfLines={1}>
           Sleep timer
@@ -121,57 +135,64 @@ export function SleepRow() {
         <Text style={[styles.status, (on || held !== null) && styles.statusOn]} numberOfLines={1}>
           {held !== null ? (STOPS[held].minutes === null ? 'End of song' : STOPS[held].minutes === 0 ? 'Off' : `${STOPS[held].minutes} min`) : status(sleep)}
         </Text>
-      </View>
+        <Icon name={open ? 'chevron-up' : 'chevron-down'} size={iconSize.sm - 4} color={colors.textDim} />
+      </Pressable>
 
-      <View
-        {...pan.panHandlers}
-        onLayout={(e) => (width.current = e.nativeEvent.layout.width)}
-        style={styles.bar}
-        accessible
-        accessibilityRole="adjustable"
-        accessibilityLabel="Sleep timer"
-        accessibilityValue={{ text: status(sleep) }}
-        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-        onAccessibilityAction={(e) => {
-          const from = Math.round(placeOf(sleep) * LAST);
-          set(Math.min(LAST, Math.max(0, from + (e.nativeEvent.actionName === 'increment' ? 1 : -1))));
-        }}
-      >
-        {/* None of it takes the touch, so the finger's place is the bar's, which reaches the card's edges. */}
-        <View pointerEvents="none" style={styles.line}>
-          <View style={styles.track}>
-            <View style={[styles.fill, { width: `${place * 100}%` }]} />
-          </View>
-          {STOPS.map((stop, i) => (
-            <View key={stop.label} style={[styles.dot, { left: `${(i / LAST) * 100}%` }, i / LAST <= place && styles.dotPassed]} />
-          ))}
-          <View style={[styles.thumb, { left: `${place * 100}%` }, held !== null && styles.thumbHeld]} />
-        </View>
-      </View>
-
-      <View style={styles.labels} pointerEvents="none">
-        {STOPS.map((stop, i) =>
-          i === LAST ? (
-            // The song's end is a note, centred under its stop rather than set in text.
-            <View key={stop.label} style={[styles.stopNote, { left: '100%' }]}>
-              <Icon name="musical-note" size={NOTE} color={shownStop === i ? colors.accentFg : colors.textDim} />
+      {open && (
+        <Animated.View
+          style={{ opacity: shown, transform: [{ translateY: shown.interpolate({ inputRange: [0, 1], outputRange: [-spacing.sm, 0] }) }] }}
+        >
+          <View
+            {...pan.panHandlers}
+            onLayout={(e) => (width.current = e.nativeEvent.layout.width)}
+            style={styles.bar}
+            accessible
+            accessibilityRole="adjustable"
+            accessibilityLabel="Sleep timer"
+            accessibilityValue={{ text: status(sleep) }}
+            accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+            onAccessibilityAction={(e) => {
+              const from = Math.round(placeOf(sleep) * LAST);
+              set(Math.min(LAST, Math.max(0, from + (e.nativeEvent.actionName === 'increment' ? 1 : -1))));
+            }}
+          >
+            {/* None of it takes the touch, so the finger's place is the bar's, which reaches the card's edges. */}
+            <View pointerEvents="none" style={styles.line}>
+              <View style={styles.track}>
+                <View style={[styles.fill, { width: `${place * 100}%` }]} />
+              </View>
+              {STOPS.map((stop, i) => (
+                <View key={stop.label} style={[styles.dot, { left: `${(i / LAST) * 100}%` }, i / LAST <= place && styles.dotPassed]} />
+              ))}
+              <View style={[styles.thumb, { left: `${place * 100}%` }, held !== null && styles.thumbHeld]} />
             </View>
-          ) : (
-            <Text
-              key={stop.label}
-              numberOfLines={1}
-              style={[
-                styles.stopLabel,
-                i === 0 ? styles.alignStart : styles.alignMid,
-                { left: `${(i / LAST) * 100}%` },
-                shownStop === i && styles.stopLabelOn,
-              ]}
-            >
-              {stop.label}
-            </Text>
-          )
-        )}
-      </View>
+          </View>
+
+          <View style={styles.labels} pointerEvents="none">
+            {STOPS.map((stop, i) =>
+              i === LAST ? (
+                // The song's end is a note, centred under its stop rather than set in text.
+                <View key={stop.label} style={[styles.stopNote, { left: '100%' }]}>
+                  <Icon name="musical-note" size={NOTE} color={shownStop === i ? colors.accentFg : colors.textDim} />
+                </View>
+              ) : (
+                <Text
+                  key={stop.label}
+                  numberOfLines={1}
+                  style={[
+                    styles.stopLabel,
+                    i === 0 ? styles.alignStart : styles.alignMid,
+                    { left: `${(i / LAST) * 100}%` },
+                    shownStop === i && styles.stopLabelOn,
+                  ]}
+                >
+                  {stop.label}
+                </Text>
+              )
+            )}
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -193,6 +214,9 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     minHeight: 28,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   label: {
     ...font.label,
