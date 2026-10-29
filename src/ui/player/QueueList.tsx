@@ -8,6 +8,7 @@ import { usePlayerActions } from '@/player/PlayerProvider';
 import type { QueueState } from '@/player/queue';
 import { formatCount } from '@/ui/format';
 import { feelHold } from '@/ui/haptics';
+import { useScaledHeight } from '@/ui/hooks/useScaledHeight';
 import { Icon } from '@/ui/Icon';
 import { IconButton } from '@/ui/IconButton';
 import { timing } from '@/ui/motion';
@@ -15,6 +16,7 @@ import { font, iconSize, radius, spacing, touchTarget } from '@/ui/theme';
 import { makeStyles, useColors } from '@/ui/ThemeContext';
 import { Artwork } from './Artwork';
 
+/** A song row at the normal font size; its title and artist lines (20 + 14) grow with the phone's. */
 const ROW = 56;
 const HEADING = 36;
 const THUMB = 40;
@@ -50,6 +52,7 @@ export function QueueList({ queue }: { queue: QueueState }) {
   const styles = useStyles();
   const db = useSQLiteContext();
   const { jumpTo, removeUpcoming, moveUpcoming } = usePlayerActions();
+  const row = useScaledHeight(ROW, 34);
 
   // Each song's details, for the whole order at once: one query per new order, not per row.
   const [songs, setSongs] = useState<ReadonlyMap<number, PlayableSong>>(new Map());
@@ -87,9 +90,9 @@ export function QueueList({ queue }: { queue: QueueState }) {
   // Rows and headings have fixed heights, so a long order scrolls without measuring each one.
   const offsets = useMemo(() => {
     const out = [0];
-    for (const item of items) out.push(out[out.length - 1] + (item.kind === 'heading' ? HEADING : ROW));
+    for (const item of items) out.push(out[out.length - 1] + (item.kind === 'heading' ? HEADING : row));
     return out;
-  }, [items]);
+  }, [items, row]);
 
   /** Each song's part of the queue, as the first and last item index of its run of songs. */
   const sectionOf = (i: number) => {
@@ -124,7 +127,7 @@ export function QueueList({ queue }: { queue: QueueState }) {
     const current = dragRef.current;
     if (!current) return;
     const moved = finger.current + scrollY.current - current.scrollStart;
-    const target = Math.min(current.hi, Math.max(current.lo, current.from + Math.round(moved / ROW)));
+    const target = Math.min(current.hi, Math.max(current.lo, current.from + Math.round(moved / row)));
     if (target !== current.target) setDrag({ ...current, target });
   };
 
@@ -136,7 +139,7 @@ export function QueueList({ queue }: { queue: QueueState }) {
       return;
     }
     const top = layout.current.offsets[current.from] - current.scrollStart + finger.current;
-    const bottom = top + ROW;
+    const bottom = top + row;
     const into = top < EDGE ? top - EDGE : bottom > listHeight.current - EDGE ? bottom - (listHeight.current - EDGE) : 0;
     const step = Math.max(-MAX_SCROLL_STEP, Math.min(MAX_SCROLL_STEP, (into / EDGE) * MAX_SCROLL_STEP));
     const end = Math.max(0, layout.current.length - listHeight.current);
@@ -184,8 +187,8 @@ export function QueueList({ queue }: { queue: QueueState }) {
 
   const shiftOf = (i: number) => {
     if (!drag || i === drag.from || i < drag.lo || i > drag.hi) return 0;
-    if (drag.from < drag.target && i > drag.from && i <= drag.target) return -ROW;
-    if (drag.target < drag.from && i >= drag.target && i < drag.from) return ROW;
+    if (drag.from < drag.target && i > drag.from && i <= drag.target) return -row;
+    if (drag.target < drag.from && i >= drag.target && i < drag.from) return row;
     return 0;
   };
 
@@ -216,6 +219,7 @@ export function QueueList({ queue }: { queue: QueueState }) {
           ) : (
             <QueueRow
               song={songs.get(item.id)}
+              height={row}
               shift={shiftOf(index)}
               settling={drag !== null}
               hidden={drag?.from === index}
@@ -233,7 +237,10 @@ export function QueueList({ queue }: { queue: QueueState }) {
       {drag && dragged && (
         <Animated.View
           pointerEvents="none"
-          style={[styles.floating, { top: offsets[drag.from] - drag.scrollStart, transform: [{ translateY: dy }] }]}
+          style={[
+            styles.floating,
+            { height: row, top: offsets[drag.from] - drag.scrollStart, transform: [{ translateY: dy }] },
+          ]}
         >
           <RowContent song={songs.get(dragged.id)} />
           {/* Where the × was, then the handle, still under the finger. */}
@@ -249,6 +256,7 @@ export function QueueList({ queue }: { queue: QueueState }) {
 
 interface QueueRowProps {
   song?: PlayableSong;
+  height: number;
   /** How far it has stepped aside for a song being dragged past it. */
   shift: number;
   /** A drag is on: steps aside smoothly. Off: back in place at once (the list has just reordered). */
@@ -266,7 +274,7 @@ interface QueueRowProps {
 function QueueRow(props: QueueRowProps) {
   const colors = useColors();
   const styles = useStyles();
-  const { song, shift, settling, hidden, onPlay, onRemove, onNudge } = props;
+  const { song, height, shift, settling, hidden, onPlay, onRemove, onNudge } = props;
   const title = song?.title ?? ' ';
 
   const offset = useRef(new Animated.Value(0)).current;
@@ -296,7 +304,7 @@ function QueueRow(props: QueueRowProps) {
   ).current;
 
   return (
-    <Animated.View style={[styles.row, { opacity: hidden ? 0 : 1, transform: [{ translateY: offset }] }]}>
+    <Animated.View style={[styles.row, { height, opacity: hidden ? 0 : 1, transform: [{ translateY: offset }] }]}>
       <Pressable
         onPress={onPlay}
         accessibilityRole="button"
@@ -352,13 +360,12 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     letterSpacing: 1,
   },
   row: {
-    height: ROW,
     flexDirection: 'row',
     alignItems: 'center',
   },
   main: {
     flex: 1,
-    height: ROW,
+    alignSelf: 'stretch',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
@@ -368,7 +375,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   handle: {
     width: touchTarget,
-    height: ROW,
+    alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -376,7 +383,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    height: ROW,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,

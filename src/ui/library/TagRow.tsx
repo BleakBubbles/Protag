@@ -3,12 +3,14 @@ import { Pressable, StyleSheet, Text, View, type GestureResponderHandlers, type 
 
 import { plural } from '../format';
 import { feelHold, HOLD_MS } from '../haptics';
+import { useScaledHeight } from '../hooks/useScaledHeight';
 import { Icon } from '../Icon';
 import { artworkRadius } from '../player/Artwork';
 import { font, iconSize, spacing, touchTarget } from '../theme';
 import { makeStyles, useColors } from '../ThemeContext';
 
-export const TAG_ROW_HEIGHT = 72;
+/** Every tag row the same height, growing with the font size: 72 at normal size, the name and count lines (20 + 14) growing. */
+export const useTagRowHeight = () => useScaledHeight(72, 34);
 /** The same size as a song row's artwork, so folders and songs line up as one directory. */
 const TILE = 48;
 
@@ -43,6 +45,7 @@ export function TagRow(props: TagRowProps) {
   const { name, color, songCount, childCount, onPress, onLongPress, selecting, selected, handle, onNudge, disabled } = props;
   const colors = useColors();
   const styles = useStyles();
+  const height = useTagRowHeight();
   const meta = [plural(songCount, 'song'), childCount > 0 ? plural(childCount, 'subtag') : null]
     .filter(Boolean)
     .join(' · ');
@@ -65,6 +68,7 @@ export function TagRow(props: TagRowProps) {
       accessibilityState={selecting ? { selected } : undefined}
       style={({ pressed }) => [
         styles.row,
+        { height },
         selected ? styles.selected : pressed && !selecting && styles.pressed,
         disabled && styles.disabled,
       ]}
@@ -92,7 +96,7 @@ export function TagRow(props: TagRowProps) {
       {selecting ? (
         <View
           {...handle}
-          style={styles.handle}
+          style={[styles.handle, { height }]}
           accessible
           accessibilityRole="adjustable"
           accessibilityLabel={`Move ${name}`}
@@ -122,6 +126,7 @@ export interface NewTagRowProps {
 export function NewTagRow({ onPress, disabled = false, onLayout }: NewTagRowProps) {
   const colors = useColors();
   const styles = useStyles();
+  const height = useTagRowHeight();
   return (
     <Pressable
       onPress={onPress}
@@ -129,7 +134,7 @@ export function NewTagRow({ onPress, disabled = false, onLayout }: NewTagRowProp
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel="New tag"
-      style={({ pressed }) => [styles.row, pressed && styles.pressed, disabled && styles.disabled]}
+      style={({ pressed }) => [styles.row, { height }, pressed && styles.pressed, disabled && styles.disabled]}
     >
       <View style={[styles.tile, styles.slot]}>
         <Ionicons name="add" size={iconSize.md} color={colors.textDim} />
@@ -141,7 +146,6 @@ export function NewTagRow({ onPress, disabled = false, onLayout }: NewTagRowProp
 
 const useStyles = makeStyles((colors) => StyleSheet.create({
   row: {
-    height: TAG_ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
@@ -171,7 +175,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   // Takes the arrow's place, at the row's right edge.
   handle: {
     width: touchTarget,
-    height: TAG_ROW_HEIGHT,
     marginRight: -spacing.md,
     alignItems: 'center',
     justifyContent: 'center',

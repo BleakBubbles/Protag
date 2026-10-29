@@ -4,16 +4,21 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { SongChip } from '../../library/songChips';
 import { feelHold, HOLD_MS } from '../haptics';
+import { useScaledHeight } from '../hooks/useScaledHeight';
 import { Artwork, artworkRadius } from '../player/Artwork';
 import { TagChip } from '../TagChip';
 import { font, iconSize, spacing } from '../theme';
 import { makeStyles, useColors } from '../ThemeContext';
 
 /**
- * Fixed so the list can compute row positions instead of measuring each one,
- * which keeps scrolling smooth through thousands of songs.
+ * Every row the same height, so the list can compute row positions instead of
+ * measuring each one, which keeps scrolling smooth through thousands of songs.
+ * It grows with the phone's font size: 80 at normal size, of which the title,
+ * artist and chip lines (20 + 14 + 14) are what grow.
  */
-export const SONG_ROW_HEIGHT = 80;
+export const useSongRowHeight = () => useScaledHeight(80, 48);
+/** The chips' line: always there, so tagged and untagged rows match. */
+const useChipsHeight = () => useScaledHeight(20, 14);
 const MAX_CHIPS = 3;
 const THUMB = 48;
 
@@ -58,6 +63,8 @@ export const SongRow = memo(function SongRow({
 }: SongRowProps) {
   const colors = useColors();
   const styles = useStyles();
+  const height = useSongRowHeight();
+  const chipsHeight = useChipsHeight();
   const hidden = chips.length - MAX_CHIPS;
 
   return (
@@ -82,6 +89,7 @@ export const SongRow = memo(function SongRow({
       accessibilityState={selecting ? { selected } : undefined}
       style={({ pressed }) => [
         styles.row,
+        { height },
         selected ? styles.selected : pressed && !selecting && styles.pressed,
         disabled && styles.disabled,
       ]}
@@ -106,7 +114,7 @@ export const SongRow = memo(function SongRow({
           {artist ?? ' '}
         </Text>
         {/* Always present, so every row is the same height whether tagged or not. */}
-        <View style={styles.chips}>
+        <View style={[styles.chips, { height: chipsHeight }]}>
           {chips.slice(0, MAX_CHIPS).map(({ tag, prefix }) => (
             <TagChip key={tag.id} name={tag.name} prefix={prefix} color={tag.color} compact />
           ))}
@@ -119,7 +127,6 @@ export const SongRow = memo(function SongRow({
 
 const useStyles = makeStyles((colors) => StyleSheet.create({
   row: {
-    height: SONG_ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
@@ -167,7 +174,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     includeFontPadding: false,
   },
   chips: {
-    height: 20,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,

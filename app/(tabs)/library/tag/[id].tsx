@@ -40,13 +40,13 @@ import { IconButton } from '@/ui/IconButton';
 import { useAnchor } from '@/ui/Popover';
 import { PopupMenu, type MenuAction } from '@/ui/PopupMenu';
 import { SelectionBar } from '@/ui/library/SelectionBar';
-import { SONG_ROW_HEIGHT, SongRow } from '@/ui/library/SongRow';
+import { SongRow, useSongRowHeight } from '@/ui/library/SongRow';
 import { TagList } from '@/ui/library/TagList';
 import { TagSelectionBar } from '@/ui/library/TagSelectionBar';
 import { LogoMark } from '@/ui/LogoMark';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { headerTitleText } from '@/ui/stackOptions';
-import { font, iconSize, spacing } from '@/ui/theme';
+import { font, iconSize, navTextScale, spacing } from '@/ui/theme';
 import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 const NO_CHIPS: readonly SongChip[] = [];
@@ -69,7 +69,8 @@ export default function TagScreen() {
   const menuAnchor = useAnchor();
   const fromPlayer = useFromPlayer();
   const colorAnchor = useAnchor();
-  const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(SONG_ROW_HEIGHT);
+  const rowHeight = useSongRowHeight();
+  const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(rowHeight);
 
   const fab = useFabFold();
 
@@ -96,7 +97,7 @@ export default function TagScreen() {
   const tagSelection = useSelection(childIds, 'tag');
   const [tagsBusy, setTagsBusy] = useState(false);
   const { selection, selecting, selected, toggle, clear, editTags, queueActions, header: selectionHeader } = songSelection;
-  const drag = useDragSelect({ ids: songIds, rowHeight: SONG_ROW_HEIGHT, headerHeight, selection: songSelection, onScroll: fab.scrollProps.onScroll });
+  const drag = useDragSelect({ ids: songIds, rowHeight, headerHeight, selection: songSelection, onScroll: fab.scrollProps.onScroll });
 
   const playFrom = useCallback(
     (songId: number) =>
@@ -212,7 +213,7 @@ export default function TagScreen() {
     headerTitle: () =>
       tag ? (
         <View style={styles.titleRow}>
-          <Text style={styles.titleText} numberOfLines={1}>
+          <Text style={styles.titleText} numberOfLines={1} maxFontSizeMultiplier={navTextScale}>
             {tag.name}
           </Text>
           <View ref={colorAnchor.ref} collapsable={false}>

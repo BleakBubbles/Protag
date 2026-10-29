@@ -26,7 +26,7 @@ import type { Selection } from '../../ui/hooks/useSelection';
 import type { SongSelection } from '../../ui/hooks/useSongSelection';
 import { ImportPrompt, ImportStatus } from '../../ui/library/ImportCards';
 import { SelectionBar } from '../../ui/library/SelectionBar';
-import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
+import { SongRow, useSongRowHeight } from '../../ui/library/SongRow';
 import { TagList } from '../../ui/library/TagList';
 import { NewTagRow } from '../../ui/library/TagRow';
 import { TagSelectionBar } from '../../ui/library/TagSelectionBar';
@@ -67,7 +67,8 @@ export function TagsView({ selection, tagSelection, onTags, onLooseSongs }: Tags
   }, []);
   const imports = usePlaylistImport();
   const [creating, setCreating] = useState(false);
-  const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(SONG_ROW_HEIGHT);
+  const rowHeight = useSongRowHeight();
+  const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(rowHeight);
   // New tag is a row after the tags, and the floating button stands in for it
   // whenever it isn't wholly in view (scrolled off the top, or not yet scrolled
   // to): one New tag on screen at a time.
@@ -104,7 +105,7 @@ export function TagsView({ selection, tagSelection, onTags, onLooseSongs }: Tags
   const { selecting, selected, toggle } = selection;
   // Sliding across tags or dragging one by its handle: the list mustn't scroll under it.
   const [tagsBusy, setTagsBusy] = useState(false);
-  const drag = useDragSelect({ ids: looseIds, rowHeight: SONG_ROW_HEIGHT, headerHeight, selection, onScroll: track });
+  const drag = useDragSelect({ ids: looseIds, rowHeight, headerHeight, selection, onScroll: track });
 
   return (
     <>

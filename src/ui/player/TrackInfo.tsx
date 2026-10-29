@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useScaledHeight } from '../hooks/useScaledHeight';
 import { Marquee } from '../Marquee';
 import { font, spacing } from '../theme';
 import { makeStyles } from '../ThemeContext';
@@ -14,8 +15,9 @@ export interface TrackInfoProps {
   onPressAlbum?: () => void;
 }
 
-/** Always one line each, so the block never changes height. */
+/** Always one line each, so the block never changes height (but for the phone's font size, which both lines grow with). */
 const HEIGHT = font.title.lineHeight + spacing.xs + font.body.lineHeight;
+const LINES = font.title.lineHeight + font.body.lineHeight;
 
 /**
  * Title and artist/album, centred, one line each: a line too long to fit
@@ -28,6 +30,7 @@ const HEIGHT = font.title.lineHeight + spacing.xs + font.body.lineHeight;
  */
 export function TrackInfo({ title, artist, album, onPressArtist, onPressAlbum }: TrackInfoProps) {
   const styles = useStyles();
+  const height = useScaledHeight(HEIGHT, LINES);
   const subtitle = [artist, album].filter(Boolean).join(' · ');
   // Spans inside one line, so it still scrolls as a whole; each name is its own link.
   const link = (name: string, onPress: (() => void) | undefined) => (
@@ -43,7 +46,7 @@ export function TrackInfo({ title, artist, album, onPressArtist, onPressAlbum }:
   const [width, setWidth] = useState(0);
 
   return (
-    <View style={styles.container} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+    <View style={[styles.container, { height }]} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {/* Keyed by the text, so each new song's line starts from its beginning. */}
       <Marquee key={`t${title}`} style={styles.title} maxWidth={width}>
         {title}
@@ -67,7 +70,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    height: HEIGHT,
   },
   title: {
     ...font.title,

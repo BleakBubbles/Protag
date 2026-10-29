@@ -217,6 +217,15 @@ export const iconSize = {
   hero: 64,
 } as const;
 
+/**
+ * How far navigation text (header titles, the Library's tab labels) grows with
+ * the phone's font size. Content grows all the way; this doesn't, since people
+ * enlarge text to read what they came for, not the signposts (HIG typography:
+ * they "don't expect the tab titles to increase in size"), and headers and tabs
+ * have fixed room.
+ */
+export const navTextScale = 1.3;
+
 /** Minimum touch target, per platform accessibility guidance. */
 export const touchTarget = 44;
 

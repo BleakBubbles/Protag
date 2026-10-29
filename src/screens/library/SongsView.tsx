@@ -13,7 +13,7 @@ import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
 import type { SongSelection } from '../../ui/hooks/useSongSelection';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '../../ui/library/SelectionBar';
-import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
+import { SongRow, useSongRowHeight } from '../../ui/library/SongRow';
 import { SearchField } from '../../ui/SearchField';
 import { font, spacing } from '../../ui/theme';
 import { makeStyles } from '../../ui/ThemeContext';
@@ -38,7 +38,8 @@ export function SongsView({ selection, onSongs }: SongsViewProps) {
     return { songs, chips };
   }, []);
   const [query, setQuery] = useState('');
-  const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(SONG_ROW_HEIGHT);
+  const rowHeight = useSongRowHeight();
+  const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(rowHeight);
   const { playQueue } = usePlayerActions();
   const { song: current, queue } = useNowPlaying();
 
@@ -59,7 +60,7 @@ export function SongsView({ selection, onSongs }: SongsViewProps) {
   const visibleIds = useMemo(() => visible.map((s) => s.id), [visible]);
   useEffect(() => onSongs(visibleIds), [visibleIds, onSongs]);
   const { selecting, selected, toggle } = selection;
-  const drag = useDragSelect({ ids: visibleIds, rowHeight: SONG_ROW_HEIGHT, headerHeight, selection });
+  const drag = useDragSelect({ ids: visibleIds, rowHeight, headerHeight, selection });
 
   // Plays the list as shown — filtered or not — from the tapped song, keeping
   // whatever shuffle mode the player is already in.

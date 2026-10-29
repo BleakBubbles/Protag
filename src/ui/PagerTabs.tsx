@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Keyboard, Pressable, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 
-import { font, spacing } from './theme';
+import { font, navTextScale, spacing } from './theme';
 import { makeStyles } from './ThemeContext';
 
 const TAB_HEIGHT = 44;
@@ -81,6 +81,8 @@ export function PagerTabs<T extends string>({ pages, value, onChange, swipeEnabl
             style={styles.tab}
           >
             <Animated.Text
+              numberOfLines={1}
+              maxFontSizeMultiplier={navTextScale}
               style={[
                 styles.label,
                 {

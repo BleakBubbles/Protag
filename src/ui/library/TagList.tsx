@@ -12,7 +12,7 @@ import { useDragSelect } from '../hooks/useDragSelect';
 import type { Selection } from '../hooks/useSelection';
 import { timing } from '../motion';
 import { makeStyles } from '../ThemeContext';
-import { TAG_ROW_HEIGHT, TagRow } from './TagRow';
+import { TagRow, useTagRowHeight } from './TagRow';
 
 /** How quickly the other tags step aside for the one being dragged. */
 const SHIFT_MS = 120;
@@ -38,6 +38,7 @@ export interface TagListProps {
 export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListProps) {
   const styles = useStyles();
   const db = useSQLiteContext();
+  const rowHeight = useTagRowHeight();
 
   // A drop shows at once; the stored order catches up when the library reloads.
   const [order, setOrder] = useState<readonly number[] | null>(null);
@@ -49,7 +50,7 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
   }, [tags, order]);
   const ids = useMemo(() => shown.map((t) => t.id), [shown]);
 
-  const slide = useDragSelect({ ids, rowHeight: TAG_ROW_HEIGHT, headerHeight: 0, selection });
+  const slide = useDragSelect({ ids, rowHeight, headerHeight: 0, selection });
 
   const [drag, setDragState] = useState<{ from: number; target: number } | null>(null);
   const dragRef = useRef(drag);
@@ -94,7 +95,7 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
       dy.setValue(distance);
       const current = dragRef.current;
       if (!current) return;
-      const target = Math.min(ids.length - 1, Math.max(0, current.from + Math.round(distance / TAG_ROW_HEIGHT)));
+      const target = Math.min(ids.length - 1, Math.max(0, current.from + Math.round(distance / rowHeight)));
       if (target !== current.target) setDrag({ ...current, target });
     },
     /**
@@ -109,7 +110,7 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
       const to = drop ? current.target : current.from;
       if (to !== current.target) setDrag({ ...current, target: to });
       timing(dy, {
-        toValue: (to - current.from) * TAG_ROW_HEIGHT,
+        toValue: (to - current.from) * rowHeight,
         duration: SHIFT_MS,
         useNativeDriver: false,
       }).start(() => {
@@ -140,11 +141,11 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
     <View
       ref={slide.frameRef}
       collapsable={false}
-      style={{ height: shown.length * TAG_ROW_HEIGHT }}
+      style={{ height: shown.length * rowHeight }}
       {...slide.frameProps}
     >
       {shown.map((tag, i) => (
-        <Placed key={tag.id} slot={slotOf(i)} hidden={drag?.from === i}>
+        <Placed key={tag.id} slot={slotOf(i)} rowHeight={rowHeight} hidden={drag?.from === i}>
           <HandledTagRow
             tag={tag}
             selection={selection}
@@ -163,7 +164,7 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
       {drag && dragged && (
         <Animated.View
           pointerEvents="none"
-          style={[styles.floating, { top: drag.from * TAG_ROW_HEIGHT, transform: [{ translateY: dy }] }]}
+          style={[styles.floating, { top: drag.from * rowHeight, transform: [{ translateY: dy }] }]}
         >
           <TagRow
             name={dragged.name}
@@ -181,12 +182,22 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
 }
 
 /** A row at its place in the list, sliding when its place changes; `hidden` while its floating copy is what's seen. */
-function Placed({ slot, hidden, children }: { slot: number; hidden: boolean; children: ReactNode }) {
+function Placed({
+  slot,
+  rowHeight,
+  hidden,
+  children,
+}: {
+  slot: number;
+  rowHeight: number;
+  hidden: boolean;
+  children: ReactNode;
+}) {
   const styles = useStyles();
-  const y = useRef(new Animated.Value(slot * TAG_ROW_HEIGHT)).current;
+  const y = useRef(new Animated.Value(slot * rowHeight)).current;
   useEffect(() => {
-    timing(y, { toValue: slot * TAG_ROW_HEIGHT, duration: SHIFT_MS, useNativeDriver: true }).start();
-  }, [y, slot]);
+    timing(y, { toValue: slot * rowHeight, duration: SHIFT_MS, useNativeDriver: true }).start();
+  }, [y, slot, rowHeight]);
   return (
     <Animated.View style={[styles.placed, { opacity: hidden ? 0 : 1, transform: [{ translateY: y }] }]}>
       {children}

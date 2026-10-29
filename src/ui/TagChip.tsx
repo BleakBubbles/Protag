@@ -79,8 +79,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     maxWidth: '100%',
   },
   compact: {
-    minHeight: 0,
-    height: 20,
+    minHeight: 20,
     gap: spacing.xs,
     paddingHorizontal: spacing.sm,
     borderWidth: 0,

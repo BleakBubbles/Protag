@@ -14,7 +14,7 @@ import { useDragSelect } from '../../ui/hooks/useDragSelect';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useSongSelection } from '../../ui/hooks/useSongSelection';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '../../ui/library/SelectionBar';
-import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
+import { SongRow, useSongRowHeight } from '../../ui/library/SongRow';
 import { Artwork } from '../../ui/player/Artwork';
 import { NoTags, TagButton } from '../../ui/TagButton';
 import { TagChip } from '../../ui/TagChip';
@@ -82,12 +82,13 @@ export function SongCollection({
   const { playQueue } = usePlayerActions();
   const fromPlayer = useFromPlayer();
   const { song: current } = useNowPlaying();
-  const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(SONG_ROW_HEIGHT);
+  const rowHeight = useSongRowHeight();
+  const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(rowHeight);
   const ids = useMemo(() => songs.map((s) => s.id), [songs]);
   // Press and hold a song to start selecting; then Tag… tags them.
   const selection = useSongSelection(ids);
   const { selecting, selected, toggle } = selection;
-  const drag = useDragSelect({ ids, rowHeight: SONG_ROW_HEIGHT, headerHeight, selection });
+  const drag = useDragSelect({ ids, rowHeight, headerHeight, selection });
   const size = Math.min(MAX_PICTURE, screen.width * 0.55);
 
   /** The tags on these songs, the most widely used first. */

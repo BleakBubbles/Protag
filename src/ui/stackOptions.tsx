@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, type ColorValue } from 'react-native';
 
-import { headerTitleStyle } from './theme';
+import { headerTitleStyle, navTextScale } from './theme';
 import { useColors } from './ThemeContext';
 
 /** A header title's text; for a header that builds its own title (a tag page's, with its colour dot). */
@@ -21,7 +21,11 @@ export const headerTitleText = {
 export function HeaderTitle({ children, tintColor }: { children: string; tintColor?: ColorValue }) {
   const colors = useColors();
   return (
-    <Text style={[styles.title, { color: tintColor ?? colors.text }]} numberOfLines={1}>
+    <Text
+      style={[styles.title, { color: tintColor ?? colors.text }]}
+      numberOfLines={1}
+      maxFontSizeMultiplier={navTextScale}
+    >
       {children}
     </Text>
   );
