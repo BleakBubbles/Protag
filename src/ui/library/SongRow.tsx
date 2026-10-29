@@ -129,7 +129,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   selected: {
-    backgroundColor: colors.accentTint,
+    backgroundColor: colors.selectedTint,
   },
   disabled: {
     opacity: 0.4,
@@ -175,6 +175,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   more: {
     ...font.caption,
-    color: colors.textFaint,
+    color: colors.textDim,
   },
 }));

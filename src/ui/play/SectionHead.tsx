@@ -124,7 +124,7 @@ export function SearchRow({ value, onChangeText, onClose }: SearchRowProps) {
         onBlur={() => !value.trim() && onClose()}
         autoFocus
         placeholder="Tags, artists, albums"
-        placeholderTextColor={colors.textFaint}
+        placeholderTextColor={colors.textDim}
         selectionColor={colors.accentFg}
         autoCorrect={false}
         autoCapitalize="none"
@@ -169,7 +169,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   label: {
     ...font.caption,
-    color: colors.textFaint,
+    color: colors.textDim,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },

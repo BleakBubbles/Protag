@@ -454,7 +454,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   crumbText: {
     ...font.label,
-    color: colors.textFaint,
+    color: colors.textDim,
   },
   crumbLink: {
     ...font.label,

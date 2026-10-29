@@ -140,6 +140,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   count: {
     ...font.caption,
-    color: colors.textFaint,
+    color: colors.textDim,
   },
 }));

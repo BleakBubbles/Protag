@@ -52,14 +52,21 @@ const dark = {
 
   text: '#EFEDE9',
   textDim: '#A3A09A',
+  /**
+   * Not for text: under 4.5:1 (WCAG AA) on these backgrounds. For what only
+   * needs 3:1 (chevrons, quiet icons, checkbox outlines) and disabled items.
+   * Secondary text is `textDim`, which passes in both schemes.
+   */
   textFaint: '#75726C',
 
   accent: '#0F5C54',
   /** Text on an `accent` fill. */
   onAccent: '#FFFFFF',
-  accentFg: '#2E9384',
-  /** `accentFg` at low opacity: a soft teal wash behind teal text (tonal buttons). */
+  accentFg: '#3AA593',
+  /** A soft teal wash behind teal text (tonal buttons). */
   accentTint: '#2E938429',
+  /** Behind a selected row: lighter than `accentTint` where needed, so a row's dimmer lines still read on it. */
+  selectedTint: '#2E938429',
   /** Android's press ripple over an `accent` fill. */
   rippleOnAccent: '#FFFFFF33',
 
@@ -91,7 +98,7 @@ const light: typeof dark = {
   onPot: '#EAF4F1',
   onPotDim: '#A9CFC8',
   onRecess: '#35302A',
-  potHint: '#8E877C',
+  potHint: '#665F55',
   potButton: '#F6F2EA',
   onPotButton: '#0F5C54',
   scrim: 'rgba(40, 32, 20, 0.28)',
@@ -103,8 +110,9 @@ const light: typeof dark = {
 
   accent: '#1F5E58',
   onAccent: '#FFFFFF',
-  accentFg: '#17695F',
+  accentFg: '#0F5C54',
   accentTint: '#17695F3D',
+  selectedTint: '#17695F28',
   rippleOnAccent: '#FFFFFF33',
 
   onTag: '#2A2520',

@@ -151,7 +151,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   selected: {
-    backgroundColor: colors.accentTint,
+    backgroundColor: colors.selectedTint,
   },
   // Over the folder: a dark veil with an empty ring, or the accent with a tick (as on a song's artwork).
   check: {

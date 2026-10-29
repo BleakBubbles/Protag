@@ -290,7 +290,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   status: {
     ...font.caption,
-    color: colors.textFaint,
+    color: colors.textDim,
   },
   pending: {
     color: colors.accentFg,

@@ -222,7 +222,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   looseLabel: {
     ...font.caption,
-    color: colors.textFaint,
+    color: colors.textDim,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },

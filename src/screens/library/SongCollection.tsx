@@ -244,7 +244,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   meta: {
     ...font.caption,
-    color: colors.textFaint,
+    color: colors.textDim,
   },
   actions: {
     alignSelf: 'stretch',

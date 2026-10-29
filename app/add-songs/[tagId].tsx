@@ -243,14 +243,14 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   status: {
     ...font.caption,
-    color: colors.textFaint,
+    color: colors.textDim,
   },
   pending: {
     color: colors.accentFg,
   },
   sectionLabel: {
     ...font.caption,
-    color: colors.textFaint,
+    color: colors.textDim,
     textTransform: 'uppercase',
     letterSpacing: 1,
     paddingHorizontal: spacing.lg,

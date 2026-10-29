@@ -151,6 +151,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   position: {
     ...font.numeric,
-    color: colors.textFaint,
+    color: colors.textDim,
   },
 }));

@@ -28,7 +28,7 @@ export default function TabsLayout() {
               borderTopColor: colors.border,
             },
             tabBarActiveTintColor: colors.accentFg,
-            tabBarInactiveTintColor: colors.textFaint,
+            tabBarInactiveTintColor: colors.textDim,
             // Each tab's own stack draws its headers, so they all match.
             headerShown: false,
             // A short fade between tabs, so switching feels smooth; the bar and mini-player stay put.

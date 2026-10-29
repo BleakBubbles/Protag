@@ -41,7 +41,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   title: {
     ...font.caption,
-    color: colors.textFaint,
+    color: colors.textDim,
     textTransform: 'uppercase',
     letterSpacing: 1,
     paddingHorizontal: spacing.xl,

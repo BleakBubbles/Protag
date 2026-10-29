@@ -83,6 +83,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   placeholderText: {
     ...font.label,
-    color: colors.textFaint,
+    color: colors.textDim,
   },
 }));

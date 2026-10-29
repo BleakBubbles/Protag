@@ -27,7 +27,7 @@ export const SearchField = forwardRef<TextInputInstance, SearchFieldProps>(funct
         ref={ref}
         value={value}
         onChangeText={onChangeText}
-        placeholderTextColor={colors.textFaint}
+        placeholderTextColor={colors.textDim}
         selectionColor={colors.accentFg}
         autoCorrect={false}
         autoCapitalize="none"
@@ -47,7 +47,7 @@ export const SearchField = forwardRef<TextInputInstance, SearchFieldProps>(funct
           icon="close-circle"
           label="Clear"
           size={iconSize.sm}
-          color={colors.textFaint}
+          color={colors.textDim}
           onPress={() => onChangeText('')}
         />
       )}

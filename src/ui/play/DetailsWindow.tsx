@@ -414,7 +414,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   label: {
     ...font.caption,
-    color: colors.textFaint,
+    color: colors.textDim,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -457,7 +457,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   cardCount: {
     ...font.caption,
-    color: colors.textFaint,
+    color: colors.textDim,
   },
   step: {
     width: STEP,

@@ -111,11 +111,13 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     ...font.caption,
     color: colors.textDim,
   },
+  // Where the tag sits, quieter than its name: dimmer and lighter in a full chip, lighter in a compact one (already dim).
   prefix: {
-    color: colors.textFaint,
+    color: colors.textDim,
+    fontWeight: '400',
   },
   count: {
     ...font.numeric,
-    color: colors.textFaint,
+    color: colors.textDim,
   },
 }));

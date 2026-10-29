@@ -252,6 +252,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   missingItem: {
     ...font.caption,
-    color: colors.textFaint,
+    color: colors.textDim,
   },
 }));

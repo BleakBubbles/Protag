@@ -147,7 +147,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   statusText: {
     ...font.label,
-    color: colors.textFaint,
+    color: colors.textDim,
     flexShrink: 1,
   },
 }));
