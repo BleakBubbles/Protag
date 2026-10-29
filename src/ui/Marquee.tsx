@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  AccessibilityInfo,
   Animated,
   Easing,
   ScrollView,
@@ -9,6 +8,8 @@ import {
   type StyleProp,
   type TextStyle,
 } from 'react-native';
+
+import { useReduceMotion } from './motion';
 
 /** Pixels per second: slow enough to read along. */
 const SPEED = 30;
@@ -85,20 +86,6 @@ export function Marquee({ children, style, maxWidth }: MarqueeProps) {
       </Animated.View>
     </ScrollView>
   );
-}
-
-function useReduceMotion(): boolean {
-  const [reduce, setReduce] = useState(false);
-  useEffect(() => {
-    let live = true;
-    AccessibilityInfo.isReduceMotionEnabled().then((on) => live && setReduce(on));
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduce);
-    return () => {
-      live = false;
-      sub.remove();
-    };
-  }, []);
-  return reduce;
 }
 
 const styles = StyleSheet.create({

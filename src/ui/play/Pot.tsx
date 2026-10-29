@@ -24,6 +24,7 @@ import { Icon } from '../Icon';
 import { IconButton } from '../IconButton';
 import type { Rect } from '../Popover';
 import { Artwork } from '../player/Artwork';
+import { timing } from '../motion';
 import { font, iconSize, radius, spacing, touchTarget, type Palette } from '../theme';
 import { makeStyles, useColors } from '../ThemeContext';
 import { Join, useDraggable, useDropTarget, usePotDragState, usePotDrop, type Look } from './PotDrag';
@@ -462,7 +463,7 @@ function Glide({ onLayout, children }: { onLayout: (e: LayoutChangeEvent) => voi
         if (was && (was.x !== x || was.y !== y)) {
           // Back to where it was, on screen, then on to its new place.
           offset.setValue({ x: was.x - x, y: was.y - y });
-          Animated.timing(offset, {
+          timing(offset, {
             toValue: { x: 0, y: 0 },
             duration: GLIDE_MS,
             easing: Easing.out(Easing.cubic),
@@ -669,7 +670,7 @@ function KeepOut({ shown }: { shown: boolean }) {
   const target = useDropTarget({ kind: 'keepOut' });
   const progress = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(progress, { toValue: shown ? 1 : 0, duration: 150, useNativeDriver: true }).start();
+    timing(progress, { toValue: shown ? 1 : 0, duration: 150, useNativeDriver: true }).start();
   }, [shown, progress]);
 
   return (

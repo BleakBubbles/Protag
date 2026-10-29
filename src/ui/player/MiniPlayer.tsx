@@ -5,6 +5,7 @@ import { albumArtUri } from '../../library/assets';
 import { useNowPlaying, usePlaybackStatus, usePlayerActions } from '../../player/PlayerProvider';
 import { IconButton } from '../IconButton';
 import { Marquee } from '../Marquee';
+import { spring, timing } from '../motion';
 import { font, iconSize, radius, spacing } from '../theme';
 import { makeStyles, useColors } from '../ThemeContext';
 import { Artwork } from './Artwork';
@@ -132,9 +133,9 @@ function SwipeGestures({
   const styles = useStyles();
   const offset = useRef(new Animated.ValueXY()).current;
   const direction = useRef<'sideways' | 'down' | 'up'>('down');
-  const springBack = () => Animated.spring(offset, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
+  const springBack = () => spring(offset, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
   const slideOut = (x: number, y: number) =>
-    Animated.timing(offset, { toValue: { x, y }, duration: 150, useNativeDriver: true }).start(onHide);
+    timing(offset, { toValue: { x, y }, duration: 150, useNativeDriver: true }).start(onHide);
 
   const responder = useRef(
     PanResponder.create({

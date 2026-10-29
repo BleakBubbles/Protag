@@ -4,6 +4,7 @@ import { Animated, BackHandler, Pressable, StyleSheet, Text } from 'react-native
 
 import { Fab, FAB_SIZE } from './Fab';
 import { Icon, type IconName } from './Icon';
+import { timing } from './motion';
 import { font, iconSize, radius, spacing } from './theme';
 import { makeStyles, useColors } from './ThemeContext';
 
@@ -35,7 +36,7 @@ export function FabMenu({ label, icon, extended, items }: FabMenuProps) {
   const shown = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(shown, { toValue: open ? 1 : 0, duration: 150, useNativeDriver: true }).start();
+    timing(shown, { toValue: open ? 1 : 0, duration: 150, useNativeDriver: true }).start();
   }, [open, shown]);
 
   useFocusEffect(

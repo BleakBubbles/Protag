@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { Animated, Easing, Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { reduceMotion } from './motion';
 import type { Rect } from './Popover';
 import { radius, spacing } from './theme';
 import { makeStyles } from './ThemeContext';
@@ -33,7 +34,8 @@ export interface ExpandWindowProps {
  * native side, so a busy JS thread can't stall it. It starts at once: the empty
  * window is laid out and growing before its contents are built, which happens
  * as it grows, so building them neither delays the start nor eats its first frames.
- * Tap outside or press back to close.
+ * Tap outside or press back to close. With motion reduced it doesn't grow or
+ * shrink: it fades in and out in its place.
  */
 export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
   const styles = useStyles();
@@ -51,17 +53,26 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
 
   useEffect(() => {
     if (anchor) {
-      grow.setValue(0);
-      fade.setValue(1);
+      grow.setValue(reduceMotion() ? 1 : 0);
+      fade.setValue(reduceMotion() ? 0 : 1);
       pending.current = true;
       setFilled(false);
       setShown(anchor);
     } else if (shown) {
       pending.current = false;
-      Animated.parallel([
-        Animated.timing(grow, { toValue: CLOSE_TO, duration: CLOSE_MS, easing: CLOSE_EASING, useNativeDriver: true }),
-        Animated.timing(fade, { toValue: 0, duration: CLOSE_MS, easing: Easing.linear, useNativeDriver: true }),
-      ]).start(({ finished }) => finished && setShown(null));
+      const fadeOut = Animated.timing(fade, {
+        toValue: 0,
+        duration: CLOSE_MS,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      });
+      (reduceMotion()
+        ? fadeOut
+        : Animated.parallel([
+            Animated.timing(grow, { toValue: CLOSE_TO, duration: CLOSE_MS, easing: CLOSE_EASING, useNativeDriver: true }),
+            fadeOut,
+          ])
+      ).start(({ finished }) => finished && setShown(null));
     }
     // Not on `shown`: it's what's closing, and following it would reopen it.
   }, [anchor, grow, fade]);
@@ -70,7 +81,8 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
   useLayoutEffect(() => {
     if (!shown || !pending.current) return;
     pending.current = false;
-    Animated.timing(grow, { toValue: 1, duration: OPEN_MS, easing: OPEN_EASING, useNativeDriver: true }).start();
+    if (reduceMotion()) Animated.timing(fade, { toValue: 1, duration: OPEN_MS, useNativeDriver: true }).start();
+    else Animated.timing(grow, { toValue: 1, duration: OPEN_MS, easing: OPEN_EASING, useNativeDriver: true }).start();
     setFilled(true);
   }, [shown]);
 

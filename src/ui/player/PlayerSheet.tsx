@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Animated, BackHandler, Dimensions, PanResponder, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
+import { reduceMotion } from '../motion';
 import { useColors } from '../ThemeContext';
 import { FullPlayer } from './FullPlayer';
 
@@ -12,6 +13,8 @@ const SETTLE_FRACTION = 0.25;
 const FLICK_VELOCITY = 0.5;
 /** The sheet fades in over the first stretch, so it reads as the mini-player growing. */
 const FADE_IN = 0.15;
+/** With motion reduced, opening and closing are a fade of this long instead of a slide. */
+const FADE_MS = 200;
 
 export interface PlayerSheetControls {
   expand(): void;
@@ -44,6 +47,8 @@ export function usePlayerSheet(): PlayerSheetControls {
 export function PlayerSheet({ children }: { children: ReactNode }) {
   const colors = useColors();
   const progress = useRef(new Animated.Value(0)).current;
+  // Only below 1 while a reduced-motion open or close fades it.
+  const fade = useRef(new Animated.Value(1)).current;
   // progress as JS last set or aimed it; native-driven springs don't report back.
   const current = useRef(0);
   const dragStart = useRef(0);
@@ -57,9 +62,27 @@ export function PlayerSheet({ children }: { children: ReactNode }) {
 
   const settleTo = useCallback(
     (target: 0 | 1) => {
+      const from = current.current;
       current.current = target;
       setOpen(target === 1);
       setMounted(true);
+      if (reduceMotion()) {
+        // No sliding: it fades in where it opens, or out where it is and then
+        // goes back down out of sight. Let go mid-drag, it's just there.
+        progress.stopAnimation();
+        if (target === 1) {
+          progress.setValue(1);
+          if (from >= FADE_IN) return;
+          fade.setValue(0);
+        }
+        Animated.timing(fade, { toValue: target, duration: FADE_MS, useNativeDriver: true }).start(({ finished }) => {
+          if (!finished || target === 1) return;
+          progress.setValue(0);
+          fade.setValue(1);
+          setMounted(false);
+        });
+        return;
+      }
       Animated.spring(progress, {
         toValue: target,
         useNativeDriver: true,
@@ -70,7 +93,7 @@ export function PlayerSheet({ children }: { children: ReactNode }) {
         if (finished && target === 0) setMounted(false);
       });
     },
-    [progress]
+    [progress, fade]
   );
 
   const controls = useMemo<PlayerSheetControls>(
@@ -79,6 +102,8 @@ export function PlayerSheet({ children }: { children: ReactNode }) {
       collapse: () => settleTo(0),
       beginDrag: () => {
         setMounted(true);
+        fade.stopAnimation();
+        fade.setValue(1);
         dragStart.current = current.current;
         // Catching it mid-spring: carry on from where it actually is.
         progress.stopAnimation((value) => {
@@ -99,7 +124,7 @@ export function PlayerSheet({ children }: { children: ReactNode }) {
       },
       setBarHeight,
     }),
-    [progress, settleTo]
+    [progress, fade, settleTo]
   );
 
   // Back closes the sheet first. Only while this layout is focused: with a
@@ -127,13 +152,16 @@ export function PlayerSheet({ children }: { children: ReactNode }) {
 
   const sheetStyle = useMemo(
     () => ({
-      opacity: progress.interpolate({ inputRange: [0, FADE_IN], outputRange: [0, 1], extrapolate: 'clamp' }),
+      opacity: Animated.multiply(
+        progress.interpolate({ inputRange: [0, FADE_IN], outputRange: [0, 1], extrapolate: 'clamp' }),
+        fade
+      ),
       // Closed, its top edge sits on the mini-player's; open, on the screen's.
       transform: [
         { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [travel, 0], extrapolate: 'clamp' }) },
       ],
     }),
-    [progress, travel]
+    [progress, fade, travel]
   );
 
   const onLayout = (e: LayoutChangeEvent) => setHeight(e.nativeEvent.layout.height);

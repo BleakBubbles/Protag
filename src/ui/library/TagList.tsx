@@ -10,6 +10,7 @@ import { parseSorts } from '../../library/sorts';
 import { feelHold } from '../haptics';
 import { useDragSelect } from '../hooks/useDragSelect';
 import type { Selection } from '../hooks/useSelection';
+import { timing } from '../motion';
 import { makeStyles } from '../ThemeContext';
 import { TAG_ROW_HEIGHT, TagRow } from './TagRow';
 
@@ -107,7 +108,7 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
       if (!current) return;
       const to = drop ? current.target : current.from;
       if (to !== current.target) setDrag({ ...current, target: to });
-      Animated.timing(dy, {
+      timing(dy, {
         toValue: (to - current.from) * TAG_ROW_HEIGHT,
         duration: SHIFT_MS,
         useNativeDriver: false,
@@ -184,7 +185,7 @@ function Placed({ slot, hidden, children }: { slot: number; hidden: boolean; chi
   const styles = useStyles();
   const y = useRef(new Animated.Value(slot * TAG_ROW_HEIGHT)).current;
   useEffect(() => {
-    Animated.timing(y, { toValue: slot * TAG_ROW_HEIGHT, duration: SHIFT_MS, useNativeDriver: true }).start();
+    timing(y, { toValue: slot * TAG_ROW_HEIGHT, duration: SHIFT_MS, useNativeDriver: true }).start();
   }, [y, slot]);
   return (
     <Animated.View style={[styles.placed, { opacity: hidden ? 0 : 1, transform: [{ translateY: y }] }]}>

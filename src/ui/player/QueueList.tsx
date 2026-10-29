@@ -10,6 +10,7 @@ import { formatCount } from '@/ui/format';
 import { feelHold } from '@/ui/haptics';
 import { Icon } from '@/ui/Icon';
 import { IconButton } from '@/ui/IconButton';
+import { timing } from '@/ui/motion';
 import { font, iconSize, radius, spacing, touchTarget } from '@/ui/theme';
 import { makeStyles, useColors } from '@/ui/ThemeContext';
 import { Artwork } from './Artwork';
@@ -270,7 +271,7 @@ function QueueRow(props: QueueRowProps) {
 
   const offset = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    if (settling) Animated.timing(offset, { toValue: shift, duration: SHIFT_MS, useNativeDriver: true }).start();
+    if (settling) timing(offset, { toValue: shift, duration: SHIFT_MS, useNativeDriver: true }).start();
     else offset.setValue(shift);
   }, [offset, shift, settling]);
 

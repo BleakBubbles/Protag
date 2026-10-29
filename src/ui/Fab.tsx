@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 import { Icon, type IconName } from './Icon';
+import { timing } from './motion';
 import { font, radius, spacing } from './theme';
 import { makeStyles, useColors } from './ThemeContext';
 
@@ -75,7 +76,7 @@ export function Fab({ label, icon, extended, shown = true, onPress }: FabProps) 
 
   useEffect(() => {
     // Width can't use the native driver; it's one small view, so the JS thread copes.
-    Animated.timing(progress, {
+    timing(progress, {
       toValue: extended ? 1 : 0,
       duration: 200,
       easing: Easing.out(Easing.cubic),
@@ -84,7 +85,7 @@ export function Fab({ label, icon, extended, shown = true, onPress }: FabProps) 
   }, [extended, progress]);
 
   useEffect(() => {
-    Animated.timing(appear, {
+    timing(appear, {
       toValue: shown ? 1 : 0,
       duration: 150,
       easing: Easing.out(Easing.cubic),

@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 
 import { feelHold, HOLD_MS } from '../haptics';
+import { spring } from '../motion';
 import { spacing } from '../theme';
 import { makeStyles } from '../ThemeContext';
 import { POT_ROW, trayHeight } from './Pot';
@@ -96,7 +97,7 @@ export function Divider({
   const settle = (target: number) => {
     // Kept once it's landed, so the new row count can't cut the settling short.
     // (Not if a new resize interrupts it: that one settles in its turn.)
-    Animated.spring(tray, { toValue: trayHeight(target), useNativeDriver: false, bounciness: 0, speed: 8 }).start(
+    spring(tray, { toValue: trayHeight(target), useNativeDriver: false, bounciness: 0, speed: 8 }).start(
       ({ finished }) => {
         if (finished && target !== latest.current.rows) latest.current.onSettle(target);
       }
@@ -104,7 +105,7 @@ export function Divider({
   };
   const springBack = () => {
     const { pull: pulled } = latest.current;
-    if (pulled) Animated.spring(pulled, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
+    if (pulled) spring(pulled, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
   };
   const end = () => {
     const g = gesture.current;

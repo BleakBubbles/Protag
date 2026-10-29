@@ -68,6 +68,7 @@ import { SearchButton, SearchRow, SectionHead, Trail } from '@/ui/play/SectionHe
 import { TagGrid } from '@/ui/play/TagGrid';
 import { useMiniPlayerVisibility } from '@/ui/player/MiniPlayerVisibility';
 import { PromptDialog } from '@/ui/PromptDialog';
+import { timing } from '@/ui/motion';
 import { font, spacing } from '@/ui/theme';
 import { makeStyles, useColors } from '@/ui/ThemeContext';
 
@@ -240,7 +241,7 @@ function Builder({
       risenBy.current = 0;
       pull.setValue(0);
     }
-    Animated.timing(reveal, {
+    timing(reveal, {
       toValue: browsing ? 1 : 0,
       duration: fast ? FLICK_FALL_MS : RISE_MS,
       easing: browsing || fast ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
@@ -254,8 +255,8 @@ function Builder({
     tagList.current?.scrollTo({ y: 0, animated: true });
     performAndroidHapticsAsync(AndroidHaptics.Context_Click).catch(() => {});
     Animated.sequence([
-      Animated.timing(nudge, { toValue: -NUDGE, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.timing(nudge, { toValue: 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      timing(nudge, { toValue: -NUDGE, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      timing(nudge, { toValue: 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
   };
 
@@ -380,7 +381,7 @@ function Builder({
       setSetting(db, SettingKey.tagsAt, id === null ? '' : String(id)).catch(() => {});
       tagList.current?.scrollTo({ y: 0, animated: false });
       slide.setValue(deeper ? 1 : -1);
-      Animated.timing(slide, { toValue: 0, duration: SLIDE_MS, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+      timing(slide, { toValue: 0, duration: SLIDE_MS, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
     },
     [db, trail, slide]
   );
