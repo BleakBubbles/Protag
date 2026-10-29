@@ -8,14 +8,15 @@ import { albumArtUri } from '@/library/assets';
 import { openAlbum, openArtist, openTag } from '@/navigation';
 import { useNowPlaying, usePlaybackStatus, usePlayerActions } from '@/player/PlayerProvider';
 import { shuffleModeOf, shuffleModesOf, type QueueState } from '@/player/queue';
+import { useSleepTimer } from '@/player/sleepTimer';
 import { EmptyState } from '@/ui/EmptyState';
+import { Icon } from '@/ui/Icon';
 import { IconButton } from '@/ui/IconButton';
 import { font, spacing } from '@/ui/theme';
-import { makeStyles } from '@/ui/ThemeContext';
+import { makeStyles, useColors } from '@/ui/ThemeContext';
 import { ArtworkSlot } from './ArtworkSlot';
 import { QueueList } from './QueueList';
 import { SeekBar } from './SeekBar';
-import { SleepButton } from './SleepButton';
 import { SongTagsRow } from './SongTagsRow';
 import { SourceLine } from './SourceLine';
 import { TrackInfo } from './TrackInfo';
@@ -59,6 +60,9 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
 
   // The queue shows where the artwork was; everything else stays put.
   const [showQueue, setShowQueue] = useState(false);
+  const colors = useColors();
+  // The timer lives in the queue; its moon on the queue button shows it's set with the queue closed.
+  const sleeping = useSleepTimer().sleep.kind !== 'off';
   // Back puts the artwork back before it closes the player.
   useFocusEffect(
     useCallback(() => {
@@ -86,12 +90,12 @@ function NowPlaying({ song, queue, onClose, dragHandlers }: FullPlayerProps & { 
         <View style={styles.topRow}>
           <IconButton icon="chevron-down" label="Close player" onPress={onClose} />
           <SourceLine queue={queue} />
-          <SleepButton />
           <IconButton
             icon="queue"
             label={showQueue ? 'Hide queue' : 'Show queue'}
             active={showQueue}
             onPress={() => setShowQueue((shown) => !shown)}
+            badge={sleeping ? <Icon name="moon" size={10} color={colors.accentFg} /> : null}
           />
         </View>
         {!showQueue && <ArtworkSlot uri={albumArtUri(song.album_id)} />}

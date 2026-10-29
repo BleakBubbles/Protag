@@ -15,6 +15,7 @@ import { timing } from '@/ui/motion';
 import { font, iconSize, radius, spacing, touchTarget } from '@/ui/theme';
 import { makeStyles, useColors } from '@/ui/ThemeContext';
 import { Artwork } from './Artwork';
+import { SleepRow } from './SleepRow';
 
 /** A song row at the normal font size; its title and artist lines (20 + 14) grow with the phone's. */
 const ROW = 56;
@@ -45,7 +46,7 @@ interface Drag {
  * What's coming up, in the player where the artwork was: the songs the
  * listener queued first ("Queued"), then the rest of the order ("Next from
  * kpop"). Tap a song to play it now, × takes it out, and the handle drags it
- * to another place in its part of the queue.
+ * to another place in its part of the queue. Above it all, the sleep timer.
  */
 export function QueueList({ queue }: { queue: QueueState }) {
   const colors = useColors();
@@ -201,6 +202,7 @@ export function QueueList({ queue }: { queue: QueueState }) {
 
   return (
     <Animated.View style={[styles.box, { opacity: fade }]}>
+      <SleepRow />
       <FlatList
         ref={list}
         onLayout={(e) => (listHeight.current = e.nativeEvent.layout.height)}
