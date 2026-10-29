@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useSleepTimer, type Sleep } from '@/player/sleepTimer';
 import { feelStep } from '@/ui/haptics';
@@ -64,9 +64,11 @@ export function SleepRow() {
   useEffect(() => () => clearTimeout(folding.current), []);
   const on = sleep.kind !== 'off';
 
+  // It slides open and shut, the queue below moving with it: the bar's height, measured as it lays out.
   const shown = useRef(new Animated.Value(0)).current;
+  const [barHeight, setBarHeight] = useState(0);
   useEffect(() => {
-    timing(shown, { toValue: open ? 1 : 0, duration: 180, useNativeDriver: true }).start();
+    timing(shown, { toValue: open ? 1 : 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
   }, [open, shown]);
 
   // The minutes left tick down, and the thumb with them, while it shows.
@@ -146,9 +148,14 @@ export function SleepRow() {
         <Icon name={open ? 'chevron-up' : 'chevron-down'} size={iconSize.sm - 4} color={colors.textDim} />
       </Pressable>
 
-      {open && (
+      <Animated.View
+        style={[styles.reveal, { height: Animated.multiply(shown, barHeight) }]}
+        pointerEvents={open ? 'auto' : 'none'}
+        importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
+      >
         <Animated.View
-          style={{ opacity: shown, transform: [{ translateY: shown.interpolate({ inputRange: [0, 1], outputRange: [-spacing.sm, 0] }) }] }}
+          onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}
+          style={[styles.revealed, { opacity: shown }]}
         >
           <View
             {...pan.panHandlers}
@@ -200,7 +207,7 @@ export function SleepRow() {
             )}
           </View>
         </Animated.View>
-      )}
+      </Animated.View>
     </View>
   );
 }
@@ -225,6 +232,19 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   pressed: {
     opacity: 0.6,
+  },
+  // Out to the card's edges, so clipping as it slides doesn't cut the bar's touch area short.
+  reveal: {
+    overflow: 'hidden',
+    marginHorizontal: -spacing.md,
+  },
+  // Out of the flow, so it lays out at its own height whatever the clip's is.
+  revealed: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: spacing.md,
   },
   label: {
     ...font.label,
