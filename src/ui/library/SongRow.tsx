@@ -39,6 +39,8 @@ export interface SongRowProps {
   onPress: (id: number) => void;
   /** Starts a list's selection mode, which is how songs are tagged from a list. */
   onLongPress?: (id: number) => void;
+  /** Dimmed and untappable, keeping its place (while selecting tags above it). */
+  disabled?: boolean;
 }
 
 export const SongRow = memo(function SongRow({
@@ -52,6 +54,7 @@ export const SongRow = memo(function SongRow({
   selected,
   onPress,
   onLongPress,
+  disabled,
 }: SongRowProps) {
   const colors = useColors();
   const styles = useStyles();
@@ -71,6 +74,7 @@ export const SongRow = memo(function SongRow({
           onLongPress(id);
         })
       }
+      disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={
         selecting ? `${selected ? 'Deselect' : 'Select'} ${title}` : `Play ${title}${artist ? ` by ${artist}` : ''}`
@@ -79,6 +83,7 @@ export const SongRow = memo(function SongRow({
       style={({ pressed }) => [
         styles.row,
         selected ? styles.selected : pressed && !selecting && styles.pressed,
+        disabled && styles.disabled,
       ]}
     >
       <View>
@@ -125,6 +130,9 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   selected: {
     backgroundColor: colors.accentTint,
+  },
+  disabled: {
+    opacity: 0.4,
   },
   // Over the artwork: a dark veil with an empty ring, or the accent with a tick.
   check: {

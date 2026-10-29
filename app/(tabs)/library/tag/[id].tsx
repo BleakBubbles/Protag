@@ -32,6 +32,7 @@ import { FAB_CLEARANCE, useFabFold } from '@/ui/Fab';
 import { FabMenu } from '@/ui/FabMenu';
 import { plural } from '@/ui/format';
 import { useDragSelect } from '@/ui/hooks/useDragSelect';
+import { useSelection } from '@/ui/hooks/useSelection';
 import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useSongSelection } from '@/ui/hooks/useSongSelection';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
@@ -40,7 +41,8 @@ import { useAnchor } from '@/ui/Popover';
 import { PopupMenu, type MenuAction } from '@/ui/PopupMenu';
 import { SelectionBar } from '@/ui/library/SelectionBar';
 import { SONG_ROW_HEIGHT, SongRow } from '@/ui/library/SongRow';
-import { TagRow } from '@/ui/library/TagRow';
+import { TagList } from '@/ui/library/TagList';
+import { TagSelectionBar } from '@/ui/library/TagSelectionBar';
 import { LogoMark } from '@/ui/LogoMark';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { headerTitleText } from '@/ui/stackOptions';
@@ -89,6 +91,10 @@ export default function TagScreen() {
 
   const songIds = useMemo(() => data?.songs.map((s) => s.id), [data]);
   const songSelection = useSongSelection(songIds);
+  // Or its subtags: one or the other, never both.
+  const childIds = useMemo(() => data?.children.map((t) => t.id), [data]);
+  const tagSelection = useSelection(childIds, 'tag');
+  const [tagsBusy, setTagsBusy] = useState(false);
   const { selection, selecting, selected, toggle, clear, editTags, queueActions, header: selectionHeader } = songSelection;
   const drag = useDragSelect({ ids: songIds, rowHeight: SONG_ROW_HEIGHT, headerHeight, selection: songSelection, onScroll: fab.scrollProps.onScroll });
 
@@ -233,15 +239,16 @@ export default function TagScreen() {
 
   return (
     <View style={styles.screen}>
-      <Stack.Screen options={selecting ? selectionHeader : tagHeader} />
+      <Stack.Screen options={selecting ? selectionHeader : tagSelection.selecting ? tagSelection.header : tagHeader} />
 
       <View ref={drag.frameRef} style={styles.frame} {...drag.frameProps}>
         <FlatList
           {...drag.listProps}
+          scrollEnabled={drag.listProps.scrollEnabled && !tagsBusy}
           data={data?.songs ?? []}
           keyExtractor={(song) => String(song.id)}
           getItemLayout={getItemLayout}
-          extraData={selection}
+          extraData={[selection, tagSelection.selecting]}
           contentContainerStyle={songCount > 0 ? { paddingBottom: FAB_CLEARANCE } : undefined}
           renderItem={({ item }) => (
             <SongRow
@@ -255,6 +262,7 @@ export default function TagScreen() {
               selected={selection?.has(item.id) ?? false}
               onPress={selecting ? toggle : playFrom}
               onLongPress={drag.start}
+              disabled={tagSelection.selecting}
             />
           )}
           ListHeaderComponent={
@@ -299,16 +307,15 @@ export default function TagScreen() {
                 </View>
               </View>
               {/* Full-width rows, like the Tags view: outside the padded block. */}
-              {data?.children.map((child) => (
-                <TagRow
-                  key={child.id}
-                  name={child.name}
-                  color={child.color}
-                  songCount={child.song_count}
-                  childCount={child.child_count}
-                  onPress={() => openTag(child.id, fromPlayer)}
+              {data && (
+                <TagList
+                  tags={data.children}
+                  selection={tagSelection}
+                  onOpen={(child) => openTag(child, fromPlayer)}
+                  disabled={selecting}
+                  onBusy={setTagsBusy}
                 />
-              ))}
+              )}
               {/* Folders first, then songs, like any file browser. */}
               {childCount > 0 && songCount > 0 && <View style={styles.divider} />}
             </View>
@@ -345,6 +352,8 @@ export default function TagScreen() {
             { label: 'Remove', icon: 'remove-circle-outline', destructive: true, onPress: confirmRemove },
           ]}
         />
+      ) : tagSelection.selecting ? (
+        <TagSelectionBar selection={tagSelection} />
       ) : (
         songCount > 0 && (
           // Like a file browser's "New": songs are the files, subtags the folders.

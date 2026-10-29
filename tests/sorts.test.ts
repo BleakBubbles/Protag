@@ -7,7 +7,8 @@ import { DEFAULT_SORTS, nextMusicSort, nextTagSort, parseSorts, sortMusic, sortT
 
 test('sorts cycle, and a stored choice comes back with anything unknown at its default', () => {
   assert.equal(nextTagSort('name'), 'played');
-  assert.equal(nextTagSort('played'), 'name');
+  assert.equal(nextTagSort('played'), 'custom');
+  assert.equal(nextTagSort('custom'), 'name');
   assert.deepEqual(['played', 'name', 'added'].map((s) => nextMusicSort(s as never)), ['name', 'added', 'played']);
 
   assert.deepEqual(parseSorts(null), DEFAULT_SORTS);
@@ -31,12 +32,13 @@ test('most played breaks ties by size, then name; A–Z ignores case', () => {
   assert.deepEqual(names('added' as never), ['A', 'c', 'b']);
 
   const tags = [
-    { id: 1, name: 'rain', song_count: 2 },
-    { id: 2, name: 'Jazz', song_count: 9 },
-    { id: 3, name: 'kpop', song_count: 4 },
+    { id: 1, name: 'rain', song_count: 2, sort_order: 1 },
+    { id: 2, name: 'Jazz', song_count: 9, sort_order: 3 },
+    { id: 3, name: 'kpop', song_count: 4, sort_order: 2 },
   ];
   assert.deepEqual(sortTags(tags, 'name', new Map()).map((t) => t.name), ['Jazz', 'kpop', 'rain']);
   assert.deepEqual(sortTags(tags, 'played', new Map([[1, 5]])).map((t) => t.name), ['rain', 'Jazz', 'kpop']);
+  assert.deepEqual(sortTags(tags, 'custom', new Map()).map((t) => t.name), ['rain', 'kpop', 'Jazz']);
 });
 
 test('a tag’s plays include its subtags’ songs, each song once', async () => {

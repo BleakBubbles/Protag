@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type GestureResponderHandlers, type LayoutChangeEvent } from 'react-native';
 
 import { plural } from '../format';
+import { feelHold, HOLD_MS } from '../haptics';
+import { Icon } from '../Icon';
 import { artworkRadius } from '../player/Artwork';
-import { font, iconSize, spacing } from '../theme';
+import { font, iconSize, spacing, touchTarget } from '../theme';
 import { makeStyles, useColors } from '../ThemeContext';
 
 export const TAG_ROW_HEIGHT = 72;
@@ -18,13 +20,27 @@ export interface TagRowProps {
   songCount: number;
   childCount: number;
   onPress: () => void;
+  /** Starts selecting tags (`TagList`). */
+  onLongPress?: () => void;
+  /**
+   * Selecting tags: a check over the folder, as on a song's artwork, and a
+   * handle (`handle`) to drag it to another place among its siblings.
+   */
+  selecting?: boolean;
+  selected?: boolean;
+  handle?: GestureResponderHandlers;
+  /** TalkBack's way to move it: one place up (-1) or down (1). */
+  onNudge?: (step: 1 | -1) => void;
+  /** Dimmed and untappable, keeping its place (while selecting songs). */
+  disabled?: boolean;
 }
 
 /**
  * A tag shown as a folder: tags hold songs the way folders hold files, a
  * pattern people already know. A folder icon on the tag's own colour.
  */
-export function TagRow({ name, color, songCount, childCount, onPress }: TagRowProps) {
+export function TagRow(props: TagRowProps) {
+  const { name, color, songCount, childCount, onPress, onLongPress, selecting, selected, handle, onNudge, disabled } = props;
   const colors = useColors();
   const styles = useStyles();
   const meta = [plural(songCount, 'song'), childCount > 0 ? plural(childCount, 'subtag') : null]
@@ -32,14 +48,38 @@ export function TagRow({ name, color, songCount, childCount, onPress }: TagRowPr
     .join(' · ');
 
   return (
+    // As with songs, the selection colour is the feedback while selecting; no pressed highlight on top.
     <Pressable
       onPress={onPress}
+      delayLongPress={HOLD_MS}
+      onLongPress={
+        onLongPress &&
+        (() => {
+          feelHold();
+          onLongPress();
+        })
+      }
+      disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={`${name}, ${meta}`}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      accessibilityLabel={selecting ? `${selected ? 'Deselect' : 'Select'} ${name}` : `${name}, ${meta}`}
+      accessibilityState={selecting ? { selected } : undefined}
+      style={({ pressed }) => [
+        styles.row,
+        selected ? styles.selected : pressed && !selecting && styles.pressed,
+        disabled && styles.disabled,
+      ]}
     >
       <View style={[styles.tile, { backgroundColor: `${colors.tag(color)}38` }]}>
         <Ionicons name="folder" size={iconSize.md} color={colors.tag(color)} />
+        {selecting && (
+          <View style={[styles.check, selected && styles.checkOn]} pointerEvents="none">
+            <Ionicons
+              name={selected ? 'checkmark' : 'ellipse-outline'}
+              size={selected ? iconSize.md : iconSize.sm}
+              color={colors.text}
+            />
+          </View>
+        )}
       </View>
       <View style={styles.text}>
         <Text style={styles.name} numberOfLines={1}>
@@ -49,7 +89,21 @@ export function TagRow({ name, color, songCount, childCount, onPress }: TagRowPr
           {meta}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={iconSize.sm} color={colors.textFaint} />
+      {selecting ? (
+        <View
+          {...handle}
+          style={styles.handle}
+          accessible
+          accessibilityRole="adjustable"
+          accessibilityLabel={`Move ${name}`}
+          accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+          onAccessibilityAction={(e) => onNudge?.(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
+        >
+          <Icon name="reorder-three" size={iconSize.sm} color={colors.textDim} />
+        </View>
+      ) : (
+        <Ionicons name="chevron-forward" size={iconSize.sm} color={colors.textFaint} />
+      )}
     </Pressable>
   );
 }
@@ -95,6 +149,32 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   pressed: {
     backgroundColor: colors.surface,
+  },
+  selected: {
+    backgroundColor: colors.accentTint,
+  },
+  // Over the folder: a dark veil with an empty ring, or the accent with a tick (as on a song's artwork).
+  check: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: artworkRadius(TILE),
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  checkOn: {
+    backgroundColor: `${colors.accent}D9`,
+  },
+  // Takes the arrow's place, at the row's right edge.
+  handle: {
+    width: touchTarget,
+    height: TAG_ROW_HEIGHT,
+    marginRight: -spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tile: {
     width: TILE,

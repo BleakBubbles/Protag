@@ -22,11 +22,14 @@ import { formatCount } from '../../ui/format';
 import { useDragSelect } from '../../ui/hooks/useDragSelect';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
+import type { Selection } from '../../ui/hooks/useSelection';
 import type { SongSelection } from '../../ui/hooks/useSongSelection';
 import { ImportPrompt, ImportStatus } from '../../ui/library/ImportCards';
 import { SelectionBar } from '../../ui/library/SelectionBar';
 import { SONG_ROW_HEIGHT, SongRow } from '../../ui/library/SongRow';
-import { NewTagRow, TagRow } from '../../ui/library/TagRow';
+import { TagList } from '../../ui/library/TagList';
+import { NewTagRow } from '../../ui/library/TagRow';
+import { TagSelectionBar } from '../../ui/library/TagSelectionBar';
 import { PromptDialog } from '../../ui/PromptDialog';
 import { font, spacing } from '../../ui/theme';
 import { makeStyles } from '../../ui/ThemeContext';
@@ -37,6 +40,10 @@ const LOOSE_LABEL = 'Not tagged yet';
 export interface TagsViewProps {
   /** Owned by the Library screen, which shows its header while selecting. */
   selection: SongSelection;
+  /** Selecting the tags themselves (one or the other: songs dim while tags are picked, and the other way round). */
+  tagSelection: Selection;
+  /** Reports the tags as listed, so their selection knows what "all" is. */
+  onTags: (tagIds: readonly number[]) => void;
   /** Reports the loose songs as listed, so selection knows what "all" is. */
   onLooseSongs: (songIds: readonly number[]) => void;
 }
@@ -48,7 +55,7 @@ export interface TagsViewProps {
  * tagged: a ready-made to-do list. Long-press one to start selecting and tag a
  * batch at once.
  */
-export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
+export function TagsView({ selection, tagSelection, onTags, onLooseSongs }: TagsViewProps) {
   const styles = useStyles();
   const db = useSQLiteContext();
   const { data } = useLibraryQuery(async (db) => {
@@ -91,9 +98,12 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
     openTag(id);
   };
 
-  const tags = data?.tags ?? [];
+  const tags = useMemo(() => data?.tags ?? [], [data]);
+  useEffect(() => onTags(tags.map((t) => t.id)), [tags, onTags]);
   const looseCount = data?.loose.length ?? 0;
   const { selecting, selected, toggle } = selection;
+  // Sliding across tags or dragging one by its handle: the list mustn't scroll under it.
+  const [tagsBusy, setTagsBusy] = useState(false);
   const drag = useDragSelect({ ids: looseIds, rowHeight: SONG_ROW_HEIGHT, headerHeight, selection, onScroll: track });
 
   return (
@@ -101,11 +111,12 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
       <View ref={drag.frameRef} style={styles.frame} {...drag.frameProps}>
         <FlatList
           {...drag.listProps}
+          scrollEnabled={drag.listProps.scrollEnabled && !tagsBusy}
           onLayout={(e) => setViewHeight(e.nativeEvent.layout.height)}
           data={data?.loose ?? []}
           keyExtractor={(song) => String(song.id)}
           getItemLayout={getItemLayout}
-          extraData={selection.selection}
+          extraData={[selection.selection, tagSelection.selecting]}
           contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}
           renderItem={({ item }) => (
             <SongRow
@@ -119,6 +130,7 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
               selected={selection.selection?.has(item.id) ?? false}
               onPress={selecting ? toggle : playFrom}
               onLongPress={drag.start}
+              disabled={tagSelection.selecting}
             />
           )}
           ListHeaderComponent={
@@ -132,19 +144,16 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
                   )}
                 </View>
               )}
-              {tags.map((tag) => (
-                <TagRow
-                  key={tag.id}
-                  name={tag.name}
-                  color={tag.color}
-                  songCount={tag.song_count}
-                  childCount={tag.child_count}
-                  onPress={() => openTag(tag.id)}
-                />
-              ))}
+              <TagList
+                tags={tags}
+                selection={tagSelection}
+                onOpen={openTag}
+                disabled={selecting}
+                onBusy={setTagsBusy}
+              />
               <NewTagRow
                 onPress={() => setCreating(true)}
-                disabled={selecting}
+                disabled={selecting || tagSelection.selecting}
                 onLayout={(e) => {
                   const { y, height } = e.nativeEvent.layout;
                   setRow({ top: y, end: y + height });
@@ -169,6 +178,8 @@ export function TagsView({ selection, onLooseSongs }: TagsViewProps) {
           disabled={selected.length === 0}
           actions={[{ label: 'Tag…', icon: 'tags', onPress: selection.editTags }, ...selection.queueActions]}
         />
+      ) : tagSelection.selecting ? (
+        <TagSelectionBar selection={tagSelection} />
       ) : (
         <Fab label="New tag" icon="add" extended={false} shown={rowOutOfView} onPress={() => setCreating(true)} />
       )}

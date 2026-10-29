@@ -9,7 +9,7 @@ import type {
 
 import { SELECTION_BAR_HEIGHT } from '../library/SelectionBar';
 import { spacing } from '../theme';
-import type { SongSelection } from './useSongSelection';
+import type { Selection } from './useSelection';
 
 /** How close to the list's top or bottom edge the finger has to be to scroll it. */
 const EDGE = 72;
@@ -21,26 +21,29 @@ const MAX_SPEED = 18;
 type ScrollHandler = (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
 
 export interface DragSelectOptions {
-  /** The songs as listed, in order: row `i` is `ids[i]`. */
+  /** The items as listed, in order: row `i` is `ids[i]`. */
   ids: readonly number[] | undefined;
   rowHeight: number;
-  /** The list header's height, above the first row (from `useFixedRowLayout`). */
+  /** The list header's height, above the first row (from `useFixedRowLayout`); 0 for rows that start the frame. */
   headerHeight: number;
-  selection: SongSelection;
+  selection: Pick<Selection, 'selection' | 'toggle' | 'replace'>;
   /** The list's own scroll handler, if it has one: it still gets every event. */
   onScroll?: ScrollHandler;
 }
 
 /**
- * Press and hold a song, then slide: every song the finger passes over goes the
- * same way the held one did (selected, or unselected if it already was), like
+ * Press and hold a row (a song, a tag), then slide: every row the finger passes
+ * over goes the same way the held one did (selected, or unselected if it already was), like
  * Google Photos. Sliding back undoes it, row by row, and holding near the
  * list's top or bottom edge scrolls it.
  *
  * Works only for a list of fixed-height rows below a header, so the row under
  * the finger is arithmetic rather than measuring. Put `frameRef` and
  * `frameProps` on a View wrapping the list, spread `listProps` on the list,
- * and use `start` as each row's `onLongPress`.
+ * and use `start` as each row's `onLongPress`. Rows that aren't a list of
+ * their own (a few tags in another list's header) skip `listProps`: the frame
+ * is just them, and there's no scrolling; `dragging` says when to stop the
+ * list around them scrolling instead.
  *
  * While a drag is on, the list stops scrolling under the finger: the finger is
  * picking rows, not moving the page. Touches are watched on the frame
@@ -127,22 +130,22 @@ export function useDragSelect({ ids, rowHeight, headerHeight, selection, onScrol
 
   /** A row's `onLongPress`: picks it (or unpicks it), and the slide that may follow goes the same way. */
   const start = useCallback(
-    (songId: number) => {
+    (id: number) => {
       const { ids, selection } = latest.current;
-      const anchor = ids?.indexOf(songId) ?? -1;
+      const anchor = ids?.indexOf(id) ?? -1;
       if (anchor < 0) {
-        selection.toggle(songId);
+        selection.toggle(id);
         return;
       }
       const before = selection.selection ?? new Set<number>();
-      drag.current = { anchor, select: !before.has(songId), before, reached: -1, frame: null, y: null, loop: null };
+      drag.current = { anchor, select: !before.has(id), before, reached: -1, frame: null, y: null, loop: null };
       reach(anchor);
       setDragging(true);
       frameRef.current?.measure((_x, _y, _width, height, _pageX, pageY) => {
         if (drag.current) drag.current.frame = { top: pageY, height };
       });
     },
-    [reach],
+    [reach]
   );
 
   const onTouchMove = useCallback(
@@ -152,7 +155,7 @@ export function useDragSelect({ ids, rowHeight, headerHeight, selection, onScrol
       d.y = e.nativeEvent.pageY - d.frame.top;
       if (d.loop === null) follow();
     },
-    [follow],
+    [follow]
   );
 
   const track: ScrollHandler = (e) => {
@@ -162,6 +165,7 @@ export function useDragSelect({ ids, rowHeight, headerHeight, selection, onScrol
 
   return {
     start,
+    dragging,
     frameRef,
     frameProps: { onTouchMove, onTouchEnd: stop, onTouchCancel: stop },
     listProps: {

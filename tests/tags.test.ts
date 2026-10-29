@@ -7,12 +7,14 @@ import {
   createTag,
   deleteTag,
   getTagPath,
+  getTagsDeletionImpact,
   listSongsInTag,
   listTagsWithCounts,
   removeSongsFromTag,
   renameTag,
   reparentTag,
   setTagColor,
+  setTagOrder,
   TagError,
   updateSongsOfTag,
 } from '../src/db/tags.ts';
@@ -246,5 +248,44 @@ test("the picker's changes apply together, and only to the tag's direct links", 
 
   await updateSongsOfTag(db as never, kpop, { add: [], remove: [] });
   assert.deepEqual(await tagsOf(c), [kpop], 'no changes, no effect');
+  db.close();
+});
+
+test('arranged tags keep their order; tags joining them go last, but A–Z siblings stay A–Z', async () => {
+  const db = await freshDatabase();
+  const names = async (parent: number | null) => (await listTagsWithCounts(db as never, parent)).map((t) => t.name);
+  const b = await createTag(db as never, 'b', null);
+  const a = await createTag(db as never, 'a', null);
+  await createTag(db as never, 'c', null);
+  // Never arranged: A–Z, new tags included.
+  assert.deepEqual(await names(null), ['a', 'b', 'c']);
+
+  const c = (await listTagsWithCounts(db as never, null)).find((t) => t.name === 'c')!.id;
+  await setTagOrder(db as never, [c, a, b]);
+  assert.deepEqual(await names(null), ['c', 'a', 'b']);
+  await createTag(db as never, 'aa', null);
+  assert.deepEqual(await names(null), ['c', 'a', 'b', 'aa']);
+
+  // Moved under an un-arranged parent: A–Z among its new siblings.
+  await createTag(db as never, 'z', a);
+  await createTag(db as never, 'y', a);
+  await reparentTag(db as never, c, a);
+  assert.deepEqual(await names(a), ['c', 'y', 'z']);
+  db.close();
+});
+
+test('deleting several tags counts their subtags and songs once each', async () => {
+  const db = await freshDatabase();
+  const kpop = await createTag(db as never, 'kpop', null);
+  const gen4 = await createTag(db as never, 'gen 4', kpop);
+  const chill = await createTag(db as never, 'chill', null);
+  const s1 = await insertSong(db as never, 'one');
+  const s2 = await insertSong(db as never, 'two');
+  await addTagToSong(db as never, s1, gen4);
+  await addTagToSong(db as never, s1, chill);
+  await addTagToSong(db as never, s2, chill);
+  assert.deepEqual(await getTagsDeletionImpact(db as never, [kpop, chill]), { subtags: 1, songs: 2 });
+  // gen 4 selected too: it's being deleted itself, not along with kpop.
+  assert.deepEqual(await getTagsDeletionImpact(db as never, [kpop, gen4]), { subtags: 0, songs: 1 });
   db.close();
 });

@@ -135,9 +135,10 @@ export async function createTag(
     'SELECT color FROM tags ORDER BY id DESC LIMIT 1'
   );
   const result = await db.runAsync(
-    'INSERT INTO tags (name, parent_id, sort_order, created_at, color) VALUES (?, ?, 0, ?, ?)',
+    'INSERT INTO tags (name, parent_id, sort_order, created_at, color) VALUES (?, ?, ?, ?, ?)',
     clean,
     parentId,
+    await placeAtEnd(db, parentId),
     Date.now(),
     nextTagColor(newest?.color)
   );
@@ -200,7 +201,30 @@ export async function reparentTag(
     throw new TagError(`A tag named "${tag.name}" already exists in the destination.`);
   }
 
-  await db.runAsync('UPDATE tags SET parent_id = ? WHERE id = ?', newParentId, id);
+  await db.runAsync('UPDATE tags SET parent_id = ?, sort_order = ? WHERE id = ?', newParentId, await placeAtEnd(db, newParentId), id);
+}
+
+/**
+ * Sibling tags in the order the listener arranged them (`ids`, top first).
+ * Numbered from 1: 0 means never arranged, where tags fall back to A–Z.
+ */
+export async function setTagOrder(db: SQLiteDatabase, ids: readonly number[]): Promise<void> {
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    for (const [i, id] of ids.entries()) await txn.runAsync('UPDATE tags SET sort_order = ? WHERE id = ?', i + 1, id);
+  });
+}
+
+/**
+ * Where a tag joining `parentId` goes: last, if its new siblings have been
+ * arranged by hand; otherwise among them A–Z, as they are.
+ */
+async function placeAtEnd(db: SQLiteDatabase, parentId: number | null): Promise<number> {
+  const row = await db.getFirstAsync<{ last: number | null }>(
+    'SELECT MAX(sort_order) AS last FROM tags WHERE parent_id IS ?',
+    parentId
+  );
+  const last = row?.last ?? 0;
+  return last > 0 ? last + 1 : 0;
 }
 
 /** Deletes the tag and, via ON DELETE CASCADE, its whole subtree and their song links. */
@@ -339,6 +363,24 @@ export interface TagDeletionImpact {
 }
 
 /** What deleting a tag would remove, for an honest confirmation dialog. */
+/** What deleting several tags at once would take with them; a subtag that's itself selected isn't counted as a subtag. */
+export async function getTagsDeletionImpact(db: SQLiteDatabase, ids: readonly number[]): Promise<TagDeletionImpact> {
+  const list = ids.map(() => '?').join(',');
+  const row = await db.getFirstAsync<TagDeletionImpact>(
+    `WITH RECURSIVE sub(id) AS (
+       SELECT id FROM tags WHERE id IN (${list})
+       UNION
+       SELECT t.id FROM tags t JOIN sub ON t.parent_id = sub.id
+     )
+     SELECT
+       (SELECT COUNT(*) FROM sub WHERE id NOT IN (${list})) AS subtags,
+       (SELECT COUNT(DISTINCT song_id) FROM song_tags WHERE tag_id IN (SELECT id FROM sub)) AS songs`,
+    ...ids,
+    ...ids
+  );
+  return row ?? { subtags: 0, songs: 0 };
+}
+
 export async function getTagDeletionImpact(
   db: SQLiteDatabase,
   id: number

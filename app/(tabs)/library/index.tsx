@@ -10,6 +10,7 @@ import { ArtistsView } from '@/screens/library/ArtistsView';
 import { SongsView } from '@/screens/library/SongsView';
 import { TagsView } from '@/screens/library/TagsView';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
+import { useSelection } from '@/ui/hooks/useSelection';
 import { useSongSelection } from '@/ui/hooks/useSongSelection';
 import { IconButton } from '@/ui/IconButton';
 import { Welcome } from '@/ui/library/Welcome';
@@ -44,14 +45,19 @@ export default function LibraryScreen() {
   const [looseIds, setLooseIds] = useState<readonly number[]>();
   const [songIds, setSongIds] = useState<readonly number[]>();
   const selection = useSongSelection(view === 'tags' ? looseIds : view === 'songs' ? songIds : undefined);
+  // Or selecting tags, in the Tags view: one or the other, never both.
+  const [tagIds, setTagIds] = useState<readonly number[]>();
+  const tagSelection = useSelection(view === 'tags' ? tagIds : undefined, 'tag');
   const switchView = useCallback(
     (next: LibraryView) => {
       selection.clear();
+      tagSelection.clear();
       setView(next);
     },
-    [selection.clear]
+    [selection.clear, tagSelection.clear]
   );
-  const header = selection.selecting ? selection.header : libraryHeader;
+  const selecting = selection.selecting || tagSelection.selecting;
+  const header = selection.selecting ? selection.header : tagSelection.selecting ? tagSelection.header : libraryHeader;
 
   if (songCount === undefined) {
     return (
@@ -78,9 +84,15 @@ export default function LibraryScreen() {
       <PagerTabs
         value={view}
         onChange={switchView}
-        swipeEnabled={!selection.selecting}
+        swipeEnabled={!selecting}
         pages={[
-          { value: 'tags', label: 'Tags', render: () => <TagsView selection={selection} onLooseSongs={setLooseIds} /> },
+          {
+            value: 'tags',
+            label: 'Tags',
+            render: () => (
+              <TagsView selection={selection} tagSelection={tagSelection} onTags={setTagIds} onLooseSongs={setLooseIds} />
+            ),
+          },
           { value: 'songs', label: 'Songs', render: () => <SongsView selection={selection} onSongs={setSongIds} /> },
           { value: 'artists', label: 'Artists', render: () => <ArtistsView /> },
           { value: 'albums', label: 'Albums', render: () => <AlbumsView /> },

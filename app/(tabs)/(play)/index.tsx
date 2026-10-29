@@ -319,6 +319,8 @@ function Builder({
     [names, hues, pictures]
   );
   const [sorts, setSorts] = useState(initialSorts);
+  // Changed elsewhere too: arranging tags in the Library switches tags to "Your order".
+  useEffect(() => setSorts(initialSorts), [initialSorts]);
   const changeSorts = (next: ShuffleSorts) => {
     setSorts(next);
     setSetting(db, SettingKey.shuffleSorts, JSON.stringify(next));
