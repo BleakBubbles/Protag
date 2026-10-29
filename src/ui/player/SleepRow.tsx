@@ -150,26 +150,34 @@ export function SleepRow() {
       </View>
 
       <View style={styles.labels} pointerEvents="none">
-        {STOPS.map((stop, i) => (
-          <Text
-            key={stop.label}
-            numberOfLines={1}
-            style={[
-              styles.stopLabel,
-              i === 0 ? styles.alignStart : i === LAST ? styles.alignEnd : styles.alignMid,
-              { left: `${(i / LAST) * 100}%` },
-              shownStop === i && styles.stopLabelOn,
-            ]}
-          >
-            {i === LAST ? '♪' : stop.label}
-          </Text>
-        ))}
+        {STOPS.map((stop, i) =>
+          i === LAST ? (
+            // The song's end is a note, centred under its stop rather than set in text.
+            <View key={stop.label} style={[styles.stopNote, { left: '100%' }]}>
+              <Icon name="musical-note" size={NOTE} color={shownStop === i ? colors.accentFg : colors.textDim} />
+            </View>
+          ) : (
+            <Text
+              key={stop.label}
+              numberOfLines={1}
+              style={[
+                styles.stopLabel,
+                i === 0 ? styles.alignStart : styles.alignMid,
+                { left: `${(i / LAST) * 100}%` },
+                shownStop === i && styles.stopLabelOn,
+              ]}
+            >
+              {stop.label}
+            </Text>
+          )
+        )}
       </View>
     </View>
   );
 }
 
 const LABEL_W = 48;
+const NOTE = 15;
 
 const useStyles = makeStyles((colors) => StyleSheet.create({
   box: {
@@ -261,9 +269,13 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     marginLeft: -LABEL_W / 2,
     textAlign: 'center',
   },
-  alignEnd: {
-    marginLeft: -LABEL_W + THUMB / 2,
-    textAlign: 'right',
+  stopNote: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: NOTE,
+    marginLeft: -NOTE / 2,
+    justifyContent: 'center',
   },
   stopLabelOn: {
     color: colors.accentFg,
