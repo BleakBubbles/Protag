@@ -1,8 +1,8 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 
-import { notifyLibraryChanged } from '../db/changes';
-import { MusicPermissionError, scanLibrary, type ScanProgress, type ScanSummary } from './scan';
+import { scanNow } from './libraryWatch';
+import { MusicPermissionError, type ScanProgress, type ScanSummary } from './scan';
 
 export type ScanState =
   | { kind: 'idle' }
@@ -19,7 +19,7 @@ export function useLibraryScan() {
   const run = useCallback(async () => {
     setState({ kind: 'scanning', progress: null });
     try {
-      const summary = await scanLibrary(db, (progress) => setState({ kind: 'scanning', progress }));
+      const summary = await scanNow(db, (progress) => setState({ kind: 'scanning', progress }));
       setState({ kind: 'done', summary });
     } catch (error) {
       setState(
@@ -28,7 +28,6 @@ export function useLibraryScan() {
           : { kind: 'error', message: String(error) }
       );
     }
-    notifyLibraryChanged();
   }, [db]);
 
   return { state, run, busy: state.kind === 'scanning' };

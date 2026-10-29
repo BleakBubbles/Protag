@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DATABASE_NAME, migrate } from '@/db/schema';
+import { useLibraryWatch } from '@/library/libraryWatch';
 import { PlayerProvider } from '@/player/PlayerProvider';
 import { fontAssets } from '@/ui/fonts';
 import { useStackScreenOptions } from '@/ui/stackOptions';
@@ -45,6 +46,8 @@ export default function RootLayout() {
 function App() {
   const colors = useColors();
   const stackScreenOptions = useStackScreenOptions();
+  // Songs added to or deleted from the phone come and go by themselves.
+  useLibraryWatch();
 
   useEffect(() => {
     SplashScreen.hide();

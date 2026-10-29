@@ -106,15 +106,19 @@ class ProTagPlayerModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ProTagPlayer")
 
-    Events("onStatus", "onMoved", "onEnded", "onSleep")
+    Events("onStatus", "onMoved", "onEnded", "onSleep", "onLibraryChanged")
 
     OnCreate {
       Sleep.onChange = { sendEvent("onSleep", sleepState()) }
+      LibraryWatch.onChange = { sendEvent("onLibraryChanged", mapOf<String, Any?>()) }
+      appContext.reactContext?.let { LibraryWatch.start(it) }
     }
 
     OnDestroy {
       main.post {
         Sleep.onChange = null
+        LibraryWatch.onChange = null
+        appContext.reactContext?.let { LibraryWatch.stop(it) }
         main.removeCallbacks(tick)
         player?.removeListener(listener)
         controller?.let { MediaController.releaseFuture(it) }
@@ -261,6 +265,12 @@ class ProTagPlayerModule : Module() {
     AsyncFunction("getSleep") {
       sleepState()
     }.runOnQueue(Queues.MAIN)
+
+    /** A fingerprint of the phone's audio files, to tell whether the library needs scanning (LibraryWatch). */
+    AsyncFunction("libraryStamp") {
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      LibraryWatch.stamp(context)
+    }
 
     /** Whether the phone has an equalizer Protag can open. */
     AsyncFunction("hasEqualizer") {

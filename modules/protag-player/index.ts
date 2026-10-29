@@ -37,6 +37,8 @@ type Events = {
   onMoved(event: { index: number; repeated: boolean }): void;
   onEnded(): void;
   onSleep(sleep: NativeSleep): void;
+  /** Something in the phone's audio index may have changed: compare `libraryStamp`s to be sure. */
+  onLibraryChanged(): void;
 };
 
 declare class ProTagPlayerModule extends NativeModule<Events> {
@@ -62,6 +64,8 @@ declare class ProTagPlayerModule extends NativeModule<Events> {
   getSleep(): Promise<NativeSleep>;
   hasEqualizer(): Promise<boolean>;
   openEqualizer(): Promise<void>;
+  /** A fingerprint of the phone's audio files (count, newest, last change); null without permission. */
+  libraryStamp(): Promise<string | null>;
 }
 
 /** Protag's playback engine (Media3), modules/protag-player. */

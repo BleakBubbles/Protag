@@ -45,7 +45,7 @@ export function LibraryOverview({ counts, state, disabled, onScan, onChooseFolde
         topic: 'Your music',
         paragraphs: [
           'Protag plays the music already on this phone; it doesn’t copy or move any files.',
-          'Rescan after adding songs, so Protag finds them. Songs that have gone keep their tags, in case they come back.',
+          'Songs added to the phone show up by themselves; rescan if one hasn’t. Songs that have gone keep their tags, in case they come back.',
           'Choose folders to leave out audio that isn’t music, like voice messages or recordings. Folders that look like that start out left out.',
         ],
       }}
