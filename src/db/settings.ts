@@ -26,6 +26,8 @@ export const SettingKey = {
   tagsAt: 'shuffle.tagsAt',
   /** JSON array of pinned mix ids, most recently pinned first (db/mixes.ts). */
   pinnedMixes: 'mixes.pinned',
+  /** 'seen' once the welcome has been shown (finished or skipped); it shows on the very first launch only. */
+  welcomed: 'app.welcomed',
   /** 'system' (follow the phone), 'dark' or 'light'. */
   theme: 'app.theme',
 } as const;

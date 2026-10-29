@@ -19,8 +19,9 @@ import { PlaylistsCard } from '@/ui/library/ImportCards';
 import { LibraryOverview, type LibraryCounts } from '@/ui/library/LibraryOverview';
 import { spacing } from '@/ui/theme';
 import { makeStyles, useThemeChoice, type ThemeChoice } from '@/ui/ThemeContext';
+import { useShowWelcome } from '@/ui/welcome/WelcomeContext';
 
-/** Settings: what ProTag sees on this phone, playlists, tag backups, sound, and how the app looks. */
+/** Settings: what ProTag sees on this phone, playlists, tag backups, sound, how the app looks, and the welcome again. */
 export default function SettingsScreen() {
   const styles = useStyles();
   const { data: counts } = useLibraryQuery(async (db): Promise<LibraryCounts> => {
@@ -84,7 +85,20 @@ export default function SettingsScreen() {
 
       <SoundCard />
       <AppearanceCard />
+      <HelpCard />
     </ScrollView>
+  );
+}
+
+/** The welcome's slides again, for whoever skipped them or wants a refresher. */
+function HelpCard() {
+  const showWelcome = useShowWelcome();
+  return (
+    <Card title="Help">
+      <CardActions>
+        <Button label="How ProTag works" icon="help-circle-outline" variant="secondary" onPress={showWelcome} />
+      </CardActions>
+    </Card>
   );
 }
 
