@@ -59,6 +59,9 @@ export function SleepRow() {
   const styles = useStyles();
   const { sleep, sleepIn, sleepAtEndOfSong, cancel } = useSleepTimer();
   const [open, setOpen] = useState(false);
+  // Once a time's set by hand it folds itself away, a beat later so the thumb's landing shows.
+  const folding = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(folding.current), []);
   const on = sleep.kind !== 'off';
 
   const shown = useRef(new Animated.Value(0)).current;
@@ -97,6 +100,7 @@ export function SleepRow() {
       // The queue below mustn't take a sideways drag over.
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (e) => {
+        clearTimeout(folding.current);
         start.current = e.nativeEvent.locationX;
         setHeld(stopAt(start.current));
       },
@@ -109,6 +113,7 @@ export function SleepRow() {
       },
       onPanResponderRelease: (_, g) => {
         latest.current.set(stopAt(start.current + g.dx));
+        folding.current = setTimeout(() => setOpen(false), 600);
         setHeld(null);
       },
       onPanResponderTerminate: () => setHeld(null),
@@ -122,7 +127,10 @@ export function SleepRow() {
   return (
     <View style={styles.box}>
       <Pressable
-        onPress={() => setOpen((o) => !o)}
+        onPress={() => {
+          clearTimeout(folding.current);
+          setOpen((o) => !o);
+        }}
         accessibilityRole="button"
         accessibilityLabel={`Sleep timer, ${status(sleep)}`}
         accessibilityState={{ expanded: open }}
