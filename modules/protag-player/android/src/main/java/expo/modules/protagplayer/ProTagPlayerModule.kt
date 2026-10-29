@@ -36,7 +36,7 @@ private const val TICK_MS = 500L
 private const val MAX_SKIPPED_ERRORS = 10
 
 /**
- * ProTag's playback engine: one ExoPlayer holding the whole play order, so
+ * Protag's playback engine: one ExoPlayer holding the whole play order, so
  * songs run on gaplessly and the lock screen, headphones and car can skip
  * through it without JS. JS owns the order (queue.ts) and hands it over;
  * changes the player makes by itself come back as `onMoved` / `onEnded`.
@@ -262,7 +262,7 @@ class ProTagPlayerModule : Module() {
       sleepState()
     }.runOnQueue(Queues.MAIN)
 
-    /** Whether the phone has an equalizer ProTag can open. */
+    /** Whether the phone has an equalizer Protag can open. */
     AsyncFunction("hasEqualizer") {
       val p = ready()
       Equalizer.available(p, p.context())

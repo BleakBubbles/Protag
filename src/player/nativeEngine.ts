@@ -36,7 +36,7 @@ const guarded = (label: string, call: Promise<unknown>) =>
   call.catch((error) => console.warn(`[audio] ${label} failed`, error));
 
 /**
- * `AudioEngine` backed by ProTag's own Media3 module (modules/protag-player):
+ * `AudioEngine` backed by Protag's own Media3 module (modules/protag-player):
  * one player holding the whole play order, shown to the notification, lock
  * screen, headphones and car by a media service.
  */

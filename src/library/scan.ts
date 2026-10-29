@@ -28,7 +28,7 @@ export interface ScanSummary {
 
 export class MusicPermissionError extends Error {
   constructor(readonly canAskAgain: boolean) {
-    super('ProTag needs permission to read your music.');
+    super('Protag needs permission to read your music.');
   }
 }
 
@@ -53,7 +53,7 @@ async function loadGenreNames(): Promise<Map<string, string>> {
 }
 
 /**
- * Read the device's music library from MediaStore into ProTag's database.
+ * Read the device's music library from MediaStore into Protag's database.
  *
  * One pass: Android has already parsed every file's tags, so metadata arrives
  * with discovery and there's no per-file enrichment step.

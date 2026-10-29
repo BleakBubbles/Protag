@@ -9,7 +9,7 @@ export interface LogoMarkProps {
   color?: string;
 }
 
-/** The ProTag mark (the half-note P), recoloured to fit wherever it's shown. */
+/** The Protag mark (the half-note P), recoloured to fit wherever it's shown. */
 export function LogoMark({ width, color }: LogoMarkProps) {
   return (
     <Image

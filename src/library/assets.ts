@@ -29,7 +29,7 @@ function positiveInt(value: number | null | undefined): number | null {
 }
 
 /**
- * Map a MediaStore asset to the row ProTag stores, or say why it was skipped.
+ * Map a MediaStore asset to the row Protag stores, or say why it was skipped.
  *
  * Pure, so the scan's filtering and normalization rules are unit-testable
  * without a device.

@@ -2,7 +2,7 @@ import { readRef, type Ref } from './refs';
 import type { Tuning } from './tuning';
 
 /**
- * The shape of a ProTag query.
+ * The shape of a Protag query.
  *
  * This AST is the contract between the visual builder, the SQL compiler, and the
  * saved-query store. A text query language ("driving AND kpop NOT sad") would parse

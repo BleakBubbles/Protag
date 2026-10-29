@@ -13,7 +13,7 @@ import {
 
 const PAGE_SIZE = 500;
 
-/** A folder on the phone, with how many audio files it holds and whether ProTag reads it. */
+/** A folder on the phone, with how many audio files it holds and whether Protag reads it. */
 export interface LibraryFolder {
   id: string;
   count: number;

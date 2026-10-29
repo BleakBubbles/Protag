@@ -30,7 +30,7 @@ const libraryHeader = {
 
 
 /**
- * Library tab: browse by tag (where it opens: tags are ProTag's heart), by
+ * Library tab: browse by tag (where it opens: tags are Protag's heart), by
  * song, by artist or by album. Before the first scan it's onboarding instead —
  * there's nothing to browse yet.
  */

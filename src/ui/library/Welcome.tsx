@@ -24,7 +24,7 @@ export function Welcome({ state, disabled, onScan, onChooseFolders }: WelcomePro
   const colors = useColors();
   const styles = useStyles();
   return (
-    <EmptyState large art={<LogoMark width={48} />} title="Welcome to ProTag" body={bodyFor(state)}>
+    <EmptyState large art={<LogoMark width={48} />} title="Welcome to Protag" body={bodyFor(state)}>
       {state.kind === 'scanning' ? (
         <View style={styles.progress}>
           <ActivityIndicator color={colors.accentFg} />
@@ -59,7 +59,7 @@ function bodyFor(state: ScanState): string {
     case 'scanning':
       return 'Reading your library…';
     case 'denied':
-      return 'ProTag needs access to your music. It only reads audio files, never photos, videos or anything else.';
+      return 'Protag needs access to your music. It only reads audio files, never photos, videos or anything else.';
     case 'error':
       return `The scan failed: ${state.message}`;
     case 'done':

@@ -19,14 +19,14 @@ const ROW_HEIGHT = 64;
 const FOLDERS_INFO = {
   topic: 'Folders',
   paragraphs: [
-    'ProTag reads music from the ticked folders.',
+    'Protag reads music from the ticked folders.',
     'Folders that look like voice messages, recordings or phone sounds start unticked. Tap a folder to change it, then rescan.',
     'Songs in an unticked folder keep their tags, and come back if you tick it again.',
   ],
 };
 
 /**
- * Which of the phone's audio folders ProTag reads. Folders that look like
+ * Which of the phone's audio folders Protag reads. Folders that look like
  * voice messages, recordings or phone sounds start unticked, with the reason
  * shown; everything else starts ticked. Changes apply on the next scan, so the
  * rescan button stays pinned below the list.

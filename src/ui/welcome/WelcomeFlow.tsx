@@ -52,7 +52,7 @@ const SLIDES: Slide[] = [
   },
   {
     title: 'Your music, your tags',
-    body: 'ProTag plays the music files on this device, and your tags stay on it too.',
+    body: 'Protag plays the music files on this device, and your tags stay on it too.',
     art: () => <MusicFolder />,
   },
 ];
@@ -64,7 +64,7 @@ export interface WelcomeFlowProps {
 }
 
 /**
- * The welcome: four short slides on what ProTag is about, each pictured with
+ * The welcome: four short slides on what Protag is about, each pictured with
  * the app's own pieces, then (the first time) finding the music on the phone,
  * which is what it needs before anything else works, and a few starter tags to
  * pick from so the Tags tab isn't empty on day one. Skip leaves at any point;
@@ -216,7 +216,7 @@ export function WelcomeFlow({ hasSongs, onClose }: WelcomeFlowProps) {
         ) : scan.state.kind === 'denied' ? (
           <View style={styles.after}>
             <Text style={styles.note}>
-              ProTag needs access to your music. It only reads audio files, never photos, videos or anything else.
+              Protag needs access to your music. It only reads audio files, never photos, videos or anything else.
             </Text>
             {scan.state.canAskAgain ? (
               <Button label="Allow access" onPress={findMusic} style={styles.wide} />

@@ -8,8 +8,8 @@ import androidx.media3.exoplayer.ExoPlayer
 
 /**
  * The phone's own equalizer (Samsung's, a Pixel's, or an app like Wavelet)
- * rather than one of ProTag's: whoever cares about EQ has usually set one up
- * already. Android's audio-effect intents tell it which audio is ProTag's.
+ * rather than one of Protag's: whoever cares about EQ has usually set one up
+ * already. Android's audio-effect intents tell it which audio is Protag's.
  */
 object Equalizer {
   private fun panel(player: ExoPlayer, context: Context) =
@@ -32,7 +32,7 @@ object Equalizer {
     panel(player, context).resolveActivity(context.packageManager) != null
 
   fun open(player: ExoPlayer, activity: Activity) {
-    // The panel expects to be started for a result; ProTag has nothing to do with it.
+    // The panel expects to be started for a result; Protag has nothing to do with it.
     activity.startActivityForResult(panel(player, activity), 0)
   }
 }

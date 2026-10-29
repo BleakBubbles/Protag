@@ -1,7 +1,7 @@
 import { MIN_DURATION_MS } from './assets';
 
 /**
- * Which of the phone's audio folders ProTag reads.
+ * Which of the phone's audio folders Protag reads.
  *
  * Android's music library hands over every audio file it finds, so voice
  * messages, call recordings and podcasts arrive looking like songs. Each folder

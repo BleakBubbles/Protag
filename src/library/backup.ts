@@ -7,7 +7,7 @@ import { mapDraftRefs, mapDraftTags, pruneDraft, type QueryDraft } from '../quer
 import { SongMatcher } from './match';
 
 /**
- * Tag backup: the one thing ProTag holds that can't be rebuilt. Songs come back
+ * Tag backup: the one thing Protag holds that can't be rebuilt. Songs come back
  * with a scan; the tag tree and which songs carry which tags only live here.
  *
  * The file identifies songs by what's *in* them (filename, artist, title), not by
@@ -65,6 +65,7 @@ function albumIds(draft: QueryDraft): string[] {
 }
 
 export interface BackupFile {
+  // The format's marker, from before the app was Protag: kept, so every backup ever made still reads.
   app: 'ProTag';
   format: number;
   exportedAt: string;
@@ -74,7 +75,7 @@ export interface BackupFile {
   mixes: BackupMix[];
 }
 
-/** Thrown for a file that isn't a backup ProTag can read; the message is for the user. */
+/** Thrown for a file that isn't a backup Protag can read; the message is for the user. */
 export class BackupError extends Error {}
 
 // ------------------------------------------------------------------ export
@@ -193,13 +194,13 @@ export function parseBackup(text: string): BackupFile {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new BackupError("This file isn't a ProTag backup.");
+    throw new BackupError("This file isn't a Protag backup.");
   }
   if (!isObject(data) || data.app !== 'ProTag' || !isNumber(data.format)) {
-    throw new BackupError("This file isn't a ProTag backup.");
+    throw new BackupError("This file isn't a Protag backup.");
   }
   if (data.format > BACKUP_FORMAT) {
-    throw new BackupError('This backup was made by a newer version of ProTag. Update the app to import it.');
+    throw new BackupError('This backup was made by a newer version of Protag. Update the app to import it.');
   }
   if (!Array.isArray(data.tags) || !Array.isArray(data.songs)) {
     throw new BackupError('This backup is damaged and can’t be imported.');

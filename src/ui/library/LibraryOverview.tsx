@@ -29,7 +29,7 @@ export interface LibraryOverviewProps {
 }
 
 /**
- * The top of Settings: what ProTag sees on this phone, when it last
+ * The top of Settings: what Protag sees on this phone, when it last
  * looked, and the two ways to change that — rescan, or choose folders.
  */
 export function LibraryOverview({ counts, state, disabled, onScan, onChooseFolders }: LibraryOverviewProps) {
@@ -44,8 +44,8 @@ export function LibraryOverview({ counts, state, disabled, onScan, onChooseFolde
       info={{
         topic: 'Your music',
         paragraphs: [
-          'ProTag plays the music already on this phone; it doesn’t copy or move any files.',
-          'Rescan after adding songs, so ProTag finds them. Songs that have gone keep their tags, in case they come back.',
+          'Protag plays the music already on this phone; it doesn’t copy or move any files.',
+          'Rescan after adding songs, so Protag finds them. Songs that have gone keep their tags, in case they come back.',
           'Choose folders to leave out audio that isn’t music, like voice messages or recordings. Folders that look like that start out left out.',
         ],
       }}
@@ -70,7 +70,7 @@ export function LibraryOverview({ counts, state, disabled, onScan, onChooseFolde
 
       {state.kind === 'done' && <ScanSummaryText summary={state.summary} />}
       {state.kind === 'error' && <CardText tone="error">Scan failed: {state.message}</CardText>}
-      {denied && <CardText>ProTag needs access to your music to scan it. It only reads audio files.</CardText>}
+      {denied && <CardText>Protag needs access to your music to scan it. It only reads audio files.</CardText>}
 
       <CardActions>
         {denied && !denied.canAskAgain ? (

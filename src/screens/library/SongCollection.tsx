@@ -46,7 +46,7 @@ export interface SongCollectionProps {
   children?: ReactNode;
   /**
    * Whether it has an order to play straight through: an album's tracks do; an
-   * artist's songs don't (ProTag doesn't know release years), so an artist
+   * artist's songs don't (Protag doesn't know release years), so an artist
    * only shuffles, by song or album, and its buttons say so.
    */
   inOrder?: boolean;
@@ -58,8 +58,8 @@ export interface SongCollectionProps {
  * then labelled sections, ending with the songs.
  *
  * "Song tags", first after the buttons, shows each tag used here and how many
- * songs have it: a summary of the album or artist seen through ProTag's eyes
- * (a tag opens its own page). Its label says where they come from: in ProTag
+ * songs have it: a summary of the album or artist seen through Protag's eyes
+ * (a tag opens its own page). Its label says where they come from: in Protag
  * only songs carry tags, never the album or artist itself. It ends with a button that
  * tags every song at once: for someone who thinks in albums, tagging one song
  * at a time would be the friction that sends them away.

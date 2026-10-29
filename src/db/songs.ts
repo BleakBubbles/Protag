@@ -28,7 +28,7 @@ export function titleFromFilename(filename: string): string {
  * Insert a newly discovered file, or refresh an existing one.
  *
  * Metadata is overwritten on every scan: MediaStore is the source of truth, and
- * ProTag never edits metadata itself, so refreshing picks up tag fixes made in
+ * Protag never edits metadata itself, so refreshing picks up tag fixes made in
  * other apps without losing anything. Tags live in `song_tags` and are keyed on
  * the row id, so they survive any number of refreshes.
  */
@@ -64,7 +64,7 @@ export async function upsertScannedSong(
     song.genre,
     song.trackNo,
     song.durationMs,
-    // "Recently added" means new to the phone, not new to ProTag: the first scan
+    // "Recently added" means new to the phone, not new to Protag: the first scan
     // finds everything at once. Refreshed on rescans so older rows pick it up.
     song.addedAt ?? seenAt,
     seenAt

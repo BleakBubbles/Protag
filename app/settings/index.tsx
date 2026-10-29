@@ -21,7 +21,7 @@ import { spacing } from '@/ui/theme';
 import { makeStyles, useThemeChoice, type ThemeChoice } from '@/ui/ThemeContext';
 import { useShowWelcome } from '@/ui/welcome/WelcomeContext';
 
-/** Settings: what ProTag sees on this phone, playlists, tag backups, sound, how the app looks, and the welcome again. */
+/** Settings: what Protag sees on this phone, playlists, tag backups, sound, how the app looks, and the welcome again. */
 export default function SettingsScreen() {
   const styles = useStyles();
   const { data: counts } = useLibraryQuery(async (db): Promise<LibraryCounts> => {
@@ -96,13 +96,13 @@ function HelpCard() {
   return (
     <Card title="Help">
       <CardActions>
-        <Button label="How ProTag works" icon="help-circle-outline" variant="secondary" onPress={showWelcome} />
+        <Button label="How Protag works" icon="help-circle-outline" variant="secondary" onPress={showWelcome} />
       </CardActions>
     </Card>
   );
 }
 
-/** The phone's own equalizer, when it has one: ProTag doesn't keep a second. */
+/** The phone's own equalizer, when it has one: Protag doesn't keep a second. */
 function SoundCard() {
   const [available, setAvailable] = useState<boolean | null>(null);
   useEffect(() => {

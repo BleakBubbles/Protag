@@ -1,8 +1,8 @@
 /**
- * The seam between ProTag's player and whatever actually produces sound.
+ * The seam between Protag's player and whatever actually produces sound.
  *
  * `PlayerProvider` only ever talks to an `AudioEngine`. Today that's
- * `useNativeEngine` (ProTag's own Media3 module); swapping in another means
+ * `useNativeEngine` (Protag's own Media3 module); swapping in another means
  * writing one new hook with this shape — queue logic and UI don't change.
  */
 
@@ -74,7 +74,7 @@ export interface EngineCallbacks {
   /** The last song played to its end, with nothing after it. */
   onEnded: () => void;
   /**
-   * Playback moved to another song without ProTag asking: a lock-screen or
+   * Playback moved to another song without Protag asking: a lock-screen or
    * headphone skip, a song ending into the next, or repeat-all wrapping
    * round. `index` is into the order last set. `repeated`: repeat-one went
    * round the same song again.

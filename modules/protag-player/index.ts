@@ -64,5 +64,5 @@ declare class ProTagPlayerModule extends NativeModule<Events> {
   openEqualizer(): Promise<void>;
 }
 
-/** ProTag's playback engine (Media3), modules/protag-player. */
+/** Protag's playback engine (Media3), modules/protag-player. */
 export default requireNativeModule<ProTagPlayerModule>('ProTagPlayer');

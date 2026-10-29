@@ -29,7 +29,7 @@ class PlaybackService : MediaLibraryService() {
 
   override fun onCreate() {
     super.onCreate()
-    // ProTag's mark in the status bar and on the notification, rather than Media3's music note.
+    // Protag's mark in the status bar and on the notification, rather than Media3's music note.
     setMediaNotificationProvider(
       DefaultMediaNotificationProvider.Builder(this).build().apply { setSmallIcon(R.drawable.protag_notification_icon) }
     )
@@ -103,7 +103,7 @@ class PlaybackService : MediaLibraryService() {
         .setMediaId(ROOT)
         .setMediaMetadata(
           MediaMetadata.Builder()
-            .setTitle("ProTag")
+            .setTitle("Protag")
             .setIsBrowsable(true)
             .setIsPlayable(false)
             .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)

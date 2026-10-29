@@ -37,7 +37,7 @@ export function ScanCard({ state, disabled, onScan, onChooseFolders }: ScanCardP
 
   if (state.kind === 'denied') {
     return (
-      <Card title="ProTag needs access to your music">
+      <Card title="Protag needs access to your music">
         <CardText>It only reads audio files — never photos, videos, or anything else.</CardText>
         <CardActions>
           {state.canAskAgain ? (

@@ -30,7 +30,7 @@ export async function saveBackupTo(folderUri: string, backup: BackupFile): Promi
 export async function shareBackup(backup: BackupFile): Promise<void> {
   const uri = `${cacheDirectory}${backupFileName(new Date())}`;
   await writeAsStringAsync(uri, JSON.stringify(backup, null, 2));
-  await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: 'Save your ProTag backup' });
+  await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: 'Save your Protag backup' });
 }
 
 /** Let the user pick a backup file; its text, or null if they backed out. */

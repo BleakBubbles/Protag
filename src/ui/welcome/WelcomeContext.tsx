@@ -7,7 +7,7 @@ import { WelcomeFlow } from './WelcomeFlow';
 
 const Context = createContext<() => void>(() => {});
 
-/** Shows the welcome again ("How ProTag works" in Settings). */
+/** Shows the welcome again ("How Protag works" in Settings). */
 export const useShowWelcome = () => useContext(Context);
 
 /**
