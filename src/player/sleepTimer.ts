@@ -28,10 +28,21 @@ export function useSleepTimer() {
     return () => sub.remove();
   }, []);
 
+  // Shown as set straight away, the player's word following: waiting on it, the sleep bar's thumb
+  // would flick back to the old setting for a frame after being let go.
   return {
     sleep,
-    sleepIn: (minutes: number) => ProTagPlayer.setSleep('timer', minutes * 60_000).catch(() => {}),
-    sleepAtEndOfSong: () => ProTagPlayer.setSleep('end-of-song', 0).catch(() => {}),
-    cancel: () => ProTagPlayer.setSleep('off', 0).catch(() => {}),
+    sleepIn: (minutes: number) => {
+      setSleep({ kind: 'timer', endsAt: Date.now() + minutes * 60_000 });
+      return ProTagPlayer.setSleep('timer', minutes * 60_000).catch(() => {});
+    },
+    sleepAtEndOfSong: () => {
+      setSleep({ kind: 'end-of-song' });
+      return ProTagPlayer.setSleep('end-of-song', 0).catch(() => {});
+    },
+    cancel: () => {
+      setSleep(OFF);
+      return ProTagPlayer.setSleep('off', 0).catch(() => {});
+    },
   };
 }
