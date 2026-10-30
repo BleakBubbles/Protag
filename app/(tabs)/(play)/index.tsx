@@ -245,7 +245,9 @@ function Builder({
       toValue: browsing ? 1 : 0,
       duration: fast ? FLICK_FALL_MS : RISE_MS,
       easing: browsing || fast ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
-      useNativeDriver: true,
+      // In JS, so the tags' offset changes in the same frame as their size: on the native
+      // driver it can land a frame ahead, flashing them into view as the area resizes.
+      useNativeDriver: false,
     }).start();
   }, [browsing, reveal]);
   // Tapping the empty well with the tags already up: they lift and settle, back at the top.
@@ -612,157 +614,155 @@ function Builder({
             style={[
               styles.below,
               styles.keyboard,
-              // Anchored to the bottom at the height last measured, so put away
-              // it rests with just its handle showing even in the frame where
-              // the area has changed size and the measurement hasn't caught up
-              // (the mini-player swiped away): from the bottom, "its own height
-              // less the handle" is right whatever that height is.
-              below > 0 && { top: undefined, height: below },
+              // At the height last measured, anchored to the edge they rest at: the bottom when
+              // put away (just the handle showing), the top when up. In the frame where the area
+              // has changed size and the measurement hasn't caught up (the mini-player swiped away
+              // or back), that edge is still right, so they stay where they were.
+              below > 0 && (browsing ? { bottom: undefined, height: below } : { top: undefined, height: below }),
               {
-                transform: [
-                  // Down, all but the handle is below the bottom edge.
-                  { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [Math.max(below - DIVIDER_HEIGHT, 0), 0] }) },
-                  // Swiped down by the handle, to fold.
-                  { translateY: pull },
-                ],
+                // Down, all but the handle is below the bottom edge.
+                transform: [{ translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [Math.max(below - DIVIDER_HEIGHT, 0), 0] }) }],
               },
             ]}
           >
-            <Divider
-              label={browsing ? 'Mixes' : 'Tags'}
-              onTap={browsing ? fold : () => setBrowsing(true)}
-              tray={tray}
-              rows={rows}
-              minRows={MIN_POT_ROWS}
-              maxRows={maxPotRows}
-              onSettle={(settled) => {
-                setPotRows(settled);
-                setSetting(db, SettingKey.potRows, String(settled));
-              }}
-              resizable={browsing}
-              pull={pull}
-              onSwipeFold={
-                browsing
-                  ? (fast) => {
-                      flung.current = fast;
-                      fold();
-                    }
-                  : undefined
-              }
-              onSwipeRise={(offset) => {
-                risenBy.current = offset;
-                setBrowsing(true);
-              }}
-              riseLimit={Math.max(below - DIVIDER_HEIGHT, 0)}
-            />
-            <View
-              style={styles.screen}
-              pointerEvents={browsing ? 'auto' : 'none'}
-              importantForAccessibility={browsing ? 'auto' : 'no-hide-descendants'}
-            >
-              <ScrollView
-                ref={tagList}
+            {/* Swiped down by the handle, to fold: on the native driver, with the finger. */}
+            <Animated.View pointerEvents="box-none" style={[styles.screen, { transform: [{ translateY: pull }] }]}>
+              <Divider
+                label={browsing ? 'Mixes' : 'Tags'}
+                onTap={browsing ? fold : () => setBrowsing(true)}
+                tray={tray}
+                rows={rows}
+                minRows={MIN_POT_ROWS}
+                maxRows={maxPotRows}
+                onSettle={(settled) => {
+                  setPotRows(settled);
+                  setSetting(db, SettingKey.potRows, String(settled));
+                }}
+                resizable={browsing}
+                pull={pull}
+                onSwipeFold={
+                  browsing
+                    ? (fast) => {
+                        flung.current = fast;
+                        fold();
+                      }
+                    : undefined
+                }
+                onSwipeRise={(offset) => {
+                  risenBy.current = offset;
+                  setBrowsing(true);
+                }}
+                riseLimit={Math.max(below - DIVIDER_HEIGHT, 0)}
+              />
+              <View
                 style={styles.screen}
-                contentContainerStyle={styles.content}
-                scrollEnabled={still}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
+                pointerEvents={browsing ? 'auto' : 'none'}
+                importantForAccessibility={browsing ? 'auto' : 'no-hide-descendants'}
               >
-                {/* Bobs up and settles when the empty well is tapped: "your tags are right here". */}
-                <Animated.View style={[styles.sections, { transform: [{ translateY: nudge }] }]}>
-                  <View style={styles.section}>
-                    {searching ? (
-                      <SearchRow value={search} onChangeText={setSearch} onClose={closeSearch} />
-                    ) : (
-                      <SectionHead
-                        tall
-                        label="Your tags"
-                        title={trail.length > 0 ? <Trail root="Your tags" path={trail} onGo={goTo} /> : undefined}
-                        sort={SORT_LABEL[sorts.tags]}
-                        onSort={() => changeSorts({ ...sorts, tags: nextTagSort(sorts.tags) })}
-                      >
-                        <SearchButton onPress={() => setSearching(true)} />
-                      </SectionHead>
-                    )}
-                    {found ? (
-                      found.tags.length > 0 ? (
-                        <TagGrid
-                          tags={found.tags}
-                          subtagsOf={subtagsOf}
-                          choiceOf={choiceOf}
-                          onTap={tap}
-                          onOpen={(id) => {
-                            // A search result's subtags: going in leaves the search.
-                            closeSearch();
-                            goTo(id);
-                          }}
-                          width={screenWidth - spacing.lg * 2}
-                          parentOf={parentName}
-                        />
+                <ScrollView
+                  ref={tagList}
+                  style={styles.screen}
+                  contentContainerStyle={styles.content}
+                  scrollEnabled={still}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"
+                >
+                  {/* Bobs up and settles when the empty well is tapped: "your tags are right here". */}
+                  <Animated.View style={[styles.sections, { transform: [{ translateY: nudge }] }]}>
+                    <View style={styles.section}>
+                      {searching ? (
+                        <SearchRow value={search} onChangeText={setSearch} onClose={closeSearch} />
                       ) : (
-                        <Text style={styles.hint}>{nothingFound ? `Nothing matches “${term}”.` : 'No tags match.'}</Text>
-                      )
-                    ) : tags.length === 0 ? (
-                      <Text style={styles.hint}>Tag some songs in the Library to mix them here.</Text>
-                    ) : (
-                      <Animated.View
-                        style={{
-                          opacity: slide.interpolate({ inputRange: [-1, 0, 1], outputRange: [0, 1, 0] }),
-                          transform: [{ translateX: slide.interpolate({ inputRange: [-1, 1], outputRange: [-SLIDE, SLIDE] }) }],
-                        }}
-                      >
-                        <TagGrid
-                          tags={children.get(place) ?? []}
-                          subtagsOf={subtagsOf}
-                          choiceOf={choiceOf}
-                          onTap={tap}
-                          onOpen={goTo}
-                          width={screenWidth - spacing.lg * 2}
-                        />
-                      </Animated.View>
-                    )}
-                  </View>
+                        <SectionHead
+                          tall
+                          label="Your tags"
+                          title={trail.length > 0 ? <Trail root="Your tags" path={trail} onGo={goTo} /> : undefined}
+                          sort={SORT_LABEL[sorts.tags]}
+                          onSort={() => changeSorts({ ...sorts, tags: nextTagSort(sorts.tags) })}
+                        >
+                          <SearchButton onPress={() => setSearching(true)} />
+                        </SectionHead>
+                      )}
+                      {found ? (
+                        found.tags.length > 0 ? (
+                          <TagGrid
+                            tags={found.tags}
+                            subtagsOf={subtagsOf}
+                            choiceOf={choiceOf}
+                            onTap={tap}
+                            onOpen={(id) => {
+                              // A search result's subtags: going in leaves the search.
+                              closeSearch();
+                              goTo(id);
+                            }}
+                            width={screenWidth - spacing.lg * 2}
+                            parentOf={parentName}
+                          />
+                        ) : (
+                          <Text style={styles.hint}>{nothingFound ? `Nothing matches “${term}”.` : 'No tags match.'}</Text>
+                        )
+                      ) : tags.length === 0 ? (
+                        <Text style={styles.hint}>Tag some songs in the Library to mix them here.</Text>
+                      ) : (
+                        <Animated.View
+                          style={{
+                            opacity: slide.interpolate({ inputRange: [-1, 0, 1], outputRange: [0, 1, 0] }),
+                            transform: [{ translateX: slide.interpolate({ inputRange: [-1, 1], outputRange: [-SLIDE, SLIDE] }) }],
+                          }}
+                        >
+                          <TagGrid
+                            tags={children.get(place) ?? []}
+                            subtagsOf={subtagsOf}
+                            choiceOf={choiceOf}
+                            onTap={tap}
+                            onOpen={goTo}
+                            width={screenWidth - spacing.lg * 2}
+                          />
+                        </Animated.View>
+                      )}
+                    </View>
 
-                  {/* Artists and albums: ingredients too, after the tags, as pictures. */}
-                  {artistRow.length > 0 && (
-                    <View style={styles.section}>
-                      <SectionHead
-                        label="Artists"
-                        sort={SORT_LABEL[sorts.artists]}
-                        onSort={() => changeSorts({ ...sorts, artists: nextMusicSort(sorts.artists) })}
-                      />
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} keyboardShouldPersistTaps="handled" style={styles.bleed} contentContainerStyle={styles.pictureRow}>
-                        {artistRow.map((a) => {
-                          const ref = artistRef(a.name);
-                          return (
-                            <PictureTile key={ref} refId={ref} name={a.name} cover={a.coverAlbumId} round choice={choiceOf(ref)} onPress={() => tap(ref)} />
-                          );
-                        })}
-                        {artists.length > ROW && <SeeAllTile label="All artists" round onPress={() => setPicking('artists')} />}
-                      </ScrollView>
-                    </View>
-                  )}
-                  {albumRow.length > 0 && (
-                    <View style={styles.section}>
-                      <SectionHead
-                        label="Albums"
-                        sort={SORT_LABEL[sorts.albums]}
-                        onSort={() => changeSorts({ ...sorts, albums: nextMusicSort(sorts.albums) })}
-                      />
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} keyboardShouldPersistTaps="handled" style={styles.bleed} contentContainerStyle={styles.pictureRow}>
-                        {albumRow.map((a) => {
-                          const ref = albumRef(a.albumId);
-                          return (
-                            <PictureTile key={ref} refId={ref} name={a.title} cover={a.albumId} round={false} choice={choiceOf(ref)} onPress={() => tap(ref)} />
-                          );
-                        })}
-                        {albums.length > ROW && <SeeAllTile label="All albums" round={false} onPress={() => setPicking('albums')} />}
-                      </ScrollView>
-                    </View>
-                  )}
-                </Animated.View>
-              </ScrollView>
-            </View>
+                    {/* Artists and albums: ingredients too, after the tags, as pictures. */}
+                    {artistRow.length > 0 && (
+                      <View style={styles.section}>
+                        <SectionHead
+                          label="Artists"
+                          sort={SORT_LABEL[sorts.artists]}
+                          onSort={() => changeSorts({ ...sorts, artists: nextMusicSort(sorts.artists) })}
+                        />
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} keyboardShouldPersistTaps="handled" style={styles.bleed} contentContainerStyle={styles.pictureRow}>
+                          {artistRow.map((a) => {
+                            const ref = artistRef(a.name);
+                            return (
+                              <PictureTile key={ref} refId={ref} name={a.name} cover={a.coverAlbumId} round choice={choiceOf(ref)} onPress={() => tap(ref)} />
+                            );
+                          })}
+                          {artists.length > ROW && <SeeAllTile label="All artists" round onPress={() => setPicking('artists')} />}
+                        </ScrollView>
+                      </View>
+                    )}
+                    {albumRow.length > 0 && (
+                      <View style={styles.section}>
+                        <SectionHead
+                          label="Albums"
+                          sort={SORT_LABEL[sorts.albums]}
+                          onSort={() => changeSorts({ ...sorts, albums: nextMusicSort(sorts.albums) })}
+                        />
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={still} keyboardShouldPersistTaps="handled" style={styles.bleed} contentContainerStyle={styles.pictureRow}>
+                          {albumRow.map((a) => {
+                            const ref = albumRef(a.albumId);
+                            return (
+                              <PictureTile key={ref} refId={ref} name={a.title} cover={a.albumId} round={false} choice={choiceOf(ref)} onPress={() => tap(ref)} />
+                            );
+                          })}
+                          {albums.length > ROW && <SeeAllTile label="All albums" round={false} onPress={() => setPicking('albums')} />}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </Animated.View>
+                </ScrollView>
+              </View>
+            </Animated.View>
           </Animated.View>
         </View>
 
