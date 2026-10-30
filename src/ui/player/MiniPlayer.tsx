@@ -133,9 +133,17 @@ function SwipeGestures({
   const styles = useStyles();
   const offset = useRef(new Animated.ValueXY()).current;
   const direction = useRef<'sideways' | 'down' | 'up'>('down');
+  /**
+   * Gone as far as the page is concerned: once a swipe commits, its room closes at once and the
+   * page grows into it, already drawn, while the card slides away over it. Held till it's gone,
+   * the room would show an empty gap that filled in only after.
+   */
+  const [leaving, setLeaving] = useState(false);
   const springBack = () => spring(offset, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
-  const slideOut = (x: number, y: number) =>
+  const slideOut = (x: number, y: number) => {
+    setLeaving(true);
     timing(offset, { toValue: { x, y }, duration: 150, useNativeDriver: true }).start(onHide);
+  };
 
   const responder = useRef(
     PanResponder.create({
@@ -180,12 +188,14 @@ function SwipeGestures({
   );
 
   return (
-    <Animated.View
-      {...responder.panHandlers}
-      style={[styles.card, { transform: offset.getTranslateTransform(), opacity }]}
-    >
-      {children}
-    </Animated.View>
+    <View style={leaving && styles.gone}>
+      <Animated.View
+        {...responder.panHandlers}
+        style={[styles.card, leaving && styles.leaving, { transform: offset.getTranslateTransform(), opacity }]}
+      >
+        {children}
+      </Animated.View>
+    </View>
   );
 }
 
@@ -197,6 +207,16 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.surfaceAlt,
     overflow: 'hidden',
+  },
+  // Its room closed; the card drawn where it was, over the page, as it goes.
+  gone: {
+    height: 0,
+  },
+  leaving: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   row: {
     flex: 1,
