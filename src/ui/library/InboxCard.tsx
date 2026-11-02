@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { openInbox } from '../../navigation';
 import { plural } from '../format';
@@ -27,9 +27,13 @@ export function InboxCard() {
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <Icon name="tags" size={iconSize.sm} color={colors.accentFg} />
-      <Text style={styles.label} numberOfLines={1}>
-        {label}
-      </Text>
+      {/* The chevron by the text says it opens somewhere; the ✕ alone at the edge dismisses. */}
+      <View style={styles.text}>
+        <Text style={styles.label} numberOfLines={1}>
+          {label}
+        </Text>
+        <Icon name="chevron-forward" size={iconSize.sm} color={colors.textDim} />
+      </View>
       <IconButton icon="close" label="Not now" size={iconSize.sm} color={colors.textDim} onPress={dismiss} />
     </Pressable>
   );
@@ -49,9 +53,15 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   pressed: {
     opacity: 0.7,
   },
+  text: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   label: {
     ...font.name,
-    flex: 1,
+    flexShrink: 1,
     color: colors.text,
   },
 }));

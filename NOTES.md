@@ -1294,3 +1294,4 @@ User found the chips/waning moon underwhelming; asked for a bar to drag or tap, 
   - Checked on the emulator: badge, card, inbox page, editor opening down the tree, saving only gen 4, packing, Colour sort, Not now and the fallback row.
 
 - 2026-11-02: The inbox reminder is one line, "N untagged songs" with Not now; the row left after dismissing says the same.
+- 2026-11-02: A chevron after "N untagged songs" says the line opens somewhere; the ✕ alone at the edge dismisses.
