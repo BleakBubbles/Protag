@@ -108,7 +108,7 @@ export function TagsView({ tagSelection, onTags }: TagsViewProps) {
             accessibilityRole="button"
             style={({ pressed }) => [styles.looseRow, pressed && styles.pressed]}
           >
-            <Text style={styles.looseLabel}>Not tagged yet · {plural(inbox.count, 'song')}</Text>
+            <Text style={styles.looseLabel}>{plural(inbox.count, 'untagged song')}</Text>
             <Icon name="chevron-forward" size={iconSize.sm} color={colors.textDim} />
           </Pressable>
         )}

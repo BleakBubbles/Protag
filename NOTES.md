@@ -1292,3 +1292,5 @@ User found the chips/waning moon underwhelming; asked for a bar to drag or tap, 
   - Inbox: "Not tagged yet" left the Tags page for its own page (library/to-tag, newest first, select then Tag…). A card leads there on the Tags and Songs pages (not Artists/Albums: browsing, not a to-do), and the Library tab carries the count as a badge. "Not now" (inbox.dismissed = newest untagged id) hides card and badge until a newer song arrives; tagging everything hides them too. Dismissed, a quiet "Not tagged yet · N" row ends the Tags page.
   - Removed: the row editor (TagCheckRow), listRecentTags and the recent/genre ordering. Kept: Enter ticks the match or creates, genre create row, typed new tags (now chips).
   - Checked on the emulator: badge, card, inbox page, editor opening down the tree, saving only gen 4, packing, Colour sort, Not now and the fallback row.
+
+- 2026-11-02: The inbox reminder is one line, "N untagged songs" with Not now; the row left after dismissing says the same.
