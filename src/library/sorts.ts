@@ -1,3 +1,5 @@
+import { TAG_COLORS } from '../db/tagColors';
+
 /**
  * How the Play tab orders each section. Tapping a section's sort label
  * moves to the next order; the choice is remembered between sessions.
@@ -5,6 +7,8 @@
 
 export type TagSort = 'name' | 'played' | 'custom';
 export type MusicSort = 'played' | 'name' | 'added';
+/** The tag editor's order: "used" is by song count, "color" keeps tags of one colour together. */
+export type EditorSort = 'custom' | 'name' | 'used' | 'color';
 
 export interface ShuffleSorts {
   tags: TagSort;
@@ -15,11 +19,13 @@ export interface ShuffleSorts {
 /** Tags read best alphabetically; artists and albums lead with what's listened to. */
 export const DEFAULT_SORTS: ShuffleSorts = { tags: 'name', artists: 'played', albums: 'played' };
 
-export const SORT_LABEL: Record<TagSort | MusicSort, string> = {
+export const SORT_LABEL: Record<TagSort | MusicSort | EditorSort, string> = {
   name: 'A–Z',
   played: 'Most played',
   added: 'Recently added',
   custom: 'Your order',
+  used: 'Most used',
+  color: 'Colour',
 };
 
 const TAG_SORTS: readonly TagSort[] = ['name', 'played', 'custom'];
@@ -78,5 +84,30 @@ export function sortMusic<T extends { plays: number; added: number; songs: numbe
     (a, b) =>
       (sort === 'played' ? b.plays - a.plays || b.songs - a.songs : sort === 'added' ? b.added - a.added : 0) ||
       byName(nameOf(a), nameOf(b))
+  );
+}
+
+const EDITOR_SORTS: readonly EditorSort[] = ['custom', 'name', 'used', 'color'];
+export const nextEditorSort = (sort: EditorSort) => after(EDITOR_SORTS, sort);
+export const parseEditorSort = (value: string | null): EditorSort =>
+  EDITOR_SORTS.includes(value as EditorSort) ? (value as EditorSort) : 'custom';
+
+/**
+ * A copy of `tags` in the tag editor's `sort` order. Colour follows the
+ * picker's palette, and within a colour, your order.
+ */
+export function sortEditorTags<T extends { name: string; song_count: number; sort_order: number; color: string | null }>(
+  tags: readonly T[],
+  sort: EditorSort
+): T[] {
+  const hue = (t: T) => {
+    const at = (TAG_COLORS as readonly (string | null)[]).indexOf(t.color);
+    return at < 0 ? TAG_COLORS.length : at;
+  };
+  return [...tags].sort(
+    (a, b) =>
+      (sort === 'used' ? b.song_count - a.song_count : sort === 'color' ? hue(a) - hue(b) : 0) ||
+      (sort === 'name' ? 0 : a.sort_order - b.sort_order) ||
+      byName(a.name, b.name)
   );
 }

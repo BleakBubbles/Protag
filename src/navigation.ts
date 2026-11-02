@@ -44,4 +44,7 @@ export const openLibraryFolders = () => router.push('/settings/folders');
 
 export const openLibrary = () => router.navigate('/library');
 
+/** The songs waiting for tags (the inbox). */
+export const openInbox = () => router.push('/library/to-tag');
+
 // The full player isn't a route: it's a sheet over the tabs (usePlayerSheet).

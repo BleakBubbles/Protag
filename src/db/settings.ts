@@ -20,6 +20,10 @@ export const SettingKey = {
   libraryStamp: 'library.stamp',
   /** JSON `ShuffleSorts`: how each Play tab section is ordered (library/sorts.ts). */
   shuffleSorts: 'shuffle.sorts',
+  /** `EditorSort`: how the tag editor orders its chips (library/sorts.ts). */
+  editTagsSort: 'editTags.sort',
+  /** Id of the newest untagged song when "Not now" hid the inbox; it shows again once a newer one arrives. */
+  inboxDismissed: 'inbox.dismissed',
   /** How many rows of tiles the open pot shows, as last set with its divider. */
   potRows: 'shuffle.potRows',
   /** JSON `KeptPot`: what's in the pot (and the mix it was opened from), so it's there after a restart. */

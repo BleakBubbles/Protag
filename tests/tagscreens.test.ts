@@ -9,7 +9,6 @@ import {
   getTagDeletionImpact,
   listAllSongTags,
   listDirectSongIds,
-  listRecentTags,
   listTags,
   parseTagPath,
   suggestSongsForTag,
@@ -55,20 +54,6 @@ test('ensureTagPath rejects an empty path', async () => {
 });
 
 // ---------------------------------------------------------------- queries for the screens
-
-test('recent tags are ordered by when they were last applied', async () => {
-  const db = await freshDatabase();
-  const a = await createTag(db as never, 'a', null);
-  const b = await createTag(db as never, 'b', null);
-  await createTag(db as never, 'never-used', null);
-  const song = await insertSong(db, 'Song');
-  await db.runAsync('INSERT INTO song_tags (song_id, tag_id, added_at) VALUES (?, ?, 100)', song, a);
-  await db.runAsync('INSERT INTO song_tags (song_id, tag_id, added_at) VALUES (?, ?, 200)', song, b);
-
-  const recent = await listRecentTags(db as never, 10);
-  assert.deepEqual(recent.map((t) => t.name), ['b', 'a'], 'unused tags are not "recent"');
-  db.close();
-});
 
 test('deletion impact counts the subtree and affected songs', async () => {
   const db = await freshDatabase();

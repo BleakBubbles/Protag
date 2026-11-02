@@ -23,6 +23,7 @@ export default function LibraryLayout() {
       <Stack.Screen name="tag/[id]" options={{ title: '' }} />
       <Stack.Screen name="album/[id]" options={{ title: '' }} />
       <Stack.Screen name="artist/[name]" options={{ title: '' }} />
+      <Stack.Screen name="to-tag" options={{ title: 'To tag' }} />
     </Stack>
   );
 }

@@ -1,6 +1,7 @@
 import { BottomTabBar, Tabs, type BottomTabBarProps } from 'expo-router/tabs';
 import { View } from 'react-native';
 
+import { useInbox } from '@/ui/hooks/useInbox';
 import { Icon } from '@/ui/Icon';
 import { MiniPlayer } from '@/ui/player/MiniPlayer';
 import { MiniPlayerVisibilityProvider } from '@/ui/player/MiniPlayerVisibility';
@@ -16,6 +17,8 @@ import { useColors } from '@/ui/ThemeContext';
  */
 export default function TabsLayout() {
   const colors = useColors();
+  // Songs waiting for tags, counted on the Library tab until they're tagged or the reminder's dismissed.
+  const inbox = useInbox();
   return (
     <MiniPlayerVisibilityProvider>
       <PlayerSheet>
@@ -50,6 +53,8 @@ export default function TabsLayout() {
             options={{
               title: 'Library',
               tabBarIcon: ({ color, size, focused }) => <Icon name={focused ? 'tags-filled' : 'tags'} color={color} size={size} />,
+              tabBarBadge: inbox.shown ? inbox.count : undefined,
+              tabBarBadgeStyle: { backgroundColor: colors.accent, color: colors.onAccent },
             }}
           />
         </Tabs>

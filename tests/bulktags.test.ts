@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { freshDatabase, insertSong } from './helpers/db.ts';
 import { addTagToSong, applyBulkTagEdit, createTag } from '../src/db/tags.ts';
-import { countTags, markFor, nextMark, planBulkEdit, type TagMark } from '../src/library/bulkTags.ts';
+import { countTags, markFor, nextMark, planBulkEdit, shownMark, tapTag, type TagMark } from '../src/library/bulkTags.ts';
 
 // Three songs that don't share all their tags: 10 on all, 20 on two, 30 on one.
 const songs = [1, 2, 3];
@@ -63,4 +63,40 @@ test('a bulk edit applies links and new tags together', async () => {
   );
   assert.equal(parent?.n, 1, 'the typed path is created as a nested tag');
   db.close();
+});
+
+// kpop (1) › gen 4 (2), gen 3 (3); chill (4) on top level. Songs start with gen 3 on some.
+const start = new Map<number, TagMark>([[3, 'some']]);
+const initial = (id: number) => start.get(id) ?? 'none';
+const tap = (marks: Map<number, TagMark>, id: number) =>
+  tapTag(marks, initial, id, id === 1 ? [2, 3] : [], id === 2 || id === 3 ? [1] : []);
+const shown = (marks: Map<number, TagMark>, id: number) =>
+  shownMark(marks.get(id) ?? initial(id), (id === 1 ? [2, 3] : []).map((k) => marks.get(k) ?? initial(k)));
+
+test('a parent shows what its subtags say', () => {
+  assert.equal(shown(new Map(), 1), 'some');
+  assert.equal(shown(new Map([[2, 'all']]), 1), 'all');
+});
+
+test('a subtag picked on the way down replaces the parent turned on to get there', () => {
+  let marks = tap(new Map(), 1); // kpop showed partial: on
+  assert.equal(marks.get(1), 'all');
+  marks = tap(marks, 2); // gen 4
+  assert.equal(marks.get(2), 'all');
+  assert.equal(marks.has(1), false);
+  assert.equal(shown(marks, 1), 'all');
+});
+
+test('turning a parent off takes its subtags with it, and the next tap restores how they started', () => {
+  let marks = tap(new Map([[2, 'all']]), 1);
+  assert.deepEqual([marks.get(1), marks.get(2), marks.get(3)], ['none', 'none', 'none']);
+  marks = tap(marks, 1);
+  assert.equal(marks.size, 0);
+  assert.equal(shown(marks, 1), 'some');
+});
+
+test('a tag with nothing to restore just toggles', () => {
+  const on = tap(new Map(), 4);
+  assert.equal(on.get(4), 'all');
+  assert.equal(tap(on, 4).get(4), 'none');
 });

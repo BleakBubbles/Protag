@@ -62,3 +62,43 @@ export function planBulkEdit(
   }
   return edit;
 }
+
+/**
+ * What a tag's chip shows in the editor, which opens down the tree: its own
+ * mark, or what its subtags' marks (`below`) say, since a song in
+ * "kpop › gen 4" is in kpop.
+ */
+export function shownMark(own: TagMark, below: readonly TagMark[]): TagMark {
+  if (own === 'all' || below.includes('all')) return 'all';
+  return own === 'some' || below.includes('some') ? 'some' : 'none';
+}
+
+/**
+ * One tap on a tag in the editor, given its subtags (`below`) and parents
+ * (`above`), returning the new marks. A tag showing as on goes off, subtags
+ * and all. One showing as off that started on for some songs goes back to how
+ * it started. Anything else goes on, and a parent turned on earlier in the
+ * visit (on the way down to this one) goes back to how it started: the subtag
+ * says it now, so "kpop" + "gen 4" saves as just "gen 4".
+ */
+export function tapTag(
+  marks: ReadonlyMap<number, TagMark>,
+  initial: (tagId: number) => TagMark,
+  tagId: number,
+  below: readonly number[],
+  above: readonly number[]
+): Map<number, TagMark> {
+  const markOf = (id: number) => marks.get(id) ?? initial(id);
+  const family = [tagId, ...below];
+  const shown = shownMark(markOf(tagId), below.map(markOf));
+  const next = new Map(marks);
+  if (shown === 'all') {
+    for (const id of family) next.set(id, 'none');
+  } else if (shown === 'none' && family.some((id) => initial(id) !== 'none')) {
+    for (const id of family) next.delete(id);
+  } else {
+    next.set(tagId, 'all');
+    for (const id of above) if (next.get(id) === 'all' && initial(id) !== 'all') next.delete(id);
+  }
+  return next;
+}

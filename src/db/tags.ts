@@ -338,23 +338,6 @@ export async function ensureTagPath(
   return parentId as number;
 }
 
-/**
- * Tags most recently applied to any song, newest first.
- *
- * Someone tagging a run of songs mostly reuses the same handful of tags, so
- * offering these as one-tap chips is what keeps tagging a song to a single tap.
- */
-export async function listRecentTags(db: SQLiteDatabase, limit: number): Promise<TagRow[]> {
-  return db.getAllAsync<TagRow>(
-    `SELECT t.* FROM tags t
-     JOIN song_tags st ON st.tag_id = t.id
-     GROUP BY t.id
-     ORDER BY MAX(st.added_at) DESC, t.name COLLATE NOCASE
-     LIMIT ?`,
-    limit
-  );
-}
-
 export interface TagDeletionImpact {
   /** Descendant tags that would be deleted along with it. */
   subtags: number;

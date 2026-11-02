@@ -12,6 +12,7 @@ import { useDragSelect } from '../../ui/hooks/useDragSelect';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
 import type { SongSelection } from '../../ui/hooks/useSongSelection';
+import { InboxCard } from '../../ui/library/InboxCard';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '../../ui/library/SelectionBar';
 import { SongRow, useSongRowHeight } from '../../ui/library/SongRow';
 import { SearchField } from '../../ui/SearchField';
@@ -100,20 +101,23 @@ export function SongsView({ selection, onSongs }: SongsViewProps) {
             />
           )}
           ListHeaderComponent={
-            <View style={styles.header} onLayout={onHeaderLayout}>
-              <SearchField
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Search songs, artists, albums"
-                returnKeyType="search"
-              />
-              {data && (
-                <Text style={styles.count}>
-                  {trimmed
-                    ? `${plural(visible.length, 'match', 'matches')} of ${plural(data.songs.length, 'song')}`
-                    : plural(data.songs.length, 'song')}
-                </Text>
-              )}
+            <View onLayout={onHeaderLayout}>
+              <InboxCard />
+              <View style={styles.header}>
+                <SearchField
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Search songs, artists, albums"
+                  returnKeyType="search"
+                />
+                {data && (
+                  <Text style={styles.count}>
+                    {trimmed
+                      ? `${plural(visible.length, 'match', 'matches')} of ${plural(data.songs.length, 'song')}`
+                      : plural(data.songs.length, 'song')}
+                  </Text>
+                )}
+              </View>
             </View>
           }
           ListEmptyComponent={
