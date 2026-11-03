@@ -1296,3 +1296,4 @@ User found the chips/waning moon underwhelming; asked for a bar to drag or tap, 
 - 2026-11-02: The inbox reminder is one line, "N untagged songs" with Not now; the row left after dismissing says the same.
 - 2026-11-02: A chevron after "N untagged songs" says the line opens somewhere; the ✕ alone at the edge dismisses.
 - 2026-11-03: Tag editor: a family chip is split, the name tags and the › opens a tray under its line (tinted in its colour, nesting three deep, flat below that). A parent on only through a subtag shows dashed, "on via gen 4". Families the songs already reach into start open. Sorts gain Family (a section per family, the rest under Other); Colour now starts each colour on its own line. Typing a nested new tag drops a parent turned on this visit, as tapping a subtag does.
+- 2026-11-03: No dashed chip or "on via" note for a parent on through a subtag: it shows filled, like any tag the songs are in.

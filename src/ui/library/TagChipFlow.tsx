@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Fragment, memo, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
-import type { ChipState } from '../../library/bulkTags';
+import type { TagMark } from '../../library/bulkTags';
 import { font, radius, spacing } from '../theme';
 import { makeStyles, useColors } from '../ThemeContext';
 
@@ -14,11 +14,10 @@ const NOTCH = 7;
 /** Trays nest this deep; deeper ones open without stepping in, so chips keep their room. */
 const MAX_NEST = 3;
 
-const STATE_LABEL: Record<ChipState, string> = {
+const MARK_LABEL: Record<TagMark, string> = {
   all: 'on all selected songs',
   some: 'on some selected songs',
   none: 'on none of the selected songs',
-  via: 'on through a subtag',
 };
 
 export interface FlowTag {
@@ -31,9 +30,7 @@ export interface TagChipFlowProps<T extends FlowTag> {
   labelOf: (tag: T) => string;
   /** The whole path, for the caption of a tray too deep to step in. */
   pathOf?: (tag: T) => string;
-  stateOf: (id: number) => ChipState;
-  /** For a tag on through its subtags: which ones, for its tray's caption. */
-  viaOf?: (id: number) => string | null;
+  markOf: (id: number) => TagMark;
   /** A tag's subtags, in order. Empty for none. */
   childrenOf: (id: number) => readonly T[];
   isOpen?: (id: number) => boolean;
@@ -55,7 +52,7 @@ export interface TagChipFlowProps<T extends FlowTag> {
  * screen's opening slide).
  */
 export function TagChipFlow<T extends FlowTag>(props: TagChipFlowProps<T>) {
-  const { tags, labelOf, pathOf = labelOf, stateOf, viaOf, childrenOf, isOpen, onPress, onOpen, depth = 0 } = props;
+  const { tags, labelOf, pathOf = labelOf, markOf, childrenOf, isOpen, onPress, onOpen, depth = 0 } = props;
   const colors = useColors();
   const styles = useStyles();
   const [width, setWidth] = useState(0);
@@ -72,7 +69,7 @@ export function TagChipFlow<T extends FlowTag>(props: TagChipFlowProps<T>) {
         id={tag.id}
         label={labelOf(tag)}
         color={tag.color}
-        state={stateOf(tag.id)}
+        mark={markOf(tag.id)}
         open={family ? Boolean(isOpen?.(tag.id)) : undefined}
         onPress={onPress}
         onOpen={onOpen}
@@ -86,7 +83,6 @@ export function TagChipFlow<T extends FlowTag>(props: TagChipFlowProps<T>) {
     if (kids.length === 0 || !isOpen?.(tag.id)) return null;
     const tint = colors.tag(tag.color);
     const flat = depth >= MAX_NEST;
-    const via = viaOf?.(tag.id);
     return (
       <View
         key={`tray-${tag.id}`}
@@ -95,7 +91,6 @@ export function TagChipFlow<T extends FlowTag>(props: TagChipFlowProps<T>) {
         {notch !== undefined && <View style={[styles.notch, { left: notch - NOTCH, borderBottomColor: `${tint}4D` }]} />}
         <Text style={[styles.caption, { color: tint }]} numberOfLines={1}>
           in {flat ? pathOf(tag) : labelOf(tag)}
-          {via ? <Text style={styles.via}> · on via {via}</Text> : null}
         </Text>
         <TagChipFlow {...props} tags={kids} depth={depth + 1} />
       </View>
@@ -155,7 +150,7 @@ interface TagToggleChipProps {
   id: number;
   label: string;
   color: string | null;
-  state: ChipState;
+  mark: TagMark;
   /** For a tag with subtags, whether its tray is open; undefined for one without. */
   open: boolean | undefined;
   onPress: (id: number) => void;
@@ -164,33 +159,31 @@ interface TagToggleChipProps {
 }
 
 /**
- * A tag that's on (filled with its colour), off (outlined in it), on some of
- * the songs (half filled) or on only through a subtag (dashed, lightly
- * tinted). Its width never changes with its state, so toggling one never
- * moves the others.
+ * A tag that's on (filled with its colour), off (outlined in it) or on some
+ * of the songs (half filled). Its width never changes with its state, so
+ * toggling one never moves the others.
  */
-const TagToggleChip = memo(function TagToggleChip({ id, label, color, state, open, onPress, onOpen, onMeasure }: TagToggleChipProps) {
+const TagToggleChip = memo(function TagToggleChip({ id, label, color, mark, open, onPress, onOpen, onMeasure }: TagToggleChipProps) {
   const colors = useColors();
   const styles = useStyles();
   const tint = colors.tag(color);
-  const on = state === 'all';
+  const on = mark === 'all';
   const ink = on ? colors.onTag : colors.text;
   return (
     <View
       onLayout={(e: LayoutChangeEvent) => onMeasure(id, e.nativeEvent.layout.width)}
       style={[
         styles.chip,
-        { borderColor: on || state === 'via' ? tint : `${tint}8C` },
+        { borderColor: on ? tint : `${tint}8C` },
         on && { backgroundColor: tint },
-        state === 'via' && { backgroundColor: `${tint}38`, borderStyle: 'dashed' },
       ]}
     >
-      {state === 'some' && <View style={[styles.half, { backgroundColor: `${tint}73` }]} />}
+      {mark === 'some' && <View style={[styles.half, { backgroundColor: `${tint}73` }]} />}
       <Pressable
         onPress={() => onPress(id)}
         accessibilityRole="checkbox"
-        accessibilityState={{ checked: state === 'some' ? 'mixed' : on }}
-        accessibilityLabel={`${label}, ${STATE_LABEL[state]}`}
+        accessibilityState={{ checked: mark === 'some' ? 'mixed' : on }}
+        accessibilityLabel={`${label}, ${MARK_LABEL[mark]}`}
         style={({ pressed }) => [styles.name, open !== undefined && styles.nameBeforeOpen, pressed && styles.pressed]}
       >
         <View style={[styles.dot, { backgroundColor: on ? colors.onTag : tint }, on && styles.dotOn]} />
@@ -261,11 +254,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginHorizontal: 2,
-  },
-  via: {
-    color: colors.textDim,
-    textTransform: 'none',
-    letterSpacing: 0,
   },
   chip: {
     height: HEIGHT,

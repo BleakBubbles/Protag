@@ -8,7 +8,7 @@ import { getSetting, SettingKey, setSetting } from '@/db/settings';
 import { getSong } from '@/db/songs';
 import { applyBulkTagEdit, listAllSongTags, listAllTagsWithCounts, parseTagPath } from '@/db/tags';
 import type { TagWithCounts } from '@/db/types';
-import { chipState, countTags, markFor, planBulkEdit, tapTag, type ChipState, type TagMark } from '@/library/bulkTags';
+import { countTags, markFor, planBulkEdit, shownMark, tapTag, type TagMark } from '@/library/bulkTags';
 import { matchesQuery, searchKey } from '@/library/search';
 import { colorGroups, nextEditorSort, parseEditorSort, SORT_LABEL, sortEditorTags, type EditorSort } from '@/library/sorts';
 import { buildTagIndex } from '@/library/tagTree';
@@ -119,23 +119,15 @@ export default function EditTagsScreen() {
   );
   const markOf = (tagId: number) => marks.get(tagId) ?? initialMark(tagId);
 
-  // What each chip shows: its own mark, or what its subtags say, and for one
-  // on only through its subtags, which ones.
+  // What each chip shows: its own mark, or what its subtags say.
   const shown = useMemo(() => {
-    const out = new Map<number, { state: ChipState; via: string | null }>();
+    const out = new Map<number, TagMark>();
     if (!data) return out;
     const of = (id: number) => marks.get(id) ?? initialMark(id);
-    const names = new Map(data.tags.map((t) => [t.id, t.name]));
-    for (const tag of data.tags) {
-      const below = [...data.index.descendantIds(tag.id)];
-      const state = chipState(of(tag.id), below.map(of));
-      const via = state === 'via' ? below.filter((id) => of(id) === 'all').map((id) => names.get(id)).join(', ') : null;
-      out.set(tag.id, { state, via });
-    }
+    for (const tag of data.tags) out.set(tag.id, shownMark(of(tag.id), [...data.index.descendantIds(tag.id)].map(of)));
     return out;
   }, [data, marks, initialMark]);
-  const stateOf = useCallback((id: number): ChipState => (id < 0 ? 'all' : (shown.get(id)?.state ?? 'none')), [shown]);
-  const viaOf = useCallback((id: number) => shown.get(id)?.via ?? null, [shown]);
+  const shownOf = useCallback((id: number) => (id < 0 ? 'all' : (shown.get(id) ?? 'none')), [shown]);
 
   // Open families: at first, the ones the songs already have subtags in.
   const [opened, setOpened] = useState<ReadonlySet<number>>();
@@ -232,8 +224,7 @@ export default function EditTagsScreen() {
     if (path.length === 0) return;
     const target = exact ?? (found.length === 1 ? found[0] : undefined);
     if (!target) return create();
-    // Already on, or on through a subtag: typing it again changes nothing.
-    if (stateOf(target.id) === 'none' || stateOf(target.id) === 'some') toggle(target.id);
+    if (shownOf(target.id) !== 'all') toggle(target.id);
     setQuery('');
   };
   // No tags in the library yet, and none typed or staged: the editor starts from its empty state.
@@ -248,8 +239,7 @@ export default function EditTagsScreen() {
   const flow: Omit<TagChipFlowProps<TagWithCounts>, 'tags'> = {
     labelOf: (t) => t.name,
     pathOf: (t) => data?.index.label(t.id) ?? t.name,
-    stateOf,
-    viaOf,
+    markOf: shownOf,
     childrenOf,
     isOpen,
     onPress: toggle,
@@ -312,7 +302,7 @@ export default function EditTagsScreen() {
             <TagChipFlow
               tags={newChips}
               labelOf={(c) => c.path.join('/')}
-              stateOf={stateOf}
+              markOf={shownOf}
               childrenOf={() => NO_KIDS}
               onPress={toggle}
             />
@@ -342,12 +332,12 @@ export default function EditTagsScreen() {
                     key="found"
                     tags={found}
                     labelOf={(t) => data.index.label(t.id)}
-                    stateOf={stateOf}
+                    markOf={shownOf}
                     childrenOf={() => NO_KIDS}
                     onPress={toggle}
                   />
                 ) : sort === 'family' ? (
-                  <FamilySections roots={childrenOf(null)} flow={flow} viaOf={viaOf} />
+                  <FamilySections roots={childrenOf(null)} flow={flow} />
                 ) : sort === 'color' ? (
                   <View style={styles.groups}>
                     {colorGroups(childrenOf(null)).map((group) => (
@@ -385,11 +375,9 @@ export default function EditTagsScreen() {
 function FamilySections({
   roots,
   flow,
-  viaOf,
 }: {
   roots: readonly TagWithCounts[];
   flow: Omit<TagChipFlowProps<TagWithCounts>, 'tags'>;
-  viaOf: (id: number) => string | null;
 }) {
   const colors = useColors();
   const styles = useStyles();
@@ -399,17 +387,9 @@ function FamilySections({
     <View style={styles.groups}>
       {families.map((tag) => {
         const tint = colors.tag(tag.color);
-        const via = viaOf(tag.id);
         return (
           <View key={tag.id} style={[styles.section, { backgroundColor: `${tint}1C`, borderColor: `${tint}4D` }]}>
-            <View style={styles.sectionTop}>
-              <TagChipFlow {...flow} tags={[tag]} childrenOf={() => NO_KIDS} />
-              {via && (
-                <Text style={styles.via} numberOfLines={1}>
-                  on via {via}
-                </Text>
-              )}
-            </View>
+            <TagChipFlow {...flow} tags={[tag]} childrenOf={() => NO_KIDS} />
             <TagChipFlow {...flow} tags={flow.childrenOf(tag.id)} depth={1} />
           </View>
         );
@@ -477,16 +457,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     gap: spacing.sm,
-  },
-  sectionTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  via: {
-    ...font.caption,
-    color: colors.textDim,
-    flexShrink: 1,
   },
   other: {
     gap: spacing.sm,

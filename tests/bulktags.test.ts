@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { freshDatabase, insertSong } from './helpers/db.ts';
 import { addTagToSong, applyBulkTagEdit, createTag } from '../src/db/tags.ts';
-import { chipState, countTags, markFor, nextMark, planBulkEdit, shownMark, tapTag, type TagMark } from '../src/library/bulkTags.ts';
+import { countTags, markFor, nextMark, planBulkEdit, shownMark, tapTag, type TagMark } from '../src/library/bulkTags.ts';
 
 // Three songs that don't share all their tags: 10 on all, 20 on two, 30 on one.
 const songs = [1, 2, 3];
@@ -99,12 +99,4 @@ test('a tag with nothing to restore just toggles', () => {
   const on = tap(new Map(), 4);
   assert.equal(on.get(4), 'all');
   assert.equal(tap(on, 4).get(4), 'none');
-});
-
-test('a tag on only through a subtag shows as via, not as on', () => {
-  assert.equal(chipState('none', ['all']), 'via');
-  assert.equal(chipState('some', ['none', 'all']), 'via');
-  assert.equal(chipState('all', ['all']), 'all');
-  assert.equal(chipState('none', ['some']), 'some');
-  assert.equal(chipState('none', []), 'none');
 });
