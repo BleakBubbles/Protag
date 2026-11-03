@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { freshDatabase, insertSong } from './helpers/db.ts';
 import { ensureTagPath, addTagToSong, listTagPlays } from '../src/db/tags.ts';
-import { colorGroups, DEFAULT_SORTS, nextMusicSort, nextTagSort, parseSorts, parseEditorSort, sortEditorTags, sortMusic, sortTags } from '../src/library/sorts.ts';
+import { colorGroups, DEFAULT_SORTS, LIBRARY_MUSIC_SORTS, nextMusicSort, nextSort, nextTagSort, parseSort, parseSorts, parseEditorSort, SONG_SORTS, sortEditorTags, sortMusic, sortSongs, sortTags, type SongSort } from '../src/library/sorts.ts';
 
 test('sorts cycle, and a stored choice comes back with anything unknown at its default', () => {
   assert.equal(nextTagSort('name'), 'played');
@@ -70,4 +70,29 @@ test("the tag editor's colour groups split where the colour changes", () => {
   const tag = (name: string, color: string | null, sort_order: number) => ({ name, color, sort_order, song_count: 0 });
   const tags = [tag('chill', 'blue', 1), tag('hype', 'orange', 2), tag('sad', 'blue', 0), tag('odd', null, 3), tag('lost', 'nope', 4)];
   assert.deepEqual(colorGroups(tags).map((g) => g.map((t) => t.name)), [['hype'], ['sad', 'chill'], ['odd', 'lost']]);
+});
+
+test('songs by artist or album stay together in track order; unknowns go last', () => {
+  const song = (title: string, artist: string | null, album: string | null, track_no: number | null, added_at = 0, play_count = 0) =>
+    ({ title, artist, album, album_id: album, track_no, added_at, play_count });
+  const songs = [
+    song('zed', 'B', 'Two', 2, 5, 1),
+    song('alpha', 'B', 'Two', 1, 1, 9),
+    song('loose', null, null, null, 9, 0),
+    song('mid', 'a', 'One', null, 3, 4),
+    song('first', 'a', 'One', 1, 2, 4),
+  ];
+  const titles = (sort: SongSort) => sortSongs(songs, sort).map((s) => s.title);
+  assert.deepEqual(titles('name'), ['alpha', 'first', 'loose', 'mid', 'zed']);
+  assert.deepEqual(titles('artist'), ['first', 'mid', 'alpha', 'zed', 'loose']);
+  assert.deepEqual(titles('album'), ['first', 'mid', 'alpha', 'zed', 'loose']);
+  assert.deepEqual(titles('added'), ['loose', 'zed', 'mid', 'first', 'alpha']);
+  assert.deepEqual(titles('played'), ['alpha', 'first', 'mid', 'zed', 'loose']);
+});
+
+test('a stored Library sort comes back, or the list starts at its first', () => {
+  assert.equal(parseSort('added', SONG_SORTS), 'added');
+  assert.equal(parseSort('bogus', SONG_SORTS), 'name');
+  assert.equal(parseSort(null, LIBRARY_MUSIC_SORTS), 'name');
+  assert.equal(nextSort(SONG_SORTS, 'played'), 'name');
 });

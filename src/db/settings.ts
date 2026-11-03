@@ -22,6 +22,12 @@ export const SettingKey = {
   shuffleSorts: 'shuffle.sorts',
   /** `EditorSort`: how the tag editor orders its chips (library/sorts.ts). */
   editTagsSort: 'editTags.sort',
+  /** `SongSort`: how the Library's Songs list is ordered (library/sorts.ts). */
+  songsSort: 'library.songsSort',
+  /** `MusicSort`: how the Library's Artists list is ordered. */
+  artistsSort: 'library.artistsSort',
+  /** `MusicSort`: how the Library's Albums grid is ordered. */
+  albumsSort: 'library.albumsSort',
   /** Id of the newest untagged song when "Not now" hid the inbox; it shows again once a newer one arrives. */
   inboxDismissed: 'inbox.dismissed',
   /** How many rows of tiles the open pot shows, as last set with its divider. */

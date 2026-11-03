@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 
+import { getSetting, SettingKey } from '../../db/settings';
 import { listAllSongs } from '../../db/songs';
 import { albumArtUri } from '../../library/assets';
 import { matchesQuery, searchKey } from '../../library/search';
+import { SONG_SORTS, SORT_LABEL, sortSongs } from '../../library/sorts';
 import { listSongChips, type SongChip } from '../../library/songChips';
 import { useNowPlaying, usePlayerActions } from '../../player/PlayerProvider';
 import { EmptyState } from '../../ui/EmptyState';
@@ -11,12 +13,14 @@ import { plural } from '../../ui/format';
 import { useDragSelect } from '../../ui/hooks/useDragSelect';
 import { useFixedRowLayout } from '../../ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
+import { useSavedSort } from '../../ui/hooks/useSavedSort';
 import type { SongSelection } from '../../ui/hooks/useSongSelection';
 import { InboxCard } from '../../ui/library/InboxCard';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '../../ui/library/SelectionBar';
 import { SongRow, useSongRowHeight } from '../../ui/library/SongRow';
+import { SectionHead } from '../../ui/play/SectionHead';
 import { SearchField } from '../../ui/SearchField';
-import { font, spacing } from '../../ui/theme';
+import { spacing } from '../../ui/theme';
 import { makeStyles } from '../../ui/ThemeContext';
 
 const NO_CHIPS: readonly SongChip[] = [];
@@ -29,25 +33,27 @@ export interface SongsViewProps {
 }
 
 /**
- * Every song, with its tags inline. Tap to play from there; press and hold
- * to start selecting, then Tag… to tag them (one or many).
+ * Every song, with its tags inline, in the order picked above the list. Tap
+ * to play from there; press and hold to start selecting, then Tag… to tag
+ * them (one or many).
  */
 export function SongsView({ selection, onSongs }: SongsViewProps) {
   const styles = useStyles();
   const { data } = useLibraryQuery(async (db) => {
-    const [songs, chips] = await Promise.all([listAllSongs(db), listSongChips(db)]);
-    return { songs, chips };
+    const [songs, chips, sort] = await Promise.all([listAllSongs(db), listSongChips(db), getSetting(db, SettingKey.songsSort)]);
+    return { songs, chips, sort };
   }, []);
+  const [sort, nextSort] = useSavedSort(SettingKey.songsSort, SONG_SORTS, data?.sort);
   const [query, setQuery] = useState('');
   const rowHeight = useSongRowHeight();
   const { getItemLayout, onHeaderLayout, headerHeight } = useFixedRowLayout(rowHeight);
   const { playQueue } = usePlayerActions();
   const { song: current, queue } = useNowPlaying();
 
-  // Normalize each song once per load, not once per keystroke.
+  // Normalize each song once per load (and order), not once per keystroke.
   const searchable = useMemo(
-    () => (data?.songs ?? []).map((song) => ({ song, key: searchKey([song.title, song.artist, song.album]) })),
-    [data]
+    () => sortSongs(data?.songs ?? [], sort).map((song) => ({ song, key: searchKey([song.title, song.artist, song.album]) })),
+    [data, sort]
   );
   const trimmed = query.trim();
   const visible = useMemo(
@@ -111,11 +117,15 @@ export function SongsView({ selection, onSongs }: SongsViewProps) {
                   returnKeyType="search"
                 />
                 {data && (
-                  <Text style={styles.count}>
-                    {trimmed
-                      ? `${plural(visible.length, 'match', 'matches')} of ${plural(data.songs.length, 'song')}`
-                      : plural(data.songs.length, 'song')}
-                  </Text>
+                  <SectionHead
+                    label={
+                      trimmed
+                        ? `${plural(visible.length, 'match', 'matches')} of ${plural(data.songs.length, 'song')}`
+                        : plural(data.songs.length, 'song')
+                    }
+                    sort={SORT_LABEL[sort]}
+                    onSort={nextSort}
+                  />
                 )}
               </View>
             </View>
@@ -134,7 +144,7 @@ export function SongsView({ selection, onSongs }: SongsViewProps) {
   );
 }
 
-const useStyles = makeStyles((colors) => StyleSheet.create({
+const useStyles = makeStyles(() => StyleSheet.create({
   frame: {
     flex: 1,
   },
@@ -142,9 +152,5 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.sm,
     gap: spacing.sm,
-  },
-  count: {
-    ...font.caption,
-    color: colors.textDim,
   },
 }));
