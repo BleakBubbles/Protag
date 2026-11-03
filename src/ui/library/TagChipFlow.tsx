@@ -2,17 +2,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { Fragment, memo, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
-import type { TagMark } from '../../library/bulkTags';
+import type { ChipState } from '../../library/bulkTags';
 import { font, radius, spacing } from '../theme';
 import { makeStyles, useColors } from '../ThemeContext';
 
 const GAP = spacing.sm;
 const HEIGHT = 36;
+/** The › end of a family's chip. */
+const OPEN_WIDTH = 32;
+const NOTCH = 7;
+/** Trays nest this deep; deeper ones open without stepping in, so chips keep their room. */
+const MAX_NEST = 3;
 
-const MARK_LABEL: Record<TagMark, string> = {
+const STATE_LABEL: Record<ChipState, string> = {
   all: 'on all selected songs',
   some: 'on some selected songs',
   none: 'on none of the selected songs',
+  via: 'on through a subtag',
 };
 
 export interface FlowTag {
@@ -23,23 +29,33 @@ export interface FlowTag {
 export interface TagChipFlowProps<T extends FlowTag> {
   tags: readonly T[];
   labelOf: (tag: T) => string;
-  markOf: (id: number) => TagMark;
-  /** A tag's subtags, in order: shown on a line of their own while it's on. Empty for none. */
+  /** The whole path, for the caption of a tray too deep to step in. */
+  pathOf?: (tag: T) => string;
+  stateOf: (id: number) => ChipState;
+  /** For a tag on through its subtags: which ones, for its tray's caption. */
+  viaOf?: (id: number) => string | null;
+  /** A tag's subtags, in order. Empty for none. */
   childrenOf: (id: number) => readonly T[];
+  isOpen?: (id: number) => boolean;
   onPress: (id: number) => void;
+  onOpen?: (id: number) => void;
+  /** How many trays in this flow sits; set by the flow itself. */
+  depth?: number;
 }
 
 /**
  * Tags as chips that wrap like words, for picking several at a glance. A tag
- * with subtags opens while it's on: its subtags drop in on an indented line
- * under the line it sits on, so the lines above never move and the tree shows
- * only as far as it's been tagged.
+ * with subtags has a › of its own: tapping the name tags, tapping the › opens
+ * the family into a tray under the line it sits on, tinted in its colour and
+ * pointing back at it. So the lines above never move, and a family can be
+ * looked through without tagging anything.
  *
- * Lines are packed here, not by flex wrapping, to know where a line ends; the
- * chips are measured on the first pass (behind the screen's opening slide).
+ * Lines are packed here, not by flex wrapping, to know where a line ends and
+ * where the › sits; the chips are measured on the first pass (behind the
+ * screen's opening slide).
  */
 export function TagChipFlow<T extends FlowTag>(props: TagChipFlowProps<T>) {
-  const { tags, labelOf, markOf, childrenOf, onPress } = props;
+  const { tags, labelOf, pathOf = labelOf, stateOf, viaOf, childrenOf, isOpen, onPress, onOpen, depth = 0 } = props;
   const colors = useColors();
   const styles = useStyles();
   const [width, setWidth] = useState(0);
@@ -49,26 +65,39 @@ export function TagChipFlow<T extends FlowTag>(props: TagChipFlowProps<T>) {
   const lines = useMemo(() => pack(tags, widths, width), [tags, widths, width]);
 
   const chip = (tag: T) => {
-    const kids = childrenOf(tag.id).length;
+    const family = childrenOf(tag.id).length > 0;
     return (
       <TagToggleChip
         key={tag.id}
         id={tag.id}
         label={labelOf(tag)}
         color={tag.color}
-        mark={markOf(tag.id)}
-        family={kids > 0}
+        state={stateOf(tag.id)}
+        open={family ? Boolean(isOpen?.(tag.id)) : undefined}
         onPress={onPress}
+        onOpen={onOpen}
         onMeasure={measure}
       />
     );
   };
-  const family = (tag: T) => {
+  // `notch`: where the tag's › is along its line, when the line's been packed.
+  const tray = (tag: T, notch?: number) => {
     const kids = childrenOf(tag.id);
-    if (kids.length === 0 || markOf(tag.id) === 'none') return null;
+    if (kids.length === 0 || !isOpen?.(tag.id)) return null;
+    const tint = colors.tag(tag.color);
+    const flat = depth >= MAX_NEST;
+    const via = viaOf?.(tag.id);
     return (
-      <View key={`kids-${tag.id}`} style={[styles.kids, { borderLeftColor: colors.tag(tag.color) }]}>
-        <TagChipFlow {...props} tags={kids} />
+      <View
+        key={`tray-${tag.id}`}
+        style={[styles.tray, { backgroundColor: `${tint}1C`, borderColor: `${tint}4D` }, flat && styles.flat]}
+      >
+        {notch !== undefined && <View style={[styles.notch, { left: notch - NOTCH, borderBottomColor: `${tint}4D` }]} />}
+        <Text style={[styles.caption, { color: tint }]} numberOfLines={1}>
+          in {flat ? pathOf(tag) : labelOf(tag)}
+          {via ? <Text style={styles.via}> · on via {via}</Text> : null}
+        </Text>
+        <TagChipFlow {...props} tags={kids} depth={depth + 1} />
       </View>
     );
   };
@@ -76,16 +105,23 @@ export function TagChipFlow<T extends FlowTag>(props: TagChipFlowProps<T>) {
   return (
     <View style={styles.flow} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {lines ? (
-        lines.map((line, i) => (
-          <Fragment key={i}>
-            <View style={styles.line}>{line.map(chip)}</View>
-            {line.map(family)}
-          </Fragment>
-        ))
+        lines.map((line, i) => {
+          let x = 0;
+          const notches = line.map((tag) => {
+            x += widths.get(tag.id)! + GAP;
+            return x - GAP - OPEN_WIDTH / 2;
+          });
+          return (
+            <Fragment key={i}>
+              <View style={styles.line}>{line.map(chip)}</View>
+              {line.map((tag, j) => tray(tag, notches[j]))}
+            </Fragment>
+          );
+        })
       ) : (
         <>
           <View style={[styles.line, styles.wrap]}>{tags.map(chip)}</View>
-          {tags.map(family)}
+          {tags.map((tag) => tray(tag))}
         </>
       )}
     </View>
@@ -119,49 +155,69 @@ interface TagToggleChipProps {
   id: number;
   label: string;
   color: string | null;
-  mark: TagMark;
-  /** Has subtags: a chevron says it opens. */
-  family: boolean;
+  state: ChipState;
+  /** For a tag with subtags, whether its tray is open; undefined for one without. */
+  open: boolean | undefined;
   onPress: (id: number) => void;
+  onOpen?: (id: number) => void;
   onMeasure: (id: number, width: number) => void;
 }
 
 /**
- * A tag that's on (filled with its colour), off (outlined in it) or on some
- * of the songs (half filled). Its width never changes with its state, so
- * toggling one never moves the others.
+ * A tag that's on (filled with its colour), off (outlined in it), on some of
+ * the songs (half filled) or on only through a subtag (dashed, lightly
+ * tinted). Its width never changes with its state, so toggling one never
+ * moves the others.
  */
-const TagToggleChip = memo(function TagToggleChip({ id, label, color, mark, family, onPress, onMeasure }: TagToggleChipProps) {
+const TagToggleChip = memo(function TagToggleChip({ id, label, color, state, open, onPress, onOpen, onMeasure }: TagToggleChipProps) {
   const colors = useColors();
   const styles = useStyles();
   const tint = colors.tag(color);
-  const on = mark === 'all';
+  const on = state === 'all';
   const ink = on ? colors.onTag : colors.text;
   return (
-    <Pressable
-      onPress={() => onPress(id)}
+    <View
       onLayout={(e: LayoutChangeEvent) => onMeasure(id, e.nativeEvent.layout.width)}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: mark === 'some' ? 'mixed' : on }}
-      accessibilityLabel={`${label}, ${MARK_LABEL[mark]}${family ? ', has subtags' : ''}`}
-      style={({ pressed }) => [
+      style={[
         styles.chip,
-        { borderColor: on ? tint : `${tint}8C` },
+        { borderColor: on || state === 'via' ? tint : `${tint}8C` },
         on && { backgroundColor: tint },
-        pressed && styles.pressed,
+        state === 'via' && { backgroundColor: `${tint}38`, borderStyle: 'dashed' },
       ]}
     >
-      {mark === 'some' && <View style={[styles.half, { backgroundColor: `${tint}73` }]} />}
-      <View style={[styles.dot, { backgroundColor: on ? colors.onTag : tint }, on && styles.dotOn]} />
-      <Text style={[styles.label, { color: ink }]} numberOfLines={1}>
-        {label}
-      </Text>
-      {family && <Ionicons name={mark === 'none' ? 'chevron-forward' : 'chevron-down'} size={12} color={ink} style={styles.chevron} />}
-    </Pressable>
+      {state === 'some' && <View style={[styles.half, { backgroundColor: `${tint}73` }]} />}
+      <Pressable
+        onPress={() => onPress(id)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: state === 'some' ? 'mixed' : on }}
+        accessibilityLabel={`${label}, ${STATE_LABEL[state]}`}
+        style={({ pressed }) => [styles.name, open !== undefined && styles.nameBeforeOpen, pressed && styles.pressed]}
+      >
+        <View style={[styles.dot, { backgroundColor: on ? colors.onTag : tint }, on && styles.dotOn]} />
+        <Text style={[styles.label, { color: ink }]} numberOfLines={1}>
+          {label}
+        </Text>
+      </Pressable>
+      {open !== undefined && (
+        <Pressable
+          onPress={() => onOpen?.(id)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          accessibilityLabel={`${open ? 'Close' : 'Open'} ${label}`}
+          style={({ pressed }) => [
+            styles.open,
+            { borderLeftColor: on ? `${colors.onTag}33` : `${tint}66` },
+            pressed && styles.pressed,
+          ]}
+        >
+          <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={13} color={on ? ink : colors.textDim} />
+        </Pressable>
+      )}
+    </View>
   );
 });
 
-const useStyles = makeStyles(() => StyleSheet.create({
+const useStyles = makeStyles((colors) => StyleSheet.create({
   flow: {
     gap: GAP,
   },
@@ -172,24 +228,72 @@ const useStyles = makeStyles(() => StyleSheet.create({
   wrap: {
     flexWrap: 'wrap',
   },
-  kids: {
-    marginLeft: spacing.md,
-    paddingLeft: spacing.md,
-    borderLeftWidth: 2,
+  tray: {
+    padding: spacing.sm,
+    paddingTop: spacing.sm - 2,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    gap: spacing.xs + 2,
+  },
+  // Too deep to step in again: the chips keep the room they have.
+  flat: {
+    paddingHorizontal: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    borderRadius: 0,
+    backgroundColor: 'transparent',
+  },
+  // A small triangle on the tray's top edge, under the › that opened it.
+  notch: {
+    position: 'absolute',
+    top: -NOTCH - 1,
+    width: 0,
+    height: 0,
+    borderLeftWidth: NOTCH,
+    borderRightWidth: NOTCH,
+    borderBottomWidth: NOTCH,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  caption: {
+    ...font.caption,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginHorizontal: 2,
+  },
+  via: {
+    color: colors.textDim,
+    textTransform: 'none',
+    letterSpacing: 0,
   },
   chip: {
     height: HEIGHT,
     maxWidth: '100%',
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
+    alignItems: 'stretch',
     borderRadius: radius.pill,
     borderWidth: 1.5,
     overflow: 'hidden',
   },
+  name: {
+    flexShrink: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  nameBeforeOpen: {
+    paddingRight: spacing.sm + 2,
+  },
+  open: {
+    width: OPEN_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderLeftWidth: 1.5,
+  },
   pressed: {
-    transform: [{ scale: 0.95 }],
+    backgroundColor: '#8080802E',
   },
   half: {
     position: 'absolute',
@@ -210,8 +314,5 @@ const useStyles = makeStyles(() => StyleSheet.create({
     ...font.label,
     fontSize: 14,
     flexShrink: 1,
-  },
-  chevron: {
-    marginLeft: -spacing.xs,
   },
 }));

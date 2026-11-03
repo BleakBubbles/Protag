@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { freshDatabase, insertSong } from './helpers/db.ts';
 import { ensureTagPath, addTagToSong, listTagPlays } from '../src/db/tags.ts';
-import { DEFAULT_SORTS, nextMusicSort, nextTagSort, parseSorts, parseEditorSort, sortEditorTags, sortMusic, sortTags } from '../src/library/sorts.ts';
+import { colorGroups, DEFAULT_SORTS, nextMusicSort, nextTagSort, parseSorts, parseEditorSort, sortEditorTags, sortMusic, sortTags } from '../src/library/sorts.ts';
 
 test('sorts cycle, and a stored choice comes back with anything unknown at its default', () => {
   assert.equal(nextTagSort('name'), 'played');
@@ -64,4 +64,10 @@ test("the tag editor's colour order keeps a colour together, in your order withi
   assert.deepEqual(sortEditorTags(tags, 'custom').map((t) => t.name), ['sad', 'chill', 'hype', 'odd', 'rap']);
   assert.deepEqual(sortEditorTags(tags, 'used')[0].name, 'rap');
   assert.equal(parseEditorSort('nonsense'), 'custom');
+});
+
+test("the tag editor's colour groups split where the colour changes", () => {
+  const tag = (name: string, color: string | null, sort_order: number) => ({ name, color, sort_order, song_count: 0 });
+  const tags = [tag('chill', 'blue', 1), tag('hype', 'orange', 2), tag('sad', 'blue', 0), tag('odd', null, 3), tag('lost', 'nope', 4)];
+  assert.deepEqual(colorGroups(tags).map((g) => g.map((t) => t.name)), [['hype'], ['sad', 'chill'], ['odd', 'lost']]);
 });

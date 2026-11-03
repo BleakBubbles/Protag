@@ -8,15 +8,15 @@ import { getSetting, SettingKey, setSetting } from '@/db/settings';
 import { getSong } from '@/db/songs';
 import { applyBulkTagEdit, listAllSongTags, listAllTagsWithCounts, parseTagPath } from '@/db/tags';
 import type { TagWithCounts } from '@/db/types';
-import { countTags, markFor, planBulkEdit, shownMark, tapTag, type TagMark } from '@/library/bulkTags';
+import { chipState, countTags, markFor, planBulkEdit, tapTag, type ChipState, type TagMark } from '@/library/bulkTags';
 import { matchesQuery, searchKey } from '@/library/search';
-import { nextEditorSort, parseEditorSort, SORT_LABEL, sortEditorTags, type EditorSort } from '@/library/sorts';
+import { colorGroups, nextEditorSort, parseEditorSort, SORT_LABEL, sortEditorTags, type EditorSort } from '@/library/sorts';
 import { buildTagIndex } from '@/library/tagTree';
 import { plural } from '@/ui/format';
 import { feelStep } from '@/ui/haptics';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { useStagedSave } from '@/ui/hooks/useStagedSave';
-import { TagChipFlow } from '@/ui/library/TagChipFlow';
+import { TagChipFlow, type TagChipFlowProps } from '@/ui/library/TagChipFlow';
 import { SectionHead } from '@/ui/play/SectionHead';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
@@ -24,7 +24,7 @@ import { Icon } from '@/ui/Icon';
 import { PromptDialog } from '@/ui/PromptDialog';
 import { SaveButton } from '@/ui/SaveButton';
 import { SearchField } from '@/ui/SearchField';
-import { font, spacing } from '@/ui/theme';
+import { font, radius, spacing } from '@/ui/theme';
 import { makeStyles, useColors } from '@/ui/ThemeContext';
 
 const CREATE_ICON = 22;
@@ -47,9 +47,10 @@ interface NewChip {
  * filled when some do. Tapping one turns it on or off, and only tags you touch
  * change. Changes are staged and applied by Save.
  *
- * The chips follow the tree: a tag with subtags opens while it's on, so
- * tagging goes down level by level ("kpop", then "gen 4") as far as the tree
- * goes, and a flat library is just one set of chips. Built for speed, since
+ * The chips follow the tree: a tag with subtags has a › that opens it into a
+ * tray, so tagging goes down level by level ("kpop", then "gen 4") as far as
+ * the tree goes, and a flat library is just one set of chips. Families the
+ * songs already reach into start open. Built for speed, since
  * per-song effort decides whether anyone tags a whole library: Enter ticks the
  * best match or creates what was typed, with "parent/child" making nested tags
  * in one go.
@@ -118,15 +119,47 @@ export default function EditTagsScreen() {
   );
   const markOf = (tagId: number) => marks.get(tagId) ?? initialMark(tagId);
 
-  // What each chip shows: its own mark, or what its subtags say.
+  // What each chip shows: its own mark, or what its subtags say, and for one
+  // on only through its subtags, which ones.
   const shown = useMemo(() => {
-    const out = new Map<number, TagMark>();
+    const out = new Map<number, { state: ChipState; via: string | null }>();
     if (!data) return out;
     const of = (id: number) => marks.get(id) ?? initialMark(id);
-    for (const tag of data.tags) out.set(tag.id, shownMark(of(tag.id), [...data.index.descendantIds(tag.id)].map(of)));
+    const names = new Map(data.tags.map((t) => [t.id, t.name]));
+    for (const tag of data.tags) {
+      const below = [...data.index.descendantIds(tag.id)];
+      const state = chipState(of(tag.id), below.map(of));
+      const via = state === 'via' ? below.filter((id) => of(id) === 'all').map((id) => names.get(id)).join(', ') : null;
+      out.set(tag.id, { state, via });
+    }
     return out;
   }, [data, marks, initialMark]);
-  const shownOf = useCallback((id: number) => (id < 0 ? 'all' : (shown.get(id) ?? 'none')), [shown]);
+  const stateOf = useCallback((id: number): ChipState => (id < 0 ? 'all' : (shown.get(id)?.state ?? 'none')), [shown]);
+  const viaOf = useCallback((id: number) => shown.get(id)?.via ?? null, [shown]);
+
+  // Open families: at first, the ones the songs already have subtags in.
+  const [opened, setOpened] = useState<ReadonlySet<number>>();
+  const startOpen = useMemo(() => {
+    const out = new Set<number>();
+    if (!data) return out;
+    for (const tag of data.tags) {
+      if ([...data.index.descendantIds(tag.id)].some((id) => initialMark(id) !== 'none')) out.add(tag.id);
+    }
+    return out;
+  }, [data, initialMark]);
+  const openIds = opened ?? startOpen;
+  const isOpen = useCallback((id: number) => openIds.has(id), [openIds]);
+  const openFamily = useCallback(
+    (id: number) => {
+      feelStep();
+      setOpened((prev) => {
+        const next = new Set(prev ?? startOpen);
+        if (!next.delete(id)) next.add(id);
+        return next;
+      });
+    },
+    [startOpen]
+  );
 
   const toggle = useCallback(
     (tagId: number) => {
@@ -176,7 +209,18 @@ export default function EditTagsScreen() {
       : data?.index.all().find((t) => lower(data.index.path(t.id).map((p) => p.name)) === lower(path));
   const exists = path.length === 0 || Boolean(exact) || newPaths.some((p) => lower(p) === lower(path));
   const addNew = (names: string[]) => {
-    if (!newPaths.some((p) => lower(p) === lower(names))) setNewPaths((paths) => [...paths, names]);
+    if (newPaths.some((p) => lower(p) === lower(names))) return;
+    setNewPaths((paths) => [...paths, names]);
+    // As with tapping a subtag: a parent turned on this visit goes back to how it started.
+    const above = (data?.index.all() ?? []).filter((t) => {
+      const at = data!.index.path(t.id).map((p) => p.name);
+      return at.length < names.length && lower(at) === lower(names.slice(0, at.length));
+    });
+    setMarks((prev) => {
+      const next = new Map(prev);
+      for (const t of above) if (next.get(t.id) === 'all' && initialMark(t.id) !== 'all') next.delete(t.id);
+      return next;
+    });
   };
   const create = () => {
     if (exists) return;
@@ -188,7 +232,8 @@ export default function EditTagsScreen() {
     if (path.length === 0) return;
     const target = exact ?? (found.length === 1 ? found[0] : undefined);
     if (!target) return create();
-    if (shownOf(target.id) !== 'all') toggle(target.id);
+    // Already on, or on through a subtag: typing it again changes nothing.
+    if (stateOf(target.id) === 'none' || stateOf(target.id) === 'some') toggle(target.id);
     setQuery('');
   };
   // No tags in the library yet, and none typed or staged: the editor starts from its empty state.
@@ -199,6 +244,17 @@ export default function EditTagsScreen() {
   const newChips = useMemo<NewChip[]>(() => newPaths.map((p, i) => ({ id: -(i + 1), color: null, path: p })), [newPaths]);
 
   const n = songIds.length;
+  // What every flow of the tree shares, whichever way it's laid out.
+  const flow: Omit<TagChipFlowProps<TagWithCounts>, 'tags'> = {
+    labelOf: (t) => t.name,
+    pathOf: (t) => data?.index.label(t.id) ?? t.name,
+    stateOf,
+    viaOf,
+    childrenOf,
+    isOpen,
+    onPress: toggle,
+    onOpen: openFamily,
+  };
 
   return (
     <View style={styles.screen}>
@@ -256,7 +312,7 @@ export default function EditTagsScreen() {
             <TagChipFlow
               tags={newChips}
               labelOf={(c) => c.path.join('/')}
-              markOf={shownOf}
+              stateOf={stateOf}
               childrenOf={() => NO_KIDS}
               onPress={toggle}
             />
@@ -280,15 +336,27 @@ export default function EditTagsScreen() {
                 </View>
               )}
               <View style={styles.chips}>
-                {/* Remounted between the two, which label chips differently and so measure them differently. */}
-                <TagChipFlow
-                  key={searching ? 'found' : 'tree'}
-                  tags={searching ? found : childrenOf(null)}
-                  labelOf={(t) => (searching ? data.index.label(t.id) : t.name)}
-                  markOf={shownOf}
-                  childrenOf={searching ? () => NO_KIDS : childrenOf}
-                  onPress={toggle}
-                />
+                {searching ? (
+                  // Its own flow, which labels chips by path and so measures them differently.
+                  <TagChipFlow
+                    key="found"
+                    tags={found}
+                    labelOf={(t) => data.index.label(t.id)}
+                    stateOf={stateOf}
+                    childrenOf={() => NO_KIDS}
+                    onPress={toggle}
+                  />
+                ) : sort === 'family' ? (
+                  <FamilySections roots={childrenOf(null)} flow={flow} viaOf={viaOf} />
+                ) : sort === 'color' ? (
+                  <View style={styles.groups}>
+                    {colorGroups(childrenOf(null)).map((group) => (
+                      <TagChipFlow key={group[0].id} tags={group} {...flow} />
+                    ))}
+                  </View>
+                ) : (
+                  <TagChipFlow key="tree" tags={childrenOf(null)} {...flow} />
+                )}
               </View>
             </>
           )
@@ -306,6 +374,52 @@ export default function EditTagsScreen() {
         }}
         onClose={() => setNaming(false)}
       />
+    </View>
+  );
+}
+
+/**
+ * The Family layout: each tag with subtags a section of its own, already
+ * open, with the tag on top; the rest together under Other.
+ */
+function FamilySections({
+  roots,
+  flow,
+  viaOf,
+}: {
+  roots: readonly TagWithCounts[];
+  flow: Omit<TagChipFlowProps<TagWithCounts>, 'tags'>;
+  viaOf: (id: number) => string | null;
+}) {
+  const colors = useColors();
+  const styles = useStyles();
+  const families = roots.filter((t) => flow.childrenOf(t.id).length > 0);
+  const others = roots.filter((t) => flow.childrenOf(t.id).length === 0);
+  return (
+    <View style={styles.groups}>
+      {families.map((tag) => {
+        const tint = colors.tag(tag.color);
+        const via = viaOf(tag.id);
+        return (
+          <View key={tag.id} style={[styles.section, { backgroundColor: `${tint}1C`, borderColor: `${tint}4D` }]}>
+            <View style={styles.sectionTop}>
+              <TagChipFlow {...flow} tags={[tag]} childrenOf={() => NO_KIDS} />
+              {via && (
+                <Text style={styles.via} numberOfLines={1}>
+                  on via {via}
+                </Text>
+              )}
+            </View>
+            <TagChipFlow {...flow} tags={flow.childrenOf(tag.id)} depth={1} />
+          </View>
+        );
+      })}
+      {others.length > 0 && (
+        <View style={styles.other}>
+          {families.length > 0 && <Text style={styles.otherLabel}>Other</Text>}
+          <TagChipFlow {...flow} tags={others} />
+        </View>
+      )}
     </View>
   );
 }
@@ -353,6 +467,37 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     gap: spacing.sm,
+  },
+  // Colour runs and family sections: each starts a line of its own.
+  groups: {
+    gap: spacing.md,
+  },
+  section: {
+    padding: spacing.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    gap: spacing.sm,
+  },
+  sectionTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  via: {
+    ...font.caption,
+    color: colors.textDim,
+    flexShrink: 1,
+  },
+  other: {
+    gap: spacing.sm,
+  },
+  otherLabel: {
+    ...font.caption,
+    fontSize: 11,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: colors.textDim,
+    marginTop: spacing.xs,
   },
   newLabel: {
     ...font.caption,

@@ -74,6 +74,18 @@ export function shownMark(own: TagMark, below: readonly TagMark[]): TagMark {
 }
 
 /**
+ * How a tag's chip shows: its shown mark, except a tag on only because a
+ * subtag is ("kpop" through "gen 4") shows as "via", since it isn't saved as
+ * itself.
+ */
+export type ChipState = TagMark | 'via';
+
+export function chipState(own: TagMark, below: readonly TagMark[]): ChipState {
+  const shown = shownMark(own, below);
+  return shown === 'all' && own !== 'all' ? 'via' : shown;
+}
+
+/**
  * One tap on a tag in the editor, given its subtags (`below`) and parents
  * (`above`), returning the new marks. A tag showing as on goes off, subtags
  * and all. One showing as off that started on for some songs goes back to how

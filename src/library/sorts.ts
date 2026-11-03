@@ -7,8 +7,11 @@ import { TAG_COLORS } from '../db/tagColors';
 
 export type TagSort = 'name' | 'played' | 'custom';
 export type MusicSort = 'played' | 'name' | 'added';
-/** The tag editor's order: "used" is by song count, "color" keeps tags of one colour together. */
-export type EditorSort = 'custom' | 'name' | 'used' | 'color';
+/**
+ * The tag editor's order: "used" is by song count, "color" puts each colour on
+ * lines of its own, "family" gives each tag with subtags a section of its own.
+ */
+export type EditorSort = 'custom' | 'name' | 'used' | 'color' | 'family';
 
 export interface ShuffleSorts {
   tags: TagSort;
@@ -26,6 +29,7 @@ export const SORT_LABEL: Record<TagSort | MusicSort | EditorSort, string> = {
   custom: 'Your order',
   used: 'Most used',
   color: 'Colour',
+  family: 'Family',
 };
 
 const TAG_SORTS: readonly TagSort[] = ['name', 'played', 'custom'];
@@ -87,27 +91,43 @@ export function sortMusic<T extends { plays: number; added: number; songs: numbe
   );
 }
 
-const EDITOR_SORTS: readonly EditorSort[] = ['custom', 'name', 'used', 'color'];
+const EDITOR_SORTS: readonly EditorSort[] = ['custom', 'name', 'used', 'color', 'family'];
 export const nextEditorSort = (sort: EditorSort) => after(EDITOR_SORTS, sort);
 export const parseEditorSort = (value: string | null): EditorSort =>
   EDITOR_SORTS.includes(value as EditorSort) ? (value as EditorSort) : 'custom';
 
+/** Where a colour sits in the picker's palette; unknown colours (and none) last. */
+const hue = (color: string | null) => {
+  const at = (TAG_COLORS as readonly (string | null)[]).indexOf(color);
+  return at < 0 ? TAG_COLORS.length : at;
+};
+
 /**
  * A copy of `tags` in the tag editor's `sort` order. Colour follows the
- * picker's palette, and within a colour, your order.
+ * picker's palette, and within a colour, your order; Family is your order
+ * (the sections are the editor's).
  */
 export function sortEditorTags<T extends { name: string; song_count: number; sort_order: number; color: string | null }>(
   tags: readonly T[],
   sort: EditorSort
 ): T[] {
-  const hue = (t: T) => {
-    const at = (TAG_COLORS as readonly (string | null)[]).indexOf(t.color);
-    return at < 0 ? TAG_COLORS.length : at;
-  };
   return [...tags].sort(
     (a, b) =>
-      (sort === 'used' ? b.song_count - a.song_count : sort === 'color' ? hue(a) - hue(b) : 0) ||
+      (sort === 'used' ? b.song_count - a.song_count : sort === 'color' ? hue(a.color) - hue(b.color) : 0) ||
       (sort === 'name' ? 0 : a.sort_order - b.sort_order) ||
       byName(a.name, b.name)
   );
+}
+
+/** Tags in colour order, split where the colour changes: a run of chips per colour. */
+export function colorGroups<T extends { name: string; song_count: number; sort_order: number; color: string | null }>(
+  tags: readonly T[]
+): T[][] {
+  const groups: T[][] = [];
+  for (const tag of sortEditorTags(tags, 'color')) {
+    const last = groups.at(-1);
+    if (last && hue(last[0].color) === hue(tag.color)) last.push(tag);
+    else groups.push([tag]);
+  }
+  return groups;
 }
