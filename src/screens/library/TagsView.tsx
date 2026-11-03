@@ -11,13 +11,16 @@ import {
 } from 'react-native';
 
 import { notifyLibraryChanged } from '../../db/changes';
-import { ensureTagPath, listTagsWithCounts, parseTagPath } from '../../db/tags';
+import { getSetting, SettingKey } from '../../db/settings';
+import { ensureTagPath, listTagPlays, listTagsWithCounts, parseTagPath } from '../../db/tags';
+import { LIBRARY_TAG_SORTS, SORT_LABEL, sortTags } from '../../library/sorts';
 import { usePlaylistImport } from '../../library/usePlaylistImport';
 import { openInbox, openTag } from '../../navigation';
 import { Fab, FAB_CLEARANCE } from '../../ui/Fab';
 import { plural } from '../../ui/format';
 import { useInbox } from '../../ui/hooks/useInbox';
 import { useLibraryQuery } from '../../ui/hooks/useLibraryQuery';
+import { useSavedSort } from '../../ui/hooks/useSavedSort';
 import type { Selection } from '../../ui/hooks/useSelection';
 import { Icon } from '../../ui/Icon';
 import { ImportPrompt, ImportStatus } from '../../ui/library/ImportCards';
@@ -25,6 +28,7 @@ import { InboxCard } from '../../ui/library/InboxCard';
 import { TagList } from '../../ui/library/TagList';
 import { NewTagRow } from '../../ui/library/TagRow';
 import { TagSelectionBar } from '../../ui/library/TagSelectionBar';
+import { SectionHead } from '../../ui/play/SectionHead';
 import { PromptDialog } from '../../ui/PromptDialog';
 import { font, iconSize, spacing } from '../../ui/theme';
 import { makeStyles, useColors } from '../../ui/ThemeContext';
@@ -45,7 +49,15 @@ export function TagsView({ tagSelection, onTags }: TagsViewProps) {
   const colors = useColors();
   const styles = useStyles();
   const db = useSQLiteContext();
-  const { data } = useLibraryQuery((db) => listTagsWithCounts(db, null), []);
+  const { data } = useLibraryQuery(async (db) => {
+    const [tags, plays, sort] = await Promise.all([
+      listTagsWithCounts(db, null),
+      listTagPlays(db),
+      getSetting(db, SettingKey.tagsSort),
+    ]);
+    return { tags, plays, sort };
+  }, []);
+  const [sort, nextSort] = useSavedSort(SettingKey.tagsSort, LIBRARY_TAG_SORTS, data?.sort);
   const inbox = useInbox();
   const imports = usePlaylistImport();
   const [creating, setCreating] = useState(false);
@@ -66,7 +78,7 @@ export function TagsView({ tagSelection, onTags }: TagsViewProps) {
     openTag(id);
   };
 
-  const tags = useMemo(() => data ?? [], [data]);
+  const tags = useMemo(() => (data ? sortTags(data.tags, sort, data.plays) : []), [data, sort]);
   useEffect(() => onTags(tags.map((t) => t.id)), [tags, onTags]);
   // Sliding across tags or dragging one by its handle: the list mustn't scroll under it.
   const [tagsBusy, setTagsBusy] = useState(false);
@@ -91,7 +103,12 @@ export function TagsView({ tagSelection, onTags }: TagsViewProps) {
             )}
           </View>
         )}
-        <TagList tags={tags} selection={tagSelection} onOpen={openTag} onBusy={setTagsBusy} />
+        {tags.length > 1 && (
+          <View style={styles.head}>
+            <SectionHead label={plural(tags.length, 'tag')} sort={SORT_LABEL[sort]} onSort={nextSort} />
+          </View>
+        )}
+        <TagList tags={tags} selection={tagSelection} onOpen={openTag} onBusy={setTagsBusy} arrangeable={sort === 'custom'} />
         <NewTagRow
           onPress={() => setCreating(true)}
           disabled={tagSelection.selecting}
@@ -138,6 +155,11 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   // With the rows' own padding, the first tile starts as far below the tabs as the other tabs' search fields.
   top: {
     paddingTop: spacing.xs,
+  },
+  head: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
   },
   notices: {
     padding: spacing.lg,

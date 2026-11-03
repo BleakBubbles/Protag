@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { freshDatabase, insertSong } from './helpers/db.ts';
 import { ensureTagPath, addTagToSong, listTagPlays } from '../src/db/tags.ts';
-import { colorGroups, DEFAULT_SORTS, LIBRARY_MUSIC_SORTS, nextMusicSort, nextSort, nextTagSort, parseSort, parseSorts, parseEditorSort, SONG_SORTS, sortEditorTags, sortMusic, sortSongs, sortTags, type SongSort } from '../src/library/sorts.ts';
+import { colorGroups, DEFAULT_SORTS, LIBRARY_MUSIC_SORTS, LIBRARY_TAG_SORTS, nextMusicSort, nextSort, nextTagSort, parseSort, parseSorts, parseEditorSort, SONG_SORTS, sortEditorTags, sortMusic, sortSongs, sortTags, type SongSort } from '../src/library/sorts.ts';
 
 test('sorts cycle, and a stored choice comes back with anything unknown at its default', () => {
   assert.equal(nextTagSort('name'), 'played');
@@ -95,4 +95,15 @@ test('a stored Library sort comes back, or the list starts at its first', () => 
   assert.equal(parseSort('bogus', SONG_SORTS), 'name');
   assert.equal(parseSort(null, LIBRARY_MUSIC_SORTS), 'name');
   assert.equal(nextSort(SONG_SORTS, 'played'), 'name');
+});
+
+test('the Library sorts tags by song count for Most used, and starts in your order', () => {
+  const tags = [
+    { id: 1, name: 'b', song_count: 2, sort_order: 0 },
+    { id: 2, name: 'a', song_count: 9, sort_order: 2 },
+    { id: 3, name: 'c', song_count: 2, sort_order: 1 },
+  ];
+  assert.deepEqual(sortTags(tags, 'used', new Map()).map((t) => t.name), ['a', 'b', 'c']);
+  assert.deepEqual(sortTags(tags, 'custom', new Map()).map((t) => t.name), ['b', 'c', 'a']);
+  assert.equal(parseSort(null, LIBRARY_TAG_SORTS), 'custom');
 });

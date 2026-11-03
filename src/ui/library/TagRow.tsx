@@ -97,17 +97,20 @@ export function TagRow(props: TagRowProps) {
         </Text>
       </View>
       {selecting ? (
-        <View
-          {...handle}
-          style={[styles.handle, { height }]}
-          accessible
-          accessibilityRole="adjustable"
-          accessibilityLabel={`Move ${name}`}
-          accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-          onAccessibilityAction={(e) => onNudge?.(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
-        >
-          <Icon name="reorder-three" size={iconSize.sm} color={colors.textDim} />
-        </View>
+        // No handle in an order the tags can't be dragged in.
+        handle && (
+          <View
+            {...handle}
+            style={[styles.handle, { height }]}
+            accessible
+            accessibilityRole="adjustable"
+            accessibilityLabel={`Move ${name}`}
+            accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+            onAccessibilityAction={(e) => onNudge?.(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
+          >
+            <Icon name="reorder-three" size={iconSize.sm} color={colors.textDim} />
+          </View>
+        )
       ) : (
         <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={iconSize.sm} color={colors.textFaint} />
       )}

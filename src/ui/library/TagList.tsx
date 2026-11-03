@@ -27,6 +27,8 @@ export interface TagListProps {
   disabled?: boolean;
   /** A slide across rows or a drag by a handle is on: the list around them shouldn't scroll. */
   onBusy?: (busy: boolean) => void;
+  /** Shown in your order, so the handles to rearrange them are there; in any other order they aren't. */
+  arrangeable?: boolean;
 }
 
 /**
@@ -35,7 +37,7 @@ export interface TagListProps {
  * right: drag it to put the tag somewhere else among its siblings. That order
  * is kept, here and as "Your order" on the Play tab.
  */
-export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListProps) {
+export function TagList({ tags, selection, onOpen, disabled, onBusy, arrangeable = true }: TagListProps) {
   const styles = useStyles();
   const db = useSQLiteContext();
   const rowHeight = useTagRowHeight();
@@ -152,6 +154,7 @@ export function TagList({ tags, selection, onOpen, disabled, onBusy }: TagListPr
             disabled={disabled}
             onOpen={onOpen}
             onHold={slide.start}
+            arrangeable={arrangeable}
             onDragStart={() => dragging.begin(i)}
             onDragMove={dragging.move}
             onDragEnd={dragging.end}
@@ -215,10 +218,11 @@ interface HandledTagRowProps {
   onDragMove: (distance: number) => void;
   onDragEnd: (drop?: boolean) => void;
   onNudge: (step: 1 | -1) => void;
+  arrangeable: boolean;
 }
 
 function HandledTagRow(props: HandledTagRowProps) {
-  const { tag, selection, disabled, onOpen, onHold, onNudge } = props;
+  const { tag, selection, disabled, onOpen, onHold, onNudge, arrangeable } = props;
   // Latest callbacks for the gesture, which is made once.
   const latest = useRef(props);
   latest.current = props;
@@ -249,7 +253,7 @@ function HandledTagRow(props: HandledTagRowProps) {
       onLongPress={() => onHold(tag.id)}
       selecting={selection.selecting}
       selected={selection.selection?.has(tag.id) ?? false}
-      handle={handle.panHandlers}
+      handle={arrangeable ? handle.panHandlers : undefined}
       onNudge={onNudge}
       disabled={disabled}
     />

@@ -5,12 +5,14 @@ import { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { notifyLibraryChanged } from '@/db/changes';
+import { getSetting, SettingKey } from '@/db/settings';
 import {
   deleteTag,
   ensureTagPath,
   getTagDeletionImpact,
   listTags,
   listSongsInTag,
+  listTagPlays,
   listTagsWithCounts,
   parseTagPath,
   removeSongsFromTag,
@@ -20,6 +22,7 @@ import {
 } from '@/db/tags';
 import { albumArtUri } from '@/library/assets';
 import { listSongChips, type SongChip } from '@/library/songChips';
+import { LIBRARY_TAG_SORTS, SORT_LABEL, sortTags } from '@/library/sorts';
 import { buildTagIndex } from '@/library/tagTree';
 import { openAddSongs, openTag, useFromPlayer } from '@/navigation';
 import { useNowPlaying, usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
@@ -36,7 +39,9 @@ import { useSelection } from '@/ui/hooks/useSelection';
 import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useSongSelection } from '@/ui/hooks/useSongSelection';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
+import { useSavedSort } from '@/ui/hooks/useSavedSort';
 import { IconButton } from '@/ui/IconButton';
+import { SectionHead } from '@/ui/play/SectionHead';
 import { useAnchor } from '@/ui/Popover';
 import { PopupMenu, type MenuAction } from '@/ui/PopupMenu';
 import { SelectionBar } from '@/ui/library/SelectionBar';
@@ -76,16 +81,21 @@ export default function TagScreen() {
 
   const { data } = useLibraryQuery(
     async (db) => {
-      const [tags, children, songs, chips] = await Promise.all([
+      const [tags, children, songs, chips, plays, sort] = await Promise.all([
         listTags(db),
         listTagsWithCounts(db, id),
         listSongsInTag(db, id),
         listSongChips(db, id),
+        listTagPlays(db),
+        getSetting(db, SettingKey.tagsSort),
       ]);
-      return { index: buildTagIndex(tags), children, songs, chips };
+      return { index: buildTagIndex(tags), children, songs, chips, plays, sort };
     },
     [id]
   );
+  // The same order as the Library's Tags page, which this is a folder of.
+  const [sort, nextSort] = useSavedSort(SettingKey.tagsSort, LIBRARY_TAG_SORTS, data?.sort);
+  const children = useMemo(() => (data ? sortTags(data.children, sort, data.plays) : []), [data, sort]);
 
   const tag = data?.index.byId.get(id);
   const ancestors = data && tag ? data.index.path(id).slice(0, -1) : [];
@@ -93,7 +103,7 @@ export default function TagScreen() {
   const songIds = useMemo(() => data?.songs.map((s) => s.id), [data]);
   const songSelection = useSongSelection(songIds);
   // Or its subtags: one or the other, never both.
-  const childIds = useMemo(() => data?.children.map((t) => t.id), [data]);
+  const childIds = useMemo(() => (data ? children.map((t) => t.id) : undefined), [data, children]);
   const tagSelection = useSelection(childIds, 'tag');
   const [tagsBusy, setTagsBusy] = useState(false);
   const { selection, selecting, selected, toggle, clear, editTags, queueActions, header: selectionHeader } = songSelection;
@@ -308,9 +318,15 @@ export default function TagScreen() {
                 </View>
               </View>
               {/* Full-width rows, like the Tags view: outside the padded block. */}
+              {childCount > 1 && (
+                <View style={styles.sortHead}>
+                  <SectionHead label="Subtags" sort={SORT_LABEL[sort]} onSort={nextSort} />
+                </View>
+              )}
               {data && (
                 <TagList
-                  tags={data.children}
+                  tags={children}
+                  arrangeable={sort === 'custom'}
                   selection={tagSelection}
                   onOpen={(child) => openTag(child, fromPlayer)}
                   disabled={selecting}
@@ -481,6 +497,11 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.accent,
     overflow: 'hidden',
+  },
+  sortHead: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
   divider: {
     height: 1,

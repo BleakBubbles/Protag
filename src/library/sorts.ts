@@ -12,6 +12,8 @@ export type MusicSort = 'played' | 'name' | 'added';
  * lines of its own, "family" gives each tag with subtags a section of its own.
  */
 export type EditorSort = 'custom' | 'name' | 'used' | 'color' | 'family';
+/** The Library's tag folders: arranged by hand (with handles to drag), or by name, size or plays. */
+export type LibraryTagSort = 'custom' | 'name' | 'used' | 'played';
 /** The Library's Songs list: by title, or kept together by artist or album. */
 export type SongSort = 'name' | 'artist' | 'album' | 'added' | 'played';
 
@@ -40,6 +42,7 @@ const TAG_SORTS: readonly TagSort[] = ['name', 'played', 'custom'];
 const MUSIC_SORTS: readonly MusicSort[] = ['played', 'name', 'added'];
 /** The Library's own lists, each starting (and by default sorted) A–Z as they always were. */
 export const LIBRARY_MUSIC_SORTS: readonly MusicSort[] = ['name', 'played', 'added'];
+export const LIBRARY_TAG_SORTS: readonly LibraryTagSort[] = ['custom', 'name', 'used', 'played'];
 export const SONG_SORTS: readonly SongSort[] = ['name', 'artist', 'album', 'added', 'played'];
 
 const after = <T>(list: readonly T[], current: T) => list[(list.indexOf(current) + 1) % list.length];
@@ -70,20 +73,22 @@ const byName = (a: string, b: string) => a.localeCompare(b, undefined, { sensiti
 
 /**
  * A copy of `tags` in `sort` order; `plays` by tag id (missing means never
- * played). "Your order" is the one arranged in the Library (`sort_order`;
+ * played). "Most used" is by song count. "Your order" is the one arranged in the Library (`sort_order`;
  * never-arranged tags, all 0, fall back to A–Z).
  */
 export function sortTags<T extends { id: number; name: string; song_count: number; sort_order: number }>(
   tags: readonly T[],
-  sort: TagSort,
+  sort: TagSort | LibraryTagSort,
   plays: ReadonlyMap<number, number>
 ): T[] {
   return [...tags].sort((a, b) =>
     sort === 'played'
       ? (plays.get(b.id) ?? 0) - (plays.get(a.id) ?? 0) || b.song_count - a.song_count || byName(a.name, b.name)
-      : sort === 'custom'
-        ? a.sort_order - b.sort_order || byName(a.name, b.name)
-        : byName(a.name, b.name)
+      : sort === 'used'
+        ? b.song_count - a.song_count || byName(a.name, b.name)
+        : sort === 'custom'
+          ? a.sort_order - b.sort_order || byName(a.name, b.name)
+          : byName(a.name, b.name)
   );
 }
 

@@ -22,6 +22,8 @@ export const SettingKey = {
   shuffleSorts: 'shuffle.sorts',
   /** `EditorSort`: how the tag editor orders its chips (library/sorts.ts). */
   editTagsSort: 'editTags.sort',
+  /** `LibraryTagSort`: how the Library orders tags, at the top and inside each tag alike. */
+  tagsSort: 'library.tagsSort',
   /** `SongSort`: how the Library's Songs list is ordered (library/sorts.ts). */
   songsSort: 'library.songsSort',
   /** `MusicSort`: how the Library's Artists list is ordered. */
