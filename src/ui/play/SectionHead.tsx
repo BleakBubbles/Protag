@@ -12,7 +12,7 @@ const SLOP = 10;
 export interface SectionHeadProps {
   /** "Your tags", "Artists". */
   label: string;
-  /** The current order, said after the label; tapping it moves to the next. */
+  /** The current order, at the row's end; tapping it moves to the next. */
   sort: string;
   onSort: () => void;
   /** Anything at the row's end, like the search button. */
@@ -23,14 +23,13 @@ export interface SectionHeadProps {
   title?: ReactNode;
 }
 
-/** A Play tab section's label, with its order beside it as a quiet control. */
+/** A section's label, with its order at the far end as a quiet control (before any search button). */
 export function SectionHead({ label, sort, onSort, children, tall, title }: SectionHeadProps) {
   const colors = useColors();
   const styles = useStyles();
   return (
     <View style={[styles.head, tall && styles.tall]}>
       {title ?? <Text style={styles.label}>{label}</Text>}
-      <Text style={styles.label}>·</Text>
       <Pressable
         onPress={onSort}
         hitSlop={SLOP}
@@ -174,9 +173,12 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     letterSpacing: 1,
   },
   sort: {
+    marginLeft: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+    paddingVertical: spacing.xs,
+    paddingLeft: spacing.sm,
   },
   sortText: {
     ...font.caption,
@@ -188,7 +190,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     opacity: 0.5,
   },
   searchButton: {
-    marginLeft: 'auto',
     width: SEARCH_HEIGHT,
     height: SEARCH_HEIGHT,
     alignItems: 'center',
