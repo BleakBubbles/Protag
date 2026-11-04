@@ -36,17 +36,17 @@ const COVER = 28;
 /** How much each cover tucks under the one before it. */
 const COVER_OVERLAP = 8;
 const TILE = 40;
-/** Between tiles: room for two rings (a kept-out tile's) and a sliver of space, as in the tag grid. */
-const GAP = spacing.md;
+/** Between tiles: room for two rings (a kept-out tile's) and a sliver of space. */
+const GAP = spacing.xs + 2;
 /** A kept-out tile's ring, outside the tile, with a sliver of background between. */
-const RING_GAP = 2;
-const RING_WIDTH = 2;
+const RING_GAP = 1;
+const RING_WIDTH = 1.5;
 const RING = RING_GAP + RING_WIDTH;
 /**
  * How far the tiles sit in from the tray's edge (room for a kept-out tile's
  * ring, and a margin).
  */
-const INSET = RING + spacing.sm - 2;
+const INSET = RING + 3.5;
 /** One more row of tiles in the tray: what the divider below the pot moves it by. */
 export const POT_ROW = TILE + GAP;
 /** The tray's height for `rows` rows of tiles; more scroll. Set by the divider, otherwise fixed. */
