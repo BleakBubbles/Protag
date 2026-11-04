@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: Lora; font-weight: 700; src: url("file:///C:/Users/fifth/Documents/Projects/ProTag/node_modules/@expo-google-fonts/lora/700Bold/Lora_700Bold.ttf"); }
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; }
+  body { background: #0F5C54; font-family: Lora, serif; }
+  h1 { margin: 0; position: absolute; top: 108px; left: 0; right: 0; text-align: center;
+       color: #F6F2EA; font-size: 72px; font-weight: 700; letter-spacing: -0.5px; }
+  /* The whole phone, so nothing on screen is cut: 1080 × 2400 at 0.63. */
+  .phone { position: absolute; left: 50%; top: 280px; transform: translateX(-50%);
+           width: 680px; padding: 18px; background: #0B1F1C; border-radius: 70px;
+           box-shadow: 0 0 0 2px rgba(246, 242, 234, 0.08); }
+  .phone img { display: block; width: 680px; border-radius: 52px; }
+</style>
+</head>
+<body>
+  <h1 id="caption"></h1>
+  <div class="phone"><img id="shot"></div>
+  <script>
+    const q = new URLSearchParams(location.search);
+    document.getElementById('caption').textContent = q.get('caption');
+    document.getElementById('shot').src = q.get('shot');
+  </script>
+</body>
+</html>

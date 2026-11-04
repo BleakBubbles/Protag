@@ -392,7 +392,9 @@ export default function EditTagsScreen() {
 
 /**
  * The Family layout: each tag with subtags a section of its own, already
- * open, with the tag on top; the rest together under Other.
+ * open: the tag on top, its subtags on the line below led by ›, as in
+ * "kpop › gen 4", their wrapped lines lined up after it. The rest together
+ * under Other.
  */
 function FamilySections({
   roots,
@@ -412,7 +414,12 @@ function FamilySections({
         return (
           <View key={tag.id} style={[styles.section, { backgroundColor: `${tint}1C`, borderColor: `${tint}4D` }]}>
             <TagChipFlow {...flow} tags={[tag]} childrenOf={() => NO_KIDS} />
-            <TagChipFlow {...flow} tags={flow.childrenOf(tag.id)} depth={1} />
+            <View style={styles.path}>
+              <Text style={[styles.pathMark, { color: tint }]}>›</Text>
+              <View style={styles.pathKids}>
+                <TagChipFlow {...flow} tags={flow.childrenOf(tag.id)} depth={1} />
+              </View>
+            </View>
           </View>
         );
       })}
@@ -470,6 +477,21 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   // Colour runs and family sections: each starts a line of its own.
   groups: {
     gap: spacing.md,
+  },
+  path: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  // As tall as a chip, so it sits level with the first line of subtags.
+  pathMark: {
+    ...font.title,
+    width: spacing.lg + spacing.xs,
+    height: 36,
+    lineHeight: 36,
+    marginLeft: spacing.xs,
+  },
+  pathKids: {
+    flex: 1,
   },
   section: {
     padding: spacing.sm,
