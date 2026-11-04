@@ -25,7 +25,13 @@ const STEP = 30;
 /** A mix action beside its name. */
 const INLINE = 32;
 
-type Item = { kind: 'group'; key: string; k: number } | { kind: 'song'; key: string; song: SongRow };
+/**
+ * A tag's card, or a song: under its open card (`card` set, the card's last one
+ * rounding it off), or in a one-tag mix's plain list.
+ */
+type Item =
+  | { kind: 'card'; key: string; k: number; open: boolean }
+  | { kind: 'song'; key: string; song: SongRow; card?: { first: boolean; last: boolean } };
 
 export interface DetailsAction {
   label: string;
@@ -145,27 +151,23 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
   }, [db, open, what]);
 
   const several = draft.ingredients.length > 1;
-  // Groups start closed, so the whole mix shows at a glance; tap one to see its songs.
-  const [openGroups, setOpenGroups] = useState<ReadonlySet<number>>(new Set());
-  useEffect(() => setOpenGroups(new Set()), [what, open]);
-  const toggleGroup = (k: number) =>
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(k)) next.add(k);
-      return next;
-    });
+  // One tag's songs open at a time, inside its card; all closed at first, so the whole mix shows at a glance.
+  const [openCard, setOpenCard] = useState<number | null>(null);
+  useEffect(() => setOpenCard(null), [what, open]);
 
-  // With several ingredients, each one's songs under a heading of its own, in the
-  // rows' order; a song in two is under the one it counts for, as in the shares.
+  // With several ingredients, a card for each, the open one's songs under it; a song
+  // in two is under the one it counts for, as in the shares.
   const items: Item[] = [];
-  if (songs && several && ingredients) {
+  if (several && ingredients) {
     const groupOf = new Map<number, number>();
     ingredients.forEach((ing, k) => ing.ids.forEach((id) => groupOf.set(id, k)));
     ingredients.forEach((ing, k) => {
-      if (ing.ids.length === 0) return;
-      items.push({ kind: 'group', key: `g${k}`, k });
-      if (!openGroups.has(k)) return;
-      for (const song of songs) if (groupOf.get(song.id) === k) items.push({ kind: 'song', key: `s${song.id}`, song });
+      items.push({ kind: 'card', key: `c${k}`, k, open: openCard === k });
+      if (openCard !== k || !songs) return;
+      const mine = songs.filter((song) => groupOf.get(song.id) === k);
+      mine.forEach((song, i) =>
+        items.push({ kind: 'song', key: `s${song.id}`, song, card: { first: i === 0, last: i === mine.length - 1 } })
+      );
     });
   } else if (songs) {
     for (const song of songs) items.push({ kind: 'song', key: `s${song.id}`, song });
@@ -177,8 +179,8 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
     onTune(setTuning(draft, refs, { ...now, share }));
   };
 
-  // Three parts, set apart the way the Library sets its tags apart from its loose songs:
-  // the summary (what this is), its tag weights (how it's shared out, and tuning), its songs.
+  // The summary (what this is), then with several tags their weights (how it's shared out,
+  // and tuning), each card opening onto its songs; with one, the songs straight after.
   const header = (
     <View style={styles.headerBody}>
       <View style={styles.section}>
@@ -225,7 +227,7 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
           <View style={styles.section}>
             {/* What's tuned shows in teal in the rows; this puts it all back, live only when there's something to undo. */}
             <View style={styles.sectionHead}>
-              <Text style={styles.label}>Tag weights</Text>
+              <Text style={styles.label}>Tags</Text>
               <Pressable
                 onPress={() => onTune(untuned(draft))}
                 disabled={!isTuned(draft)}
@@ -244,66 +246,82 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
                 ))}
               </View>
             )}
-            {(ingredients ?? []).map((ing, k) => {
-              const t = tuningOf(draft, ing.refs);
-              const k0 = SHARES.indexOf(t.share as (typeof SHARES)[number]);
-              const repeats = repeatsIn(draft, ing.refs);
-              const name = label(ing.refs);
-              const times = `×${FRACTIONS[t.share] ?? t.share}`;
-              return (
-                <View key={ing.refs.join()} style={styles.card}>
-                  <View style={styles.cardRow}>
-                    <View style={[styles.swatch, { backgroundColor: hueOf(ing.refs) }]} />
-                    {/* What the tag is and how it's weighed, read as a status: "6 songs · ×2",
-                        then ↻ when it goes round again to keep its share. */}
-                    <View style={styles.cardText}>
-                      <Text style={styles.cardName} numberOfLines={1}>
-                        {name}
-                      </Text>
-                      <View style={styles.cardMeta} accessible accessibilityLabel={`${plural(ing.ids.length, 'song')}, weight ${times}${repeats ? ', repeats' : ''}`}>
-                        <Text style={styles.cardCount}>
-                          {plural(ing.ids.length, 'song')} · <Text style={t.share !== 1 && styles.timesTuned}>{times}</Text>
-                        </Text>
-                        {repeats && <Icon name="repeat" size={14} color={t.share !== 1 ? colors.accentFg : colors.textFaint} />}
-                      </View>
-                    </View>
-                    <Pressable
-                      onPress={() => tune(ing.refs, -1)}
-                      disabled={k0 === 0}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Less ${name}`}
-                      style={({ pressed }) => [styles.step, k0 === 0 && styles.stepOff, pressed && styles.pressed]}
-                    >
-                      <Icon name="remove" size={iconSize.sm - 2} color={colors.text} />
-                    </Pressable>
-                    <View style={styles.shareValue}>
-                      <Text style={styles.percent}>{percent(k)}</Text>
-                    </View>
-                    <Pressable
-                      onPress={() => tune(ing.refs, 1)}
-                      disabled={k0 === SHARES.length - 1}
-                      accessibilityRole="button"
-                      accessibilityLabel={`More ${name}`}
-                      style={({ pressed }) => [styles.step, k0 === SHARES.length - 1 && styles.stepOff, pressed && styles.pressed]}
-                    >
-                      <Icon name="add" size={iconSize.sm - 2} color={colors.text} />
-                    </Pressable>
-                  </View>
-                </View>
-              );
-            })}
           </View>
         </>
       )}
 
-      <View style={styles.divider} />
-      <View style={styles.section}>
-        <View style={styles.sectionHead}>
-          <Text style={styles.label}>Songs</Text>
-        </View>
-      </View>
+      {!several && (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.section}>
+            <View style={styles.sectionHead}>
+              <Text style={styles.label}>Songs</Text>
+            </View>
+          </View>
+        </>
+      )}
     </View>
   );
+
+  // A tag's weight, and the way into its songs: the name and count open them, − / + weigh it.
+  const card = (k: number, isOpen: boolean) => {
+    const ing = ingredients![k];
+    const t = tuningOf(draft, ing.refs);
+    const k0 = SHARES.indexOf(t.share as (typeof SHARES)[number]);
+    const repeats = repeatsIn(draft, ing.refs);
+    const name = label(ing.refs);
+    const times = `×${FRACTIONS[t.share] ?? t.share}`;
+    return (
+      <View style={[styles.card, isOpen && styles.cardOpen]}>
+        <View style={styles.cardRow}>
+          <Pressable
+            onPress={() => setOpenCard(isOpen ? null : k)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: isOpen }}
+            accessibilityLabel={`${name}, ${plural(ing.ids.length, 'song')}, weight ${times}${repeats ? ', repeats' : ''}`}
+            style={({ pressed }) => [styles.cardOpener, pressed && styles.pressed]}
+          >
+            <View style={[styles.swatch, { backgroundColor: hueOf(ing.refs) }]} />
+            {/* What the tag is and how it's weighed, read as a status: "6 songs · ×2",
+                then ↻ when it goes round again to keep its share; the chevron opens its songs. */}
+            <View style={styles.cardText}>
+              <Text style={styles.cardName} numberOfLines={1}>
+                {name}
+              </Text>
+              <View style={styles.cardMeta}>
+                <Text style={styles.cardCount}>
+                  {plural(ing.ids.length, 'song')} · <Text style={t.share !== 1 && styles.timesTuned}>{times}</Text>
+                </Text>
+                {repeats && <Icon name="repeat" size={14} color={t.share !== 1 ? colors.accentFg : colors.textFaint} />}
+                <Icon name={isOpen ? 'chevron-down' : 'chevron-forward'} size={14} color={colors.textDim} />
+              </View>
+            </View>
+          </Pressable>
+          <Pressable
+            onPress={() => tune(ing.refs, -1)}
+            disabled={k0 === 0}
+            accessibilityRole="button"
+            accessibilityLabel={`Less ${name}`}
+            style={({ pressed }) => [styles.step, k0 === 0 && styles.stepOff, pressed && styles.pressed]}
+          >
+            <Icon name="remove" size={iconSize.sm - 2} color={colors.text} />
+          </Pressable>
+          <View style={styles.shareValue}>
+            <Text style={styles.percent}>{percent(k)}</Text>
+          </View>
+          <Pressable
+            onPress={() => tune(ing.refs, 1)}
+            disabled={k0 === SHARES.length - 1}
+            accessibilityRole="button"
+            accessibilityLabel={`More ${name}`}
+            style={({ pressed }) => [styles.step, k0 === SHARES.length - 1 && styles.stepOff, pressed && styles.pressed]}
+          >
+            <Icon name="add" size={iconSize.sm - 2} color={colors.text} />
+          </Pressable>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <ExpandWindow anchor={anchor} onClose={onClose}>
@@ -311,31 +329,9 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
         data={items}
         keyExtractor={(item) => item.key}
         ListHeaderComponent={header}
-        // Each group's heading stays at the top while its songs scroll under it. The
-        // indices count the list's header as 0, so the items' are one on. Android's
-        // clipping of off-screen rows crashes with sticky headers (inserting a view), so it's off.
-        stickyHeaderIndices={items.flatMap((item, i) => (item.kind === 'group' ? [i + 1] : []))}
-        removeClippedSubviews={false}
         initialNumToRender={12}
         renderItem={({ item: entry }) => {
-          if (entry.kind === 'group') {
-            const ing = ingredients![entry.k];
-            const isOpen = openGroups.has(entry.k);
-            return (
-              <Pressable
-                onPress={() => toggleGroup(entry.k)}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: isOpen }}
-                style={({ pressed }) => [styles.group, pressed && styles.groupPressed]}
-              >
-                <View style={[styles.swatch, { backgroundColor: hueOf(ing.refs) }]} />
-                <Text style={styles.groupName} numberOfLines={1}>
-                  {label(ing.refs)} <Text style={styles.cardCount}>{plural(ing.ids.length, 'song')}</Text>
-                </Text>
-                <Icon name={isOpen ? 'chevron-down' : 'chevron-forward'} size={iconSize.sm} color={colors.textDim} />
-              </Pressable>
-            );
-          }
+          if (entry.kind === 'card') return card(entry.k, entry.open);
           const item = entry.song;
           return (
           <Pressable
@@ -346,7 +342,13 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
             accessibilityRole="button"
             accessibilityLabel={`${item.title}${item.artist ? ` by ${item.artist}` : ''}`}
             accessibilityHint="Shuffles the mix, starting with this song"
-            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+            style={({ pressed }) => [
+              styles.row,
+              entry.card && styles.rowInCard,
+              entry.card?.first && styles.rowFirstInCard,
+              entry.card?.last && styles.rowLastInCard,
+              pressed && (entry.card ? styles.rowInCardPressed : styles.rowPressed),
+            ]}
           >
             <Artwork uri={albumArtUri(item.album_id)} size={THUMB} />
             <View style={styles.text}>
@@ -447,6 +449,20 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     borderRadius: radius.lg,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  // Its songs carry on below it, in the same card.
+  cardOpen: {
+    marginBottom: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  cardOpener: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   cardRow: {
     flexDirection: 'row',
@@ -498,23 +514,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   timesTuned: {
     color: colors.accentFg,
   },
-  // A group's heading: its weight row's swatch and name, without the stepper.
-  group: {
-    backgroundColor: colors.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  groupPressed: {
-    backgroundColor: colors.surfaceAlt,
-  },
-  groupName: {
-    ...font.name,
-    color: colors.text,
-    flex: 1,
-  },
   row: {
     height: ROW_HEIGHT,
     flexDirection: 'row',
@@ -524,6 +523,23 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   rowPressed: {
     backgroundColor: colors.surfaceAlt,
+  },
+  rowInCard: {
+    marginHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surfaceAlt,
+  },
+  rowFirstInCard: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  rowLastInCard: {
+    marginBottom: spacing.md,
+    borderBottomLeftRadius: radius.lg,
+    borderBottomRightRadius: radius.lg,
+  },
+  rowInCardPressed: {
+    backgroundColor: colors.raised,
   },
   text: {
     flex: 1,
