@@ -22,7 +22,7 @@ import {
 } from '@/db/tags';
 import { albumArtUri } from '@/library/assets';
 import { listSongChips, type SongChip } from '@/library/songChips';
-import { LIBRARY_TAG_SORTS, SORT_LABEL, sortTags } from '@/library/sorts';
+import { SORT_LABEL, sortTags, TAG_SORTS } from '@/library/sorts';
 import { buildTagIndex } from '@/library/tagTree';
 import { openAddSongs, openTag, useFromPlayer } from '@/navigation';
 import { useNowPlaying, usePlayerActions, usePlayQuery } from '@/player/PlayerProvider';
@@ -94,7 +94,7 @@ export default function TagScreen() {
     [id]
   );
   // The same order as the Library's Tags page, which this is a folder of.
-  const [sort, nextSort] = useSavedSort(SettingKey.tagsSort, LIBRARY_TAG_SORTS, data?.sort);
+  const [sort, nextSort] = useSavedSort(SettingKey.tagsSort, TAG_SORTS, data?.sort);
   const children = useMemo(() => (data ? sortTags(data.children, sort, data.plays) : []), [data, sort]);
 
   const tag = data?.index.byId.get(id);
@@ -326,7 +326,6 @@ export default function TagScreen() {
               {data && (
                 <TagList
                   tags={children}
-                  arrangeable={sort === 'custom'}
                   selection={tagSelection}
                   onOpen={(child) => openTag(child, fromPlayer)}
                   disabled={selecting}

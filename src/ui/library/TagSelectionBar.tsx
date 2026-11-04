@@ -21,7 +21,7 @@ import { SelectionBar, type SelectionAction } from './SelectionBar';
  *   them in one go ("gen 4" and "gen 5" under kpop).
  * - Delete, after saying what goes with them.
  *
- * Each ends the selection; the order is arranged in the list itself (`TagList`).
+ * Each ends the selection.
  */
 export function TagSelectionBar({ selection }: { selection: Selection }) {
   const db = useSQLiteContext();

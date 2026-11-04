@@ -89,7 +89,7 @@ export default function EditTagsScreen() {
   );
 
   const [picked, setPicked] = useState<EditorSort>();
-  const sort = picked ?? data?.savedSort ?? 'custom';
+  const sort = picked ?? data?.savedSort ?? 'name';
   const changeSort = () => {
     const next = nextEditorSort(sort);
     setPicked(next);

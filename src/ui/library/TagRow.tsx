@@ -1,12 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View, type GestureResponderHandlers, type LayoutChangeEvent } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
 import { plural } from '../format';
 import { feelHold, HOLD_MS } from '../haptics';
 import { useScaledHeight } from '../hooks/useScaledHeight';
-import { Icon } from '../Icon';
 import { artworkRadius } from '../player/Artwork';
-import { font, iconSize, spacing, touchTarget } from '../theme';
+import { font, iconSize, spacing } from '../theme';
 import { makeStyles, useColors } from '../ThemeContext';
 
 /** Every tag row the same height, growing with the font size: 72 at normal size, the name and count lines (20 + 14) growing. */
@@ -24,15 +23,9 @@ export interface TagRowProps {
   onPress: () => void;
   /** Starts selecting tags (`TagList`). */
   onLongPress?: () => void;
-  /**
-   * Selecting tags: a check over the folder, as on a song's artwork, and a
-   * handle (`handle`) to drag it to another place among its siblings.
-   */
+  /** Selecting tags: a check over the folder, as on a song's artwork. */
   selecting?: boolean;
   selected?: boolean;
-  handle?: GestureResponderHandlers;
-  /** TalkBack's way to move it: one place up (-1) or down (1). */
-  onNudge?: (step: 1 | -1) => void;
   /** Dimmed and untappable, keeping its place (while selecting songs). */
   disabled?: boolean;
   /** Shown opened, its contents below it (the welcome's example): the arrow points down. */
@@ -44,7 +37,7 @@ export interface TagRowProps {
  * pattern people already know. A folder icon on the tag's own colour.
  */
 export function TagRow(props: TagRowProps) {
-  const { name, color, songCount, childCount, onPress, onLongPress, selecting, selected, handle, onNudge, disabled, open } =
+  const { name, color, songCount, childCount, onPress, onLongPress, selecting, selected, disabled, open } =
     props;
   const colors = useColors();
   const styles = useStyles();
@@ -96,22 +89,7 @@ export function TagRow(props: TagRowProps) {
           {meta}
         </Text>
       </View>
-      {selecting ? (
-        // No handle in an order the tags can't be dragged in.
-        handle && (
-          <View
-            {...handle}
-            style={[styles.handle, { height }]}
-            accessible
-            accessibilityRole="adjustable"
-            accessibilityLabel={`Move ${name}`}
-            accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-            onAccessibilityAction={(e) => onNudge?.(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
-          >
-            <Icon name="reorder-three" size={iconSize.sm} color={colors.textDim} />
-          </View>
-        )
-      ) : (
+      {!selecting && (
         <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={iconSize.sm} color={colors.textFaint} />
       )}
     </Pressable>
@@ -177,13 +155,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   },
   checkOn: {
     backgroundColor: `${colors.accent}D9`,
-  },
-  // Takes the arrow's place, at the row's right edge.
-  handle: {
-    width: touchTarget,
-    marginRight: -spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   tile: {
     width: TILE,

@@ -7,7 +7,7 @@ import type { SongRow, TagRow, TagWithCounts } from './types';
 export class TagError extends Error {}
 
 export async function listTags(db: SQLiteDatabase): Promise<TagRow[]> {
-  return db.getAllAsync<TagRow>('SELECT * FROM tags ORDER BY sort_order, name COLLATE NOCASE');
+  return db.getAllAsync<TagRow>('SELECT * FROM tags ORDER BY name COLLATE NOCASE');
 }
 
 export async function getTag(db: SQLiteDatabase, id: number): Promise<TagRow | null> {
@@ -41,7 +41,7 @@ export async function listTagsWithCounts(
   parentId: number | null
 ): Promise<TagWithCounts[]> {
   return db.getAllAsync<TagWithCounts>(
-    `${TAGS_WITH_COUNTS} WHERE t.parent_id IS ? ORDER BY t.sort_order, t.name COLLATE NOCASE`,
+    `${TAGS_WITH_COUNTS} WHERE t.parent_id IS ? ORDER BY t.name COLLATE NOCASE`,
     parentId
   );
 }
@@ -70,7 +70,7 @@ export async function listTagPlays(db: SQLiteDatabase): Promise<Map<number, numb
 
 /** The whole tree with counts, in one query: for views that show every level, like the query builder. */
 export async function listAllTagsWithCounts(db: SQLiteDatabase): Promise<TagWithCounts[]> {
-  return db.getAllAsync<TagWithCounts>(`${TAGS_WITH_COUNTS} ORDER BY t.sort_order, t.name COLLATE NOCASE`);
+  return db.getAllAsync<TagWithCounts>(`${TAGS_WITH_COUNTS} ORDER BY t.name COLLATE NOCASE`);
 }
 
 /**
@@ -135,10 +135,9 @@ export async function createTag(
     'SELECT color FROM tags ORDER BY id DESC LIMIT 1'
   );
   const result = await db.runAsync(
-    'INSERT INTO tags (name, parent_id, sort_order, created_at, color) VALUES (?, ?, ?, ?, ?)',
+    'INSERT INTO tags (name, parent_id, created_at, color) VALUES (?, ?, ?, ?)',
     clean,
     parentId,
-    await placeAtEnd(db, parentId),
     Date.now(),
     nextTagColor(newest?.color)
   );
@@ -201,30 +200,7 @@ export async function reparentTag(
     throw new TagError(`A tag named "${tag.name}" already exists in the destination.`);
   }
 
-  await db.runAsync('UPDATE tags SET parent_id = ?, sort_order = ? WHERE id = ?', newParentId, await placeAtEnd(db, newParentId), id);
-}
-
-/**
- * Sibling tags in the order the listener arranged them (`ids`, top first).
- * Numbered from 1: 0 means never arranged, where tags fall back to A–Z.
- */
-export async function setTagOrder(db: SQLiteDatabase, ids: readonly number[]): Promise<void> {
-  await db.withExclusiveTransactionAsync(async (txn) => {
-    for (const [i, id] of ids.entries()) await txn.runAsync('UPDATE tags SET sort_order = ? WHERE id = ?', i + 1, id);
-  });
-}
-
-/**
- * Where a tag joining `parentId` goes: last, if its new siblings have been
- * arranged by hand; otherwise among them A–Z, as they are.
- */
-async function placeAtEnd(db: SQLiteDatabase, parentId: number | null): Promise<number> {
-  const row = await db.getFirstAsync<{ last: number | null }>(
-    'SELECT MAX(sort_order) AS last FROM tags WHERE parent_id IS ?',
-    parentId
-  );
-  const last = row?.last ?? 0;
-  return last > 0 ? last + 1 : 0;
+  await db.runAsync('UPDATE tags SET parent_id = ? WHERE id = ?', newParentId, id);
 }
 
 /** Deletes the tag and, via ON DELETE CASCADE, its whole subtree and their song links. */

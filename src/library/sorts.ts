@@ -5,15 +5,14 @@ import { TAG_COLORS } from '../db/tagColors';
  * moves to the next order; the choice is remembered between sessions.
  */
 
-export type TagSort = 'name' | 'played' | 'custom';
+/** Tags, on the Play tab and in the Library alike. */
+export type TagSort = 'name' | 'used' | 'played';
 export type MusicSort = 'played' | 'name' | 'added';
 /**
  * The tag editor's order: "used" is by song count, "color" puts each colour on
  * lines of its own, "family" gives each tag with subtags a section of its own.
  */
-export type EditorSort = 'custom' | 'name' | 'used' | 'color' | 'family';
-/** The Library's tag folders: arranged by hand (with handles to drag), or by name, size or plays. */
-export type LibraryTagSort = 'custom' | 'name' | 'used' | 'played';
+export type EditorSort = 'name' | 'used' | 'color' | 'family';
 /** The Library's Songs list: by title, or kept together by artist or album. */
 export type SongSort = 'name' | 'artist' | 'album' | 'added' | 'played';
 
@@ -32,17 +31,15 @@ export const SORT_LABEL: Record<TagSort | MusicSort | EditorSort | SongSort, str
   album: 'Album',
   played: 'Most played',
   added: 'Recently added',
-  custom: 'Your order',
   used: 'Most used',
   color: 'Colour',
   family: 'Family',
 };
 
-const TAG_SORTS: readonly TagSort[] = ['name', 'played', 'custom'];
+export const TAG_SORTS: readonly TagSort[] = ['name', 'used', 'played'];
 const MUSIC_SORTS: readonly MusicSort[] = ['played', 'name', 'added'];
 /** The Library's own lists, each starting (and by default sorted) A–Z as they always were. */
 export const LIBRARY_MUSIC_SORTS: readonly MusicSort[] = ['name', 'played', 'added'];
-export const LIBRARY_TAG_SORTS: readonly LibraryTagSort[] = ['custom', 'name', 'used', 'played'];
 export const SONG_SORTS: readonly SongSort[] = ['name', 'artist', 'album', 'added', 'played'];
 
 const after = <T>(list: readonly T[], current: T) => list[(list.indexOf(current) + 1) % list.length];
@@ -73,12 +70,11 @@ const byName = (a: string, b: string) => a.localeCompare(b, undefined, { sensiti
 
 /**
  * A copy of `tags` in `sort` order; `plays` by tag id (missing means never
- * played). "Most used" is by song count. "Your order" is the one arranged in the Library (`sort_order`;
- * never-arranged tags, all 0, fall back to A–Z).
+ * played). "Most used" is by song count.
  */
-export function sortTags<T extends { id: number; name: string; song_count: number; sort_order: number }>(
+export function sortTags<T extends { id: number; name: string; song_count: number }>(
   tags: readonly T[],
-  sort: TagSort | LibraryTagSort,
+  sort: TagSort,
   plays: ReadonlyMap<number, number>
 ): T[] {
   return [...tags].sort((a, b) =>
@@ -86,9 +82,7 @@ export function sortTags<T extends { id: number; name: string; song_count: numbe
       ? (plays.get(b.id) ?? 0) - (plays.get(a.id) ?? 0) || b.song_count - a.song_count || byName(a.name, b.name)
       : sort === 'used'
         ? b.song_count - a.song_count || byName(a.name, b.name)
-        : sort === 'custom'
-          ? a.sort_order - b.sort_order || byName(a.name, b.name)
-          : byName(a.name, b.name)
+        : byName(a.name, b.name)
   );
 }
 
@@ -147,10 +141,10 @@ export function sortSongs<
   );
 }
 
-const EDITOR_SORTS: readonly EditorSort[] = ['custom', 'name', 'used', 'color', 'family'];
+const EDITOR_SORTS: readonly EditorSort[] = ['name', 'used', 'color', 'family'];
 export const nextEditorSort = (sort: EditorSort) => after(EDITOR_SORTS, sort);
 export const parseEditorSort = (value: string | null): EditorSort =>
-  EDITOR_SORTS.includes(value as EditorSort) ? (value as EditorSort) : 'custom';
+  EDITOR_SORTS.includes(value as EditorSort) ? (value as EditorSort) : 'name';
 
 /** Where a colour sits in the picker's palette; unknown colours (and none) last. */
 const hue = (color: string | null) => {
@@ -160,23 +154,22 @@ const hue = (color: string | null) => {
 
 /**
  * A copy of `tags` in the tag editor's `sort` order. Colour follows the
- * picker's palette, and within a colour, your order; Family is your order
- * (the sections are the editor's).
+ * picker's palette, and within a colour, A–Z; Family is A–Z (the sections are
+ * the editor's).
  */
-export function sortEditorTags<T extends { name: string; song_count: number; sort_order: number; color: string | null }>(
+export function sortEditorTags<T extends { name: string; song_count: number; color: string | null }>(
   tags: readonly T[],
   sort: EditorSort
 ): T[] {
   return [...tags].sort(
     (a, b) =>
       (sort === 'used' ? b.song_count - a.song_count : sort === 'color' ? hue(a.color) - hue(b.color) : 0) ||
-      (sort === 'name' ? 0 : a.sort_order - b.sort_order) ||
       byName(a.name, b.name)
   );
 }
 
 /** Tags in colour order, split where the colour changes: a run of chips per colour. */
-export function colorGroups<T extends { name: string; song_count: number; sort_order: number; color: string | null }>(
+export function colorGroups<T extends { name: string; song_count: number; color: string | null }>(
   tags: readonly T[]
 ): T[][] {
   const groups: T[][] = [];

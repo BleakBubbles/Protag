@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 
 import { freshDatabase, insertSong } from './helpers/db.ts';
 import { ensureTagPath, addTagToSong, listTagPlays } from '../src/db/tags.ts';
-import { colorGroups, DEFAULT_SORTS, LIBRARY_MUSIC_SORTS, LIBRARY_TAG_SORTS, nextMusicSort, nextSort, nextTagSort, parseSort, parseSorts, parseEditorSort, SONG_SORTS, sortEditorTags, sortMusic, sortSongs, sortTags, type SongSort } from '../src/library/sorts.ts';
+import { colorGroups, DEFAULT_SORTS, LIBRARY_MUSIC_SORTS, nextMusicSort, nextSort, nextTagSort, parseSort, parseSorts, parseEditorSort, SONG_SORTS, sortEditorTags, sortMusic, sortSongs, sortTags, TAG_SORTS, type SongSort } from '../src/library/sorts.ts';
 
 test('sorts cycle, and a stored choice comes back with anything unknown at its default', () => {
-  assert.equal(nextTagSort('name'), 'played');
-  assert.equal(nextTagSort('played'), 'custom');
-  assert.equal(nextTagSort('custom'), 'name');
+  assert.equal(nextTagSort('name'), 'used');
+  assert.equal(nextTagSort('used'), 'played');
+  assert.equal(nextTagSort('played'), 'name');
   assert.deepEqual(['played', 'name', 'added'].map((s) => nextMusicSort(s as never)), ['name', 'added', 'played']);
 
   assert.deepEqual(parseSorts(null), DEFAULT_SORTS);
@@ -32,13 +32,13 @@ test('most played breaks ties by size, then name; A–Z ignores case', () => {
   assert.deepEqual(names('added' as never), ['A', 'c', 'b']);
 
   const tags = [
-    { id: 1, name: 'rain', song_count: 2, sort_order: 1 },
-    { id: 2, name: 'Jazz', song_count: 9, sort_order: 3 },
-    { id: 3, name: 'kpop', song_count: 4, sort_order: 2 },
+    { id: 1, name: 'rain', song_count: 2 },
+    { id: 2, name: 'Jazz', song_count: 9 },
+    { id: 3, name: 'kpop', song_count: 4 },
   ];
   assert.deepEqual(sortTags(tags, 'name', new Map()).map((t) => t.name), ['Jazz', 'kpop', 'rain']);
   assert.deepEqual(sortTags(tags, 'played', new Map([[1, 5]])).map((t) => t.name), ['rain', 'Jazz', 'kpop']);
-  assert.deepEqual(sortTags(tags, 'custom', new Map()).map((t) => t.name), ['rain', 'kpop', 'Jazz']);
+  assert.deepEqual(sortTags(tags, 'used', new Map()).map((t) => t.name), ['Jazz', 'kpop', 'rain']);
 });
 
 test('a tag’s plays include its subtags’ songs, each song once', async () => {
@@ -57,19 +57,20 @@ test('a tag’s plays include its subtags’ songs, each song once', async () =>
   db.close();
 });
 
-test("the tag editor's colour order keeps a colour together, in your order within it", () => {
-  const tag = (name: string, color: string | null, sort_order: number, song_count = 0) => ({ name, color, sort_order, song_count });
-  const tags = [tag('chill', 'blue', 1), tag('hype', 'orange', 2), tag('sad', 'blue', 0), tag('odd', null, 3), tag('rap', 'red', 4, 9)];
-  assert.deepEqual(sortEditorTags(tags, 'color').map((t) => t.name), ['rap', 'hype', 'sad', 'chill', 'odd']);
-  assert.deepEqual(sortEditorTags(tags, 'custom').map((t) => t.name), ['sad', 'chill', 'hype', 'odd', 'rap']);
+test("the tag editor's colour order keeps a colour together, A–Z within it", () => {
+  const tag = (name: string, color: string | null, song_count = 0) => ({ name, color, song_count });
+  const tags = [tag('sad', 'blue'), tag('hype', 'orange'), tag('chill', 'blue'), tag('odd', null), tag('rap', 'red', 9)];
+  assert.deepEqual(sortEditorTags(tags, 'color').map((t) => t.name), ['rap', 'hype', 'chill', 'sad', 'odd']);
+  assert.deepEqual(sortEditorTags(tags, 'name').map((t) => t.name), ['chill', 'hype', 'odd', 'rap', 'sad']);
   assert.deepEqual(sortEditorTags(tags, 'used')[0].name, 'rap');
-  assert.equal(parseEditorSort('nonsense'), 'custom');
+  assert.equal(parseEditorSort('nonsense'), 'name');
+  assert.equal(parseEditorSort('custom'), 'name', 'the retired "Your order" falls back to A–Z');
 });
 
 test("the tag editor's colour groups split where the colour changes", () => {
-  const tag = (name: string, color: string | null, sort_order: number) => ({ name, color, sort_order, song_count: 0 });
-  const tags = [tag('chill', 'blue', 1), tag('hype', 'orange', 2), tag('sad', 'blue', 0), tag('odd', null, 3), tag('lost', 'nope', 4)];
-  assert.deepEqual(colorGroups(tags).map((g) => g.map((t) => t.name)), [['hype'], ['sad', 'chill'], ['odd', 'lost']]);
+  const tag = (name: string, color: string | null) => ({ name, color, song_count: 0 });
+  const tags = [tag('sad', 'blue'), tag('hype', 'orange'), tag('chill', 'blue'), tag('odd', null), tag('lost', 'nope')];
+  assert.deepEqual(colorGroups(tags).map((g) => g.map((t) => t.name)), [['hype'], ['chill', 'sad'], ['lost', 'odd']]);
 });
 
 test('songs by artist or album stay together in track order; unknowns go last', () => {
@@ -97,13 +98,8 @@ test('a stored Library sort comes back, or the list starts at its first', () => 
   assert.equal(nextSort(SONG_SORTS, 'played'), 'name');
 });
 
-test('the Library sorts tags by song count for Most used, and starts in your order', () => {
-  const tags = [
-    { id: 1, name: 'b', song_count: 2, sort_order: 0 },
-    { id: 2, name: 'a', song_count: 9, sort_order: 2 },
-    { id: 3, name: 'c', song_count: 2, sort_order: 1 },
-  ];
-  assert.deepEqual(sortTags(tags, 'used', new Map()).map((t) => t.name), ['a', 'b', 'c']);
-  assert.deepEqual(sortTags(tags, 'custom', new Map()).map((t) => t.name), ['b', 'c', 'a']);
-  assert.equal(parseSort(null, LIBRARY_TAG_SORTS), 'custom');
+test('the Library sorts tags A–Z by default, and a saved "Your order" falls back to it', () => {
+  assert.equal(parseSort(null, TAG_SORTS), 'name');
+  assert.equal(parseSort('custom', TAG_SORTS), 'name');
+  assert.deepEqual(parseSorts('{"tags":"custom"}').tags, 'name');
 });

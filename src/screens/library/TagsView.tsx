@@ -13,7 +13,7 @@ import {
 import { notifyLibraryChanged } from '../../db/changes';
 import { getSetting, SettingKey } from '../../db/settings';
 import { ensureTagPath, listTagPlays, listTagsWithCounts, parseTagPath } from '../../db/tags';
-import { LIBRARY_TAG_SORTS, SORT_LABEL, sortTags } from '../../library/sorts';
+import { SORT_LABEL, sortTags, TAG_SORTS } from '../../library/sorts';
 import { usePlaylistImport } from '../../library/usePlaylistImport';
 import { openInbox, openTag } from '../../navigation';
 import { Fab, FAB_CLEARANCE } from '../../ui/Fab';
@@ -57,7 +57,7 @@ export function TagsView({ tagSelection, onTags }: TagsViewProps) {
     ]);
     return { tags, plays, sort };
   }, []);
-  const [sort, nextSort] = useSavedSort(SettingKey.tagsSort, LIBRARY_TAG_SORTS, data?.sort);
+  const [sort, nextSort] = useSavedSort(SettingKey.tagsSort, TAG_SORTS, data?.sort);
   const inbox = useInbox();
   const imports = usePlaylistImport();
   const [creating, setCreating] = useState(false);
@@ -108,7 +108,7 @@ export function TagsView({ tagSelection, onTags }: TagsViewProps) {
             <SectionHead label={plural(tags.length, 'tag')} sort={SORT_LABEL[sort]} onSort={nextSort} />
           </View>
         )}
-        <TagList tags={tags} selection={tagSelection} onOpen={openTag} onBusy={setTagsBusy} arrangeable={sort === 'custom'} />
+        <TagList tags={tags} selection={tagSelection} onOpen={openTag} onBusy={setTagsBusy} />
         <NewTagRow
           onPress={() => setCreating(true)}
           disabled={tagSelection.selecting}
