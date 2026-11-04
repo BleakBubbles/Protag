@@ -145,6 +145,15 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
   }, [db, open, what]);
 
   const several = draft.ingredients.length > 1;
+  // Groups start closed, so the whole mix shows at a glance; tap one to see its songs.
+  const [openGroups, setOpenGroups] = useState<ReadonlySet<number>>(new Set());
+  useEffect(() => setOpenGroups(new Set()), [what, open]);
+  const toggleGroup = (k: number) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(k)) next.add(k);
+      return next;
+    });
 
   // With several ingredients, each one's songs under a heading of its own, in the
   // rows' order; a song in two is under the one it counts for, as in the shares.
@@ -155,6 +164,7 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
     ingredients.forEach((ing, k) => {
       if (ing.ids.length === 0) return;
       items.push({ kind: 'group', key: `g${k}`, k });
+      if (!openGroups.has(k)) return;
       for (const song of songs) if (groupOf.get(song.id) === k) items.push({ kind: 'song', key: `s${song.id}`, song });
     });
   } else if (songs) {
@@ -310,13 +320,20 @@ export function DetailsWindow({ anchor, onClose, draft, title, onTune, onPlay, a
         renderItem={({ item: entry }) => {
           if (entry.kind === 'group') {
             const ing = ingredients![entry.k];
+            const isOpen = openGroups.has(entry.k);
             return (
-              <View style={styles.group} accessibilityRole="header">
+              <Pressable
+                onPress={() => toggleGroup(entry.k)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: isOpen }}
+                style={({ pressed }) => [styles.group, pressed && styles.groupPressed]}
+              >
                 <View style={[styles.swatch, { backgroundColor: hueOf(ing.refs) }]} />
                 <Text style={styles.groupName} numberOfLines={1}>
                   {label(ing.refs)} <Text style={styles.cardCount}>{plural(ing.ids.length, 'song')}</Text>
                 </Text>
-              </View>
+                <Icon name={isOpen ? 'chevron-down' : 'chevron-forward'} size={iconSize.sm} color={colors.textDim} />
+              </Pressable>
             );
           }
           const item = entry.song;
@@ -488,8 +505,10 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xs,
+    paddingVertical: spacing.md,
+  },
+  groupPressed: {
+    backgroundColor: colors.surfaceAlt,
   },
   groupName: {
     ...font.name,
