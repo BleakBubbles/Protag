@@ -22,7 +22,7 @@ import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
 import { Icon } from '@/ui/Icon';
 import { PromptDialog } from '@/ui/PromptDialog';
-import { SaveButton } from '@/ui/SaveButton';
+import { SAVE_BAR_CLEARANCE, SaveBar } from '@/ui/SaveBar';
 import { SearchField } from '@/ui/SearchField';
 import { font, radius, spacing } from '@/ui/theme';
 import { makeStyles, useColors } from '@/ui/ThemeContext';
@@ -251,7 +251,6 @@ export default function EditTagsScreen() {
       <Stack.Screen
         options={{
           title: n === 1 && data?.song ? data.song.title : `Tags for ${plural(n, 'song')}`,
-          headerRight: () => <SaveButton dirty={dirty} saving={saving} onPress={save} />,
         }}
       />
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={styles.content}>
@@ -264,20 +263,13 @@ export default function EditTagsScreen() {
             returnKeyType="done"
             onSubmitEditing={submit}
           />
-          {/* Always one line, so the first tap doesn't push the chips down. */}
-          <Text style={[styles.status, dirty && styles.pending]} numberOfLines={1}>
+          {/* Always one line, so nothing below moves; what's pending is on the Save bar. */}
+          <Text style={styles.status} numberOfLines={1}>
             {firstTag
               ? ' ' // The empty state below says it.
-              : dirty
-                ? [
-                    adding > 0 && `${plural(adding, 'tag')} to add`,
-                    removing > 0 && `${plural(removing, 'tag')} to remove`,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')
-                : n === 1
-                  ? 'Tap a tag to add it, again to remove it.'
-                  : 'Tap a tag to put it on every song, again to take it off.'}
+              : n === 1
+                ? 'Tap a tag to add it, again to remove it.'
+                : 'Tap a tag to put it on every song, again to take it off.'}
           </Text>
         </View>
         {!exists && (
@@ -352,6 +344,17 @@ export default function EditTagsScreen() {
           )
         )}
       </ScrollView>
+      <SaveBar
+        changes={
+          dirty
+            ? [adding > 0 && `${plural(adding, 'tag')} to add`, removing > 0 && `${plural(removing, 'tag')} to remove`]
+                .filter(Boolean)
+                .join(' · ')
+            : null
+        }
+        saving={saving}
+        onPress={save}
+      />
       <PromptDialog
         visible={naming}
         title="New tag"
@@ -410,7 +413,7 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     backgroundColor: colors.bg,
   },
   content: {
-    paddingBottom: spacing.xxl,
+    paddingBottom: SAVE_BAR_CLEARANCE,
   },
   search: {
     padding: spacing.lg,
@@ -420,9 +423,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   status: {
     ...font.caption,
     color: colors.textDim,
-  },
-  pending: {
-    color: colors.accentFg,
   },
   createRow: {
     height: 56,

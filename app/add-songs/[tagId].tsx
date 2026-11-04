@@ -24,7 +24,7 @@ import { useFixedRowLayout } from '@/ui/hooks/useFixedRowLayout';
 import { useLibraryQuery } from '@/ui/hooks/useLibraryQuery';
 import { useStagedSave } from '@/ui/hooks/useStagedSave';
 import { PICK_ROW_HEIGHT, PickSongRow } from '@/ui/library/PickSongRow';
-import { SaveButton } from '@/ui/SaveButton';
+import { SAVE_BAR_CLEARANCE, SaveBar } from '@/ui/SaveBar';
 import { SearchField } from '@/ui/SearchField';
 import { font, spacing } from '@/ui/theme';
 import { makeStyles } from '@/ui/ThemeContext';
@@ -158,7 +158,6 @@ export default function AddSongsScreen() {
       <Stack.Screen
         options={{
           title: tag ? `Add to ${tag.name}` : '',
-          headerRight: () => <SaveButton dirty={dirty} saving={saving} onPress={save} />,
         }}
       />
       <FlatList
@@ -168,6 +167,7 @@ export default function AddSongsScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         extraData={selected}
+        contentContainerStyle={{ paddingBottom: SAVE_BAR_CLEARANCE }}
         renderItem={({ item }) => renderRow(item)}
         ListHeaderComponent={
           <View onLayout={onHeaderLayout}>
@@ -190,17 +190,9 @@ export default function AddSongsScreen() {
                   onToggle={() => setRecentFirst((on) => !on)}
                 />
               </View>
-              {/* Always one line, so the first tap doesn't push the list down: it
-                  explains how this works until there are pending changes to show. */}
-              <Text style={[styles.status, dirty && styles.pending]} numberOfLines={1}>
-                {dirty
-                  ? [
-                      changes.add.length > 0 && `${plural(changes.add.length, 'song')} to add`,
-                      changes.remove.length > 0 && `${plural(changes.remove.length, 'song')} to remove`,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')
-                  : 'Tap songs to add or remove them, then Save.'}
+              {/* What's pending is on the Save bar. */}
+              <Text style={styles.status} numberOfLines={1}>
+                Tap songs to add or remove them.
               </Text>
             </View>
             {suggestions.length > 0 && (
@@ -221,6 +213,20 @@ export default function AddSongsScreen() {
             <EmptyState icon="checkmark-done" title="Everything's tagged" body="Every song has at least one tag." />
           ) : undefined
         }
+      />
+      <SaveBar
+        changes={
+          dirty
+            ? [
+                changes.add.length > 0 && `${plural(changes.add.length, 'song')} to add`,
+                changes.remove.length > 0 && `${plural(changes.remove.length, 'song')} to remove`,
+              ]
+                .filter(Boolean)
+                .join(' · ')
+            : null
+        }
+        saving={saving}
+        onPress={save}
       />
     </View>
   );
@@ -244,9 +250,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   status: {
     ...font.caption,
     color: colors.textDim,
-  },
-  pending: {
-    color: colors.accentFg,
   },
   sectionLabel: {
     ...font.caption,
