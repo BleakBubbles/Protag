@@ -22,6 +22,9 @@
     const q = new URLSearchParams(location.search);
     document.getElementById('caption').textContent = q.get('caption');
     document.getElementById('shot').src = q.get('shot');
+    // Optional colours: page background and caption ink, as hex without the #.
+    if (q.get('bg')) document.body.style.background = '#' + q.get('bg');
+    if (q.get('ink')) document.getElementById('caption').style.color = '#' + q.get('ink');
   </script>
 </body>
 </html>
