@@ -8,7 +8,7 @@ import { getSetting, SettingKey, setSetting } from '@/db/settings';
 import { getSong } from '@/db/songs';
 import { applyBulkTagEdit, listAllSongTags, listAllTagsWithCounts, parseTagPath } from '@/db/tags';
 import type { TagWithCounts } from '@/db/types';
-import { countTags, markFor, planBulkEdit, shownMark, tapTag, type TagMark } from '@/library/bulkTags';
+import { countReach, countTags, markFor, planBulkEdit, shownMark, tapTag, type TagMark } from '@/library/bulkTags';
 import { matchesQuery, searchKey } from '@/library/search';
 import { colorGroups, nextEditorSort, parseEditorSort, SORT_LABEL, sortEditorTags, type EditorSort } from '@/library/sorts';
 import { buildTagIndex } from '@/library/tagTree';
@@ -77,13 +77,14 @@ export default function EditTagsScreen() {
       const index = buildTagIndex(tags);
       const tagsOf = new Map(songIds.map((id) => [id, (songTags.get(id) ?? []).map((t) => t.id)]));
       const counts = countTags(songIds, tagsOf);
+      const reach = countReach(songIds, tagsOf, (id) => index.path(id).map((t) => t.id));
 
       // One song's genre is only ever a suggestion: if there's no top-level tag
       // of that name, creating it is offered.
       const genre = song?.genre ?? null;
       const genreTag = genre ? index.children(null).find((t) => t.name.toLowerCase() === genre.toLowerCase()) : undefined;
 
-      return { tags, index, tagsOf, counts, song, savedSort: parseEditorSort(sort), genreToCreate: genre && !genreTag ? genre : null };
+      return { tags, index, tagsOf, counts, reach, song, savedSort: parseEditorSort(sort), genreToCreate: genre && !genreTag ? genre : null };
     },
     [rawSongs]
   );
@@ -119,15 +120,33 @@ export default function EditTagsScreen() {
   );
   const markOf = (tagId: number) => marks.get(tagId) ?? initialMark(tagId);
 
-  // What each chip shows: its own mark, or what its subtags say.
+  const n = songIds.length;
+  // Before anything in its family is touched, a chip shows how many songs it
+  // reaches (all of them in "kpop" through gen 4 and gen 5 counts as all);
+  // after, its own mark or what its subtags say.
+  const startShown = useCallback((id: number) => markFor(data?.reach.get(id) ?? 0, n), [data, n]);
   const shown = useMemo(() => {
     const out = new Map<number, TagMark>();
     if (!data) return out;
     const of = (id: number) => marks.get(id) ?? initialMark(id);
-    for (const tag of data.tags) out.set(tag.id, shownMark(of(tag.id), [...data.index.descendantIds(tag.id)].map(of)));
+    for (const tag of data.tags) {
+      const below = [...data.index.descendantIds(tag.id)];
+      const touched = marks.has(tag.id) || below.some((id) => marks.has(id));
+      out.set(tag.id, touched ? shownMark(of(tag.id), below.map(of)) : startShown(tag.id));
+    }
     return out;
-  }, [data, marks, initialMark]);
+  }, [data, marks, initialMark, startShown]);
   const shownOf = useCallback((id: number) => (id < 0 ? 'all' : (shown.get(id) ?? 'none')), [shown]);
+  // A tag that started on some of the songs says how many, all the way round
+  // its taps (5/5, 0/5, back to 3/5), so its chip never changes width.
+  const countOf = useCallback(
+    (id: number) => {
+      if (id < 0 || startShown(id) !== 'some') return undefined;
+      const now = shownOf(id);
+      return `${now === 'all' ? n : now === 'none' ? 0 : (data?.reach.get(id) ?? 0)}/${n}`;
+    },
+    [startShown, shownOf, data, n]
+  );
 
   // Open families: at first, the ones the songs already have subtags in.
   const [opened, setOpened] = useState<ReadonlySet<number>>();
@@ -164,9 +183,9 @@ export default function EditTagsScreen() {
       if (!data) return;
       const below = [...data.index.descendantIds(tagId)];
       const above = data.index.path(tagId).slice(0, -1).map((t) => t.id);
-      setMarks((prev) => tapTag(prev, initialMark, tagId, below, above));
+      setMarks((prev) => tapTag(prev, initialMark, tagId, below, above, shownOf(tagId)));
     },
-    [data, initialMark]
+    [data, initialMark, shownOf]
   );
 
   const changed = useMemo(
@@ -234,12 +253,12 @@ export default function EditTagsScreen() {
   const showGenre = path.length === 0 && genre != null && !newPaths.some((p) => lower(p) === lower([genre]));
   const newChips = useMemo<NewChip[]>(() => newPaths.map((p, i) => ({ id: -(i + 1), color: null, path: p })), [newPaths]);
 
-  const n = songIds.length;
   // What every flow of the tree shares, whichever way it's laid out.
   const flow: Omit<TagChipFlowProps<TagWithCounts>, 'tags'> = {
     labelOf: (t) => t.name,
     pathOf: (t) => data?.index.label(t.id) ?? t.name,
     markOf: shownOf,
+    countOf,
     childrenOf,
     isOpen,
     onPress: toggle,

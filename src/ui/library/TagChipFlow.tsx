@@ -31,6 +31,8 @@ export interface TagChipFlowProps<T extends FlowTag> {
   /** The whole path, for the caption of a tray too deep to step in. */
   pathOf?: (tag: T) => string;
   markOf: (id: number) => TagMark;
+  /** For a tag on some of the songs, how many, like "3/5". */
+  countOf?: (id: number) => string | undefined;
   /** A tag's subtags, in order. Empty for none. */
   childrenOf: (id: number) => readonly T[];
   isOpen?: (id: number) => boolean;
@@ -52,7 +54,7 @@ export interface TagChipFlowProps<T extends FlowTag> {
  * screen's opening slide).
  */
 export function TagChipFlow<T extends FlowTag>(props: TagChipFlowProps<T>) {
-  const { tags, labelOf, pathOf = labelOf, markOf, childrenOf, isOpen, onPress, onOpen, depth = 0 } = props;
+  const { tags, labelOf, pathOf = labelOf, markOf, countOf, childrenOf, isOpen, onPress, onOpen, depth = 0 } = props;
   const colors = useColors();
   const styles = useStyles();
   const [width, setWidth] = useState(0);
@@ -70,6 +72,7 @@ export function TagChipFlow<T extends FlowTag>(props: TagChipFlowProps<T>) {
         label={labelOf(tag)}
         color={tag.color}
         mark={markOf(tag.id)}
+        count={countOf?.(tag.id)}
         open={family ? Boolean(isOpen?.(tag.id)) : undefined}
         onPress={onPress}
         onOpen={onOpen}
@@ -151,6 +154,7 @@ interface TagToggleChipProps {
   label: string;
   color: string | null;
   mark: TagMark;
+  count: string | undefined;
   /** For a tag with subtags, whether its tray is open; undefined for one without. */
   open: boolean | undefined;
   onPress: (id: number) => void;
@@ -160,10 +164,10 @@ interface TagToggleChipProps {
 
 /**
  * A tag that's on (filled with its colour), off (outlined in it) or on some
- * of the songs (half filled). Its width never changes with its state, so
+ * of the songs (lightly tinted, with how many: "3/5"). Its width never changes with its state, so
  * toggling one never moves the others.
  */
-const TagToggleChip = memo(function TagToggleChip({ id, label, color, mark, open, onPress, onOpen, onMeasure }: TagToggleChipProps) {
+const TagToggleChip = memo(function TagToggleChip({ id, label, color, mark, count, open, onPress, onOpen, onMeasure }: TagToggleChipProps) {
   const colors = useColors();
   const styles = useStyles();
   const tint = colors.tag(color);
@@ -176,20 +180,21 @@ const TagToggleChip = memo(function TagToggleChip({ id, label, color, mark, open
         styles.chip,
         { borderColor: on ? tint : `${tint}8C` },
         on && { backgroundColor: tint },
+        mark === 'some' && { backgroundColor: `${tint}33`, borderColor: tint },
       ]}
     >
-      {mark === 'some' && <View style={[styles.half, { backgroundColor: `${tint}73` }]} />}
       <Pressable
         onPress={() => onPress(id)}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: mark === 'some' ? 'mixed' : on }}
-        accessibilityLabel={`${label}, ${MARK_LABEL[mark]}`}
+        accessibilityLabel={`${label}, ${count && mark === 'some' ? `on ${count.replace('/', ' of ')} songs` : MARK_LABEL[mark]}`}
         style={({ pressed }) => [styles.name, open !== undefined && styles.nameBeforeOpen, pressed && styles.pressed]}
       >
         <View style={[styles.dot, { backgroundColor: on ? colors.onTag : tint }, on && styles.dotOn]} />
         <Text style={[styles.label, { color: ink }]} numberOfLines={1}>
           {label}
         </Text>
+        {count !== undefined && <Text style={[styles.count, { color: on ? ink : tint }]}>{count}</Text>}
       </Pressable>
       {open !== undefined && (
         <Pressable
@@ -283,13 +288,6 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
   pressed: {
     backgroundColor: '#8080802E',
   },
-  half: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: '50%',
-  },
   dot: {
     width: 8,
     height: 8,
@@ -302,5 +300,9 @@ const useStyles = makeStyles((colors) => StyleSheet.create({
     ...font.label,
     fontSize: 14,
     flexShrink: 1,
+  },
+  count: {
+    ...font.caption,
+    fontVariant: ['tabular-nums'],
   },
 }));

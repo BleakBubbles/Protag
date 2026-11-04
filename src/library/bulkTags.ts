@@ -23,6 +23,24 @@ export function countTags(
   return counts;
 }
 
+/**
+ * How many of the songs each tag reaches, itself or through a subtag, each
+ * song once: "kpop" reaches a song in "kpop › gen 4". `pathOf` is a tag's
+ * ids from the top down to itself.
+ */
+export function countReach(
+  songIds: readonly number[],
+  tagsOf: ReadonlyMap<number, readonly number[]>,
+  pathOf: (tagId: number) => readonly number[]
+): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const songId of songIds) {
+    const reached = new Set((tagsOf.get(songId) ?? []).flatMap(pathOf));
+    for (const tagId of reached) counts.set(tagId, (counts.get(tagId) ?? 0) + 1);
+  }
+  return counts;
+}
+
 export function markFor(count: number, songCount: number): TagMark {
   if (count === 0) return 'none';
   return count >= songCount ? 'all' : 'some';
@@ -86,11 +104,11 @@ export function tapTag(
   initial: (tagId: number) => TagMark,
   tagId: number,
   below: readonly number[],
-  above: readonly number[]
+  above: readonly number[],
+  /** What its chip shows, when the caller knows better (songs reached through different subtags). */
+  shown = shownMark((marks.get(tagId) ?? initial(tagId)), below.map((id) => marks.get(id) ?? initial(id)))
 ): Map<number, TagMark> {
-  const markOf = (id: number) => marks.get(id) ?? initial(id);
   const family = [tagId, ...below];
-  const shown = shownMark(markOf(tagId), below.map(markOf));
   const next = new Map(marks);
   if (shown === 'all') {
     for (const id of family) next.set(id, 'none');

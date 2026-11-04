@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { freshDatabase, insertSong } from './helpers/db.ts';
 import { addTagToSong, applyBulkTagEdit, createTag } from '../src/db/tags.ts';
-import { countTags, markFor, nextMark, planBulkEdit, shownMark, tapTag, type TagMark } from '../src/library/bulkTags.ts';
+import { countReach, countTags, markFor, nextMark, planBulkEdit, shownMark, tapTag, type TagMark } from '../src/library/bulkTags.ts';
 
 // Three songs that don't share all their tags: 10 on all, 20 on two, 30 on one.
 const songs = [1, 2, 3];
@@ -99,4 +99,19 @@ test('a tag with nothing to restore just toggles', () => {
   const on = tap(new Map(), 4);
   assert.equal(on.get(4), 'all');
   assert.equal(tap(on, 4).get(4), 'none');
+});
+
+test('a tag reaches the songs in it or any subtag, each song once', () => {
+  // 1 kpop › 2 gen 4 › 3 girl groups; 4 chill
+  const paths = new Map([[1, [1]], [2, [1, 2]], [3, [1, 2, 3]], [4, [4]]]);
+  const tagsOf = new Map([[10, [3]], [11, [1, 2]], [12, [4]]]);
+  const reach = countReach([10, 11, 12], tagsOf, (id) => paths.get(id)!);
+  assert.deepEqual(reach, new Map([[1, 2], [2, 2], [3, 1], [4, 1]]));
+});
+
+test('a tag shown as on, through subtags on different songs, goes off with them', () => {
+  // kpop (1) on every song, but through gen 4 (2) on some and gen 5 (3) on the rest.
+  const initial = (id: number): TagMark => (id === 1 ? 'none' : 'some');
+  const next = tapTag(new Map(), initial, 1, [2, 3], [], 'all');
+  assert.deepEqual(next, new Map([[1, 'none'], [2, 'none'], [3, 'none']]));
 });
