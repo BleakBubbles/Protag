@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- Play's feature graphic, 1024 × 500: the mark and name on the brand teal, with a few tags as the pot shows them. -->
+<style>
+  @font-face { font-family: Lora; font-weight: 700; src: url("file:///C:/Users/fifth/Documents/Projects/ProTag/node_modules/@expo-google-fonts/lora/700Bold/Lora_700Bold.ttf"); }
+  html, body { margin: 0; width: 1024px; height: 500px; overflow: hidden; }
+  body { background: #0F5C54; font-family: Roboto, system-ui, sans-serif; position: relative; }
+  .brand { position: absolute; left: 92px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+  .name { display: flex; align-items: center; gap: 18px; }
+  .name svg { width: 104px; height: 112px; fill: #F6F2EA; overflow: hidden; }
+  .name h1 { margin: 0; font-family: Lora, serif; font-weight: 700; font-size: 96px; color: #F6F2EA; letter-spacing: -1px; line-height: 1; }
+  .tagline { margin: 0 0 0 4px; font-size: 30px; color: rgba(246, 242, 234, 0.72); }
+  /* The pot's recess, holding a few tags. */
+  .pot { position: absolute; right: 76px; top: 50%; transform: translateY(-50%); width: 330px; padding: 14px; border-radius: 24px; background: #0B1F1C;
+         box-shadow: 0 0 0 2px rgba(246, 242, 234, 0.10); display: flex; flex-direction: column; gap: 10px; }
+  .tile { height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+          font-size: 22px; color: #1A1716; }
+  .tile small { font-size: 16px; opacity: 0.7; }
+  .pair { display: flex; gap: 10px; }
+  .pair .tile { flex: 1; }
+</style>
+</head>
+<body>
+  <div class="brand">
+    <div class="name">
+      <svg viewBox="120 120 330 400" aria-hidden="true">
+        <mask id="ring-hole" maskUnits="userSpaceOnUse" x="0" y="0" width="560" height="560">
+          <ellipse cx="279.611" cy="254.964" rx="140" ry="100" transform="rotate(-22.5 279.611 254.964)" fill="#FFFFFF"/>
+          <ellipse cx="279.567" cy="254.578" rx="84" ry="60" transform="rotate(-22.5 279.567 254.578)" fill="#000000"/>
+        </mask>
+        <rect x="144.73" y="279.964" width="56" height="280"/>
+        <rect width="560" height="560" mask="url(#ring-hole)"/>
+      </svg>
+      <h1>Protag</h1>
+    </div>
+    <p class="tagline">Tags, not playlists</p>
+  </div>
+  <div class="pot">
+    <div class="pair">
+      <div class="tile" style="background:#8A80DC">late night <small>8</small></div>
+      <div class="tile" style="background:#74B266">chill <small>11</small></div>
+    </div>
+    <div class="pair">
+      <div class="tile" style="background:#5E8FDB">rainy day <small>5</small></div>
+      <div class="tile" style="background:#DB7AA8">kpop <small>8</small></div>
+    </div>
+    <div class="pair">
+      <div class="tile" style="background:#E08A4F">driving <small>6</small></div>
+      <div class="tile" style="background:#D9B648">2000s <small>5</small></div>
+    </div>
+  </div>
+</body>
+</html>
