@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Easing, Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { Animated, BackHandler, Easing, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { reduceMotion } from './motion';
+import { Overlay } from './Overlay';
 import type { Rect } from './Popover';
 import { radius, spacing } from './theme';
 import { makeStyles } from './ThemeContext';
@@ -35,7 +36,8 @@ export interface ExpandWindowProps {
  * window is laid out and growing before its contents are built, which happens
  * as it grows, so building them neither delays the start nor eats its first frames.
  * Tap outside or press back to close. With motion reduced it doesn't grow or
- * shrink: it fades in and out in its place.
+ * shrink: it fades in and out in its place. Drawn in an `Overlay`, not a
+ * `Modal`: building a `Modal`'s window stalled the first frames of the grow.
  */
 export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
   const styles = useStyles();
@@ -77,14 +79,24 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
     // Not on `shown`: it's what's closing, and following it would reopen it.
   }, [anchor, grow, fade]);
 
-  // Growing starts as soon as the window is in place, without waiting on a layout event.
-  useLayoutEffect(() => {
-    if (!shown || !pending.current) return;
+  // Back closes it while it's open; closing, it lets back through.
+  useEffect(() => {
+    if (!anchor) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [anchor, onClose]);
+
+  // Growing starts as soon as the window is in place at the overlay, without waiting on a layout event.
+  const start = () => {
+    if (!pending.current) return;
     pending.current = false;
     if (reduceMotion()) Animated.timing(fade, { toValue: 1, duration: OPEN_MS, useNativeDriver: true }).start();
     else Animated.timing(grow, { toValue: 1, duration: OPEN_MS, easing: OPEN_EASING, useNativeDriver: true }).start();
     setFilled(true);
-  }, [shown]);
+  };
 
   if (!shown) return null;
   // Inset on every side, clear of the status and navigation bars.
@@ -96,7 +108,8 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
   const fit = Math.min(shown.width / to.width, shown.height / to.height, 1);
 
   return (
-    <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+    <Overlay>
+      <Placed shown={shown} onPlaced={start} />
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: Animated.multiply(grow, fade) }]}>
         <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={onClose} accessibilityLabel="Close" />
       </Animated.View>
@@ -120,8 +133,14 @@ export function ExpandWindow({ anchor, onClose, children }: ExpandWindowProps) {
       >
         {filled && children}
       </Animated.View>
-    </Modal>
+    </Overlay>
   );
+}
+
+/** Calls `onPlaced` once the window is in place at the overlay, and again each time it opens anew. */
+function Placed({ shown, onPlaced }: { shown: Rect; onPlaced: () => void }) {
+  useLayoutEffect(onPlaced, [shown]);
+  return null;
 }
 
 const useStyles = makeStyles((colors) => StyleSheet.create({

@@ -10,6 +10,7 @@ import { DATABASE_NAME, migrate } from '@/db/schema';
 import { useLibraryWatch } from '@/library/libraryWatch';
 import { PlayerProvider } from '@/player/PlayerProvider';
 import { fontAssets } from '@/ui/fonts';
+import { OverlayHost } from '@/ui/Overlay';
 import { useStackScreenOptions } from '@/ui/stackOptions';
 import { ThemeProvider, useColors } from '@/ui/ThemeContext';
 import { WelcomeProvider } from '@/ui/welcome/WelcomeContext';
@@ -60,19 +61,22 @@ function App() {
       <PlayerProvider>
         {/* The welcome, the first time, over everything. */}
         <WelcomeProvider>
-          <Stack screenOptions={stackScreenOptions}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            {/* Focused tasks cover everything, the mini-player included. */}
-            <Stack.Screen name="add-songs/[tagId]" options={{ presentation: 'modal', title: '' }} />
-            <Stack.Screen name="edit-tags" options={{ presentation: 'modal', title: '' }} />
-            {/* Settings are a detour, not a place: over the tabs, so leaving means Back, to where you were. */}
-            <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
-            <Stack.Screen name="settings/folders" options={{ title: 'Folders' }} />
-            {/* Pages opened from the full player, over it, so Back returns to it as it was. */}
-            <Stack.Screen name="from-player/tag/[id]" options={{ title: '' }} />
-            <Stack.Screen name="from-player/album/[id]" options={{ title: '' }} />
-            <Stack.Screen name="from-player/artist/[name]" options={{ title: '' }} />
-          </Stack>
+          {/* Windows that grow out of the app (see `ExpandWindow`), over every screen. */}
+          <OverlayHost>
+            <Stack screenOptions={stackScreenOptions}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              {/* Focused tasks cover everything, the mini-player included. */}
+              <Stack.Screen name="add-songs/[tagId]" options={{ presentation: 'modal', title: '' }} />
+              <Stack.Screen name="edit-tags" options={{ presentation: 'modal', title: '' }} />
+              {/* Settings are a detour, not a place: over the tabs, so leaving means Back, to where you were. */}
+              <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
+              <Stack.Screen name="settings/folders" options={{ title: 'Folders' }} />
+              {/* Pages opened from the full player, over it, so Back returns to it as it was. */}
+              <Stack.Screen name="from-player/tag/[id]" options={{ title: '' }} />
+              <Stack.Screen name="from-player/album/[id]" options={{ title: '' }} />
+              <Stack.Screen name="from-player/artist/[name]" options={{ title: '' }} />
+            </Stack>
+          </OverlayHost>
         </WelcomeProvider>
       </PlayerProvider>
     </>
